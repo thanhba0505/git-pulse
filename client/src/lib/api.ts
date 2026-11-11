@@ -38,21 +38,27 @@ export const api = {
       email?: string;
       name?: string;
       credential?: string;
-      avatarUrl?: string;
+      googleId?: string;
     }) =>
       fetchJson<{ user: User }>("/auth/google", {
         method: "POST",
         body: JSON.stringify(dto),
       }),
+    ssoCallback: (code: string, codeVerifier: string) =>
+      fetchJson<{ message: string; user: User }>("/auth/sso/callback", {
+        method: "POST",
+        body: JSON.stringify({ code, code_verifier: codeVerifier }),
+      }),
     getDevUsers: () =>
       fetchJson<
-        Array<{ id: string; email: string; username: string; role: string }>
+        Array<{
+          id: string;
+          username: string;
+          email: string | null;
+          role: string;
+          avatarUrl?: string | null;
+        }>
       >("/auth/dev/users"),
-    devQuickLogin: (email: string, username: string) =>
-      fetchJson<{ user: User }>("/auth/dev/quick-login", {
-        method: "POST",
-        body: JSON.stringify({ email, username }),
-      }),
     logout: () =>
       fetchJson<{ success: boolean }>("/auth/logout", { method: "POST" }),
   },

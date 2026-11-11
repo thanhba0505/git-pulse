@@ -23,19 +23,19 @@ enum AiEngineType {
 }
 
 model User {
-  id            String        @id @default(uuid())
-  gatewayUserId String        @unique
-  email         String        @unique
-  username      String
-  avatarUrl     String?
-  role          Role          @default(USER)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id         String            @id @default(uuid())
+  username   String            @unique
+  email      String?           @unique
+  avatarUrl  String?
+  role       Role              @default(USER)
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
-  gitAccount    GitAccount?
-  settings      UserSettings?
-  reports       ReportHistory[]
-  bookmarks     GitRepoBookmark[]
+  gitAccount GitAccount?
+  settings   UserSettings?
+  reports    ReportHistory[]
+  bookmarks  GitRepoBookmark[]
 
   @@map("users")
 }

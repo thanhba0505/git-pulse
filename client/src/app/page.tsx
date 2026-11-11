@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { User, GitStatus, PrActivity, AiEngine } from "../types";
+import { GitStatus, PrActivity, AiEngine } from "../types";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth-context";
 import { runWebLLMSummary, isWebGPUSupported } from "../lib/webllm";
 import { Header } from "../components/layout/Header";
 import { GitHubConnectModal } from "../components/github/GitHubConnectBanner";
@@ -10,14 +11,20 @@ import { ActivityScanner } from "../components/dashboard/ActivityScanner";
 import { CockpitAiConsole } from "../components/ai/CockpitAiConsole";
 import { StandupOutputDock } from "../components/standup/StandupOutputDock";
 import { ReportHistoryModal } from "../components/history/ReportHistoryModal";
-import { Orbit, GitBranch, Shield, ArrowRight } from "lucide-react";
+import { GoogleAccountChooserModal } from "../components/auth/GoogleAccountChooserModal";
+import { Orbit, GitBranch, Shield, ExternalLink } from "lucide-react";
 
 export default function HomePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [devUsers, setDevUsers] = useState<
-    Array<{ id: string; email: string; username: string; role: string }>
-  >([]);
+  const {
+    user,
+    isLoading: isAuthLoading,
+    isGoogleChooserOpen,
+    openGoogleChooser,
+    closeGoogleChooser,
+    loginWithGoogle,
+    initiateGatewaySso,
+    logout,
+  } = useAuth();
 
   const [gitStatus, setGitStatus] = useState<GitStatus>({ connected: false });
   const [isGitModalOpen, setIsGitModalOpen] = useState(false);
@@ -40,27 +47,7 @@ export default function HomePage() {
   const [bullets, setBullets] = useState<string[]>([]);
   const [modelUsed, setModelUsed] = useState<string>("");
 
-  // 1. Check Authentication on Mount
-  useEffect(() => {
-    api.auth
-      .me()
-      .then((res) => {
-        setUser(res.user);
-      })
-      .catch(() => {
-        setUser(null);
-        // Load dev accounts for local testing convenience
-        api.auth
-          .getDevUsers()
-          .then(setDevUsers)
-          .catch(() => {});
-      })
-      .finally(() => {
-        setIsAuthLoading(false);
-      });
-  }, []);
-
-  // 2. Fetch Git Status when user is logged in
+  // 1. Fetch Git Status when user is logged in
   const loadGitStatus = useCallback(async () => {
     try {
       const status = await api.github.getStatus();
@@ -72,7 +59,7 @@ export default function HomePage() {
     }
   }, []);
 
-  // 3. Scan Git PRs & Commits
+  // 2. Scan Git PRs & Commits
   const handleScanActivity = useCallback(async () => {
     setIsScanning(true);
     try {
@@ -109,49 +96,22 @@ export default function HomePage() {
     }
   }, [user, loadGitStatus, handleScanActivity]);
 
-  // Dev Quick Login Handler
-  const handleDevLogin = async (email: string, username: string) => {
-    setIsAuthLoading(true);
-    try {
-      const res = await api.auth.devQuickLogin(email, username);
-      setUser(res.user);
-    } catch (err) {
-      alert((err as Error).message);
-    } finally {
-      setIsAuthLoading(false);
-    }
-  };
+  // Google Account Chooser Selection Handler
+  const handleAccountSelect = async (account: {
+    username: string;
+    email: string;
+    name: string;
+    googleId?: string;
+  }) => {
+    const result = await loginWithGoogle({
+      email: account.email,
+      name: account.name,
+      googleId: account.googleId || `google_${Date.now()}`,
+    });
 
-  // Google Login Simulation / Redirect
-  const handleGoogleLogin = async () => {
-    // In production/local, could invoke Google SDK or redirect to Gateway
-    // For seamless testing, simulate with developer Google payload:
-    const email = prompt(
-      "Nhập địa chỉ Google Email của bạn để xác thực qua Central Gateway:",
-      "developer@wonderlab.local",
-    );
-    if (!email) return;
-    setIsAuthLoading(true);
-    try {
-      const res = await api.auth.googleLogin({
-        email,
-        name: email.split("@")[0],
-      });
-      setUser(res.user);
-    } catch (err) {
-      alert((err as Error).message);
-    } finally {
-      setIsAuthLoading(false);
+    if (!result.success) {
+      alert(result.error || "Đăng nhập Google thất bại");
     }
-  };
-
-  // Logout Handler
-  const handleLogout = async () => {
-    await api.auth.logout();
-    setUser(null);
-    setActivities([]);
-    setBullets([]);
-    setGitStatus({ connected: false });
   };
 
   // Save PAT
@@ -259,7 +219,7 @@ export default function HomePage() {
     );
   }
 
-  // 1. Unauthenticated State -> Cosmic Gateway Login Page
+  // 1. Unauthenticated State -> Cosmic Gateway Login Card
   if (!user) {
     return (
       <main className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
@@ -274,45 +234,38 @@ export default function HomePage() {
             Trạm Không Gian Git-Pulse
           </h1>
           <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-            Nền tảng trí tuệ mã nguồn & radar Standup hàng ngày. Tích hợp định
-            danh SSO Central Gateway và bộ đôi AI Engine.
+            Nền tảng trí tuệ mã nguồn & radar Standup hàng ngày. Xác thực đăng
+            nhập Google thông qua Central Gateway IAM Master.
           </p>
 
-          {/* Gateway Google Login Button */}
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl text-sm font-bold text-void bg-gradient-to-r from-cyan-400 via-emerald-400 to-teal-300 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-[0.98] mb-4"
-          >
-            <Shield className="w-4 h-4" />
-            <span>Đăng nhập Google qua Gateway SSO</span>
-          </button>
+          <div className="space-y-3">
+            {/* Google Login Trigger (Account Chooser Modal) */}
+            <button
+              onClick={openGoogleChooser}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl text-sm font-bold text-void bg-gradient-to-r from-cyan-400 via-emerald-400 to-teal-300 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-[0.98]"
+            >
+              <Shield className="w-4 h-4" />
+              <span>Đăng nhập tài khoản Google</span>
+            </button>
 
-          {/* Dev Quick Logins */}
-          {devUsers.length > 0 && (
-            <div className="pt-4 border-t border-slate-800/80">
-              <p className="text-[11px] font-mono text-slate-400 mb-2">
-                Tài khoản kiểm thử môi trường phát triển:
-              </p>
-              <div className="flex flex-col gap-2">
-                {devUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleDevLogin(u.email, u.username)}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-void-subtle/80 hover:bg-void-surface border border-slate-700/60 hover:border-cyan-500/40 text-xs text-slate-300 transition-all text-left"
-                  >
-                    <div>
-                      <p className="font-semibold text-white">{u.username}</p>
-                      <p className="text-[10px] text-cyan-400/80 font-mono">
-                        {u.email}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+            {/* Central Gateway Direct SSO with PKCE */}
+            <button
+              onClick={initiateGatewaySso}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-void-subtle/80 hover:bg-void-surface border border-slate-700/80 hover:border-cyan-500/40 transition-all"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Chuyển hướng đến Central Gateway SSO</span>
+            </button>
+          </div>
         </div>
+
+        {/* Google Account Chooser Modal */}
+        <GoogleAccountChooserModal
+          isOpen={isGoogleChooserOpen}
+          onClose={closeGoogleChooser}
+          onSelectAccount={handleAccountSelect}
+          appName="Git-Pulse"
+        />
       </main>
     );
   }
@@ -326,7 +279,7 @@ export default function HomePage() {
         commitCount={totalCommitsToday}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         onOpenGitModal={() => setIsGitModalOpen(true)}
-        onLogout={handleLogout}
+        onLogout={logout}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">

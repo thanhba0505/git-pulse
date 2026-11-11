@@ -1,28 +1,34 @@
-import { IsEmail, IsOptional, IsString } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsString } from "class-validator";
 
 export class GoogleLoginDto {
-  @ApiPropertyOptional({ description: "Google ID Token from client SDK" })
+  @ApiPropertyOptional({
+    description: "Google ID token (credential) from Google Identity Services",
+  })
   @IsOptional()
   @IsString()
   credential?: string;
 
-  @ApiPropertyOptional({ description: "User email" })
+  @ApiPropertyOptional({
+    description: "Email (used for local dev / testing)",
+    example: "developer@wonderlab.local",
+  })
   @IsOptional()
-  @IsEmail()
+  @IsString()
   email?: string;
 
-  @ApiPropertyOptional({ description: "User display name" })
+  @ApiPropertyOptional({
+    description: "Full name from Google profile",
+    example: "Cosmic Developer",
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: "User avatar URL" })
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
-
-  @ApiPropertyOptional({ description: "Google unique user ID (sub)" })
+  @ApiPropertyOptional({
+    description: "Google Subject ID (sub)",
+    example: "google_sub_10928301928301298",
+  })
   @IsOptional()
   @IsString()
   googleId?: string;

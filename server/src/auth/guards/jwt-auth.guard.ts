@@ -10,9 +10,8 @@ import { PrismaService } from "../../prisma/prisma.service";
 
 export interface AuthenticatedUser {
   id: string;
-  gatewayUserId: string;
-  email: string;
   username: string;
+  email: string | null;
   avatarUrl: string | null;
   role: string;
 }
@@ -30,6 +29,7 @@ export class JwtAuthGuard implements CanActivate {
       .getRequest<Request & { user?: AuthenticatedUser }>();
     const token =
       req.cookies?.["git_pulse_session"] ||
+      req.cookies?.["access_token"] ||
       req.headers.authorization?.replace(/^Bearer\s+/i, "");
 
     if (!token) {
@@ -39,24 +39,23 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const decoded = this.jwtService.verify<{ sub: string; email: string }>(
+      const decoded = this.jwtService.verify<{ sub: string; username: string }>(
         token,
       );
       const user = await this.prisma.user.findUnique({
         where: { id: decoded.sub },
       });
 
-      if (!user) {
+      if (!user || !user.isActive) {
         throw new UnauthorizedException(
-          "Tài khoản không tồn tại trên hệ thống.",
+          "Tài khoản không tồn tại hoặc đã bị vô hiệu hóa.",
         );
       }
 
       req.user = {
         id: user.id,
-        gatewayUserId: user.gatewayUserId,
-        email: user.email,
         username: user.username,
+        email: user.email,
         avatarUrl: user.avatarUrl,
         role: user.role,
       };

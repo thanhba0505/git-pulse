@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { Response, Request } from "express";
 import { AuthService } from "./auth.service";
 import { GoogleLoginDto } from "./dto/google-login.dto";
+import { SsoCallbackDto } from "./dto/sso-callback.dto";
 import { JwtAuthGuard, AuthenticatedUser } from "./guards/jwt-auth.guard";
 
 @ApiTags("Authentication & Gateway SSO")
@@ -20,73 +21,51 @@ import { JwtAuthGuard, AuthenticatedUser } from "./guards/jwt-auth.guard";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post("sso/callback")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Xác thực Single Sign-On (SSO) từ Central Gateway qua PKCE",
+  })
+  async loginWithSso(
+    @Body() dto: SsoCallbackDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.loginWithSso(dto, response);
+  }
+
   @Post("google")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Login via Google through Central Gateway SSO" })
+  @ApiOperation({
+    summary: "Đăng nhập qua Google OAuth ủy quyền Central Gateway",
+  })
   async googleLogin(
     @Body() dto: GoogleLoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ user: AuthenticatedUser }> {
-    const { user, token } = await this.authService.loginWithGoogle(dto);
-
-    const isProduction = process.env.NODE_ENV === "production";
-    res.cookie("git_pulse_session", token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    return { user };
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.loginWithGoogle(dto, response);
   }
 
   @Get("dev/users")
-  @ApiOperation({ summary: "Get list of dev accounts for testing" })
+  @ApiOperation({
+    summary: "Lấy danh sách tài khoản phục vụ popup đăng nhập nhanh trên dev",
+  })
   async getDevUsers() {
     return this.authService.getDevUsers();
   }
 
-  @Post("dev/quick-login")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Quick login for local development" })
-  async devQuickLogin(
-    @Body() body: { email: string; username: string },
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ user: AuthenticatedUser }> {
-    const { user, token } = await this.authService.devQuickLogin(
-      body.email,
-      body.username,
-    );
-
-    const isProduction = process.env.NODE_ENV === "production";
-    res.cookie("git_pulse_session", token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    return { user };
-  }
-
   @Get("me")
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: "Get currently authenticated user" })
-  async getProfile(
-    @Req() req: Request & { user: AuthenticatedUser },
-  ): Promise<{ user: AuthenticatedUser }> {
+  @ApiOperation({ summary: "Lấy thông tin người dùng đang đăng nhập" })
+  async getProfile(@Req() req: Request & { user: AuthenticatedUser }) {
     return { user: req.user };
   }
 
   @Post("logout")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Clear session cookie" })
-  async logout(
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ success: boolean }> {
+  @ApiOperation({ summary: "Đăng xuất và xóa phiên làm việc" })
+  async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie("git_pulse_session", { path: "/" });
+    res.clearCookie("access_token", { path: "/" });
     return { success: true };
   }
 }
