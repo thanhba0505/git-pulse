@@ -1,0 +1,20 @@
+services:
+  # Git Pulse Client (Next.js App Router Web Service)
+  - type: web
+    name: git-pulse-client
+    runtime: node
+    plan: free
+    region: oregon
+    autoDeploy: false
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter git-pulse-client build
+    startCommand: pnpm --filter git-pulse-client start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_GATEWAY_CLIENT_URL
+        sync: false

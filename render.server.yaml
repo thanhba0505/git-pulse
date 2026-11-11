@@ -1,0 +1,28 @@
+services:
+  # Git Pulse Server (NestJS API Service)
+  - type: web
+    name: git-pulse-server
+    runtime: node
+    plan: free
+    region: oregon
+    autoDeploy: false
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter git-pulse-server db:generate && pnpm --filter git-pulse-server build
+    startCommand: pnpm --filter git-pulse-server db:push && pnpm --filter git-pulse-server start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: S2S_ENCRYPTION_KEY
+        sync: false
+      - key: GATEWAY_URL
+        value: https://central-gateway-server.onrender.com/api/v1
+      - key: CORS_ORIGIN
+        sync: false
