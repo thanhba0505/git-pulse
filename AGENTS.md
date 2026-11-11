@@ -27,6 +27,10 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 - **Client Boundaries**: Only `NEXT_PUBLIC_*` variables allowed in client code.
 - **Token Security**: GitHub access tokens and PATs stored in the database must be encrypted at rest using AES-256-GCM.
 - **SSO Authentication**: Central Gateway handles Google Authentication. Git Pulse syncs shadow profiles and validates sessions via HttpOnly cookies (`git_pulse_session`).
+- **Service-to-Service (S2S) Architecture**:
+  - Connections managed dynamically via `service_connections` database table (`slug`, `domain`, `apiPrefix`, `apiKey`, `incomingSecret`, `isActive`).
+  - Strict HMAC-SHA256 signature verification (`X-S2S-Service`, `X-S2S-Timestamp`, `X-S2S-Signature`, `Authorization: Bearer <secret>`).
+  - Inbound S2S calls verified timing-safely via `crypto.timingSafeEqual` with a 5-minute replay-prevention window. Outbound calls signed via `S2SService.call(...)`.
 
 ---
 

@@ -3,11 +3,13 @@ import {
   UnauthorizedException,
   BadRequestException,
   Logger,
+  Optional,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Response } from "express";
 import { Role } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { S2SService } from "../s2s/s2s.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
@@ -31,6 +33,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    @Optional() private readonly s2sService?: S2SService,
   ) {
     this.gatewayUrl = process.env.GATEWAY_URL || "http://localhost:5101/api/v1";
   }
@@ -45,18 +48,33 @@ export class AuthService {
     let gwRes: { user?: GatewayUserPayload } | null = null;
 
     try {
-      const res = await fetch(`${this.gatewayUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: dto.username,
-          password: dto.password,
-          devBypass: isDevBypass,
-        }),
-      });
+      if (this.s2sService) {
+        gwRes = await this.s2sService.call<{ user?: GatewayUserPayload }>(
+          "central-gateway",
+          "/auth/login",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              username: dto.username,
+              password: dto.password,
+              devBypass: isDevBypass,
+            }),
+          },
+        );
+      } else {
+        const res = await fetch(`${this.gatewayUrl}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: dto.username,
+            password: dto.password,
+            devBypass: isDevBypass,
+          }),
+        });
 
-      if (res.ok) {
-        gwRes = (await res.json()) as { user?: GatewayUserPayload };
+        if (res.ok) {
+          gwRes = (await res.json()) as { user?: GatewayUserPayload };
+        }
       }
     } catch {
       // Gateway offline fallback on dev
@@ -158,18 +176,33 @@ export class AuthService {
     let gwUser: GatewayUserPayload | null = null;
 
     try {
-      const res = await fetch(`${this.gatewayUrl}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: dto.username,
-          email: dto.email,
-          password: dto.password,
-        }),
-      });
+      if (this.s2sService) {
+        gwUser = await this.s2sService.call<GatewayUserPayload>(
+          "central-gateway",
+          "/auth/register",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              username: dto.username,
+              email: dto.email,
+              password: dto.password,
+            }),
+          },
+        );
+      } else {
+        const res = await fetch(`${this.gatewayUrl}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: dto.username,
+            email: dto.email,
+            password: dto.password,
+          }),
+        });
 
-      if (res.ok) {
-        gwUser = (await res.json()) as GatewayUserPayload;
+        if (res.ok) {
+          gwUser = (await res.json()) as GatewayUserPayload;
+        }
       }
     } catch {
       // Gateway offline fallback
@@ -295,26 +328,41 @@ export class AuthService {
     // Call Central Gateway IAM /auth/google
     let gwUser: GatewayUserPayload | null = null;
     try {
-      const res = await fetch(`${this.gatewayUrl}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          name: name || email.split("@")[0],
-          googleId: googleId || `google_${Date.now()}`,
-          credential: dto.credential,
-        }),
-      });
-
-      if (res.ok) {
-        const body = (await res.json()) as { user?: GatewayUserPayload };
-        if (body.user) {
+      if (this.s2sService) {
+        const body = await this.s2sService.call<{ user?: GatewayUserPayload }>(
+          "central-gateway",
+          "/auth/google",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              email,
+              name: name || email.split("@")[0],
+              googleId: googleId || `google_${Date.now()}`,
+              credential: dto.credential,
+            }),
+          },
+        );
+        if (body?.user) {
           gwUser = body.user;
         }
       } else {
-        this.logger.warn(
-          `Central Gateway /auth/google responded status ${res.status}`,
-        );
+        const res = await fetch(`${this.gatewayUrl}/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            name: name || email.split("@")[0],
+            googleId: googleId || `google_${Date.now()}`,
+            credential: dto.credential,
+          }),
+        });
+
+        if (res.ok) {
+          const body = (await res.json()) as { user?: GatewayUserPayload };
+          if (body.user) {
+            gwUser = body.user;
+          }
+        }
       }
     } catch (err) {
       this.logger.warn(`Gateway unreachable: ${(err as Error).message}`);

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "./prisma/prisma.module";
 import { CommonModule } from "./common/common.module";
+import { S2SModule } from "./s2s/s2s.module";
 import { AuthModule } from "./auth/auth.module";
 import { GitHubModule } from "./github/github.module";
 import { AiModule } from "./ai/ai.module";
@@ -16,6 +17,7 @@ import { HealthController } from "./health/health.controller";
     }),
     PrismaModule,
     CommonModule,
+    S2SModule,
     AuthModule,
     GitHubModule,
     AiModule,
