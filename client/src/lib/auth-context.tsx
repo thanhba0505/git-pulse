@@ -24,6 +24,18 @@ interface AuthContextType {
   isGoogleChooserOpen: boolean;
   openGoogleChooser: () => void;
   closeGoogleChooser: () => void;
+  login: (
+    username: string,
+    password?: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  forgotPassword: (
+    email: string,
+  ) => Promise<{ success: boolean; message?: string; error?: string }>;
   loginWithGoogle: (payload: {
     email?: string;
     name?: string;
@@ -81,6 +93,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
+
+  const login = async (username: string, password?: string) => {
+    setIsLoading(true);
+    try {
+      const res = await api.auth.login(username, password);
+      setUser(res.user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (
+    username: string,
+    email: string,
+    password: string,
+  ) => {
+    setIsLoading(true);
+    try {
+      const res = await api.auth.register(username, email, password);
+      setUser(res.user);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const forgotPassword = async (email: string) => {
+    try {
+      const res = await api.auth.forgotPassword(email);
+      return { success: true, message: res.message };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  };
 
   const loginWithGoogle = async (payload: {
     email?: string;
@@ -147,6 +198,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isGoogleChooserOpen,
         openGoogleChooser: () => setIsGoogleChooserOpen(true),
         closeGoogleChooser: () => setIsGoogleChooserOpen(false),
+        login,
+        register,
+        forgotPassword,
         loginWithGoogle,
         loginWithSso,
         initiateGatewaySso,

@@ -11,8 +11,9 @@ import { ActivityScanner } from "../components/dashboard/ActivityScanner";
 import { CockpitAiConsole } from "../components/ai/CockpitAiConsole";
 import { StandupOutputDock } from "../components/standup/StandupOutputDock";
 import { ReportHistoryModal } from "../components/history/ReportHistoryModal";
+import { AuthModal } from "../components/auth/AuthModal";
 import { GoogleAccountChooserModal } from "../components/auth/GoogleAccountChooserModal";
-import { Orbit, GitBranch, Shield, ExternalLink } from "lucide-react";
+import { Orbit, GitBranch } from "lucide-react";
 
 export default function HomePage() {
   const {
@@ -22,7 +23,6 @@ export default function HomePage() {
     openGoogleChooser,
     closeGoogleChooser,
     loginWithGoogle,
-    initiateGatewaySso,
     logout,
   } = useAuth();
 
@@ -219,47 +219,17 @@ export default function HomePage() {
     );
   }
 
-  // 1. Unauthenticated State -> Cosmic Gateway Login Card
+  // 1. Unauthenticated State -> Render the exact Auth Modal
   if (!user) {
     return (
       <main className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
-        <div className="w-full max-w-md astral-card rounded-3xl p-8 border border-pulsar-cyan/30 text-center shadow-[0_0_60px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-300">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-emerald-400 p-0.5 shadow-[0_0_30px_rgba(6,182,212,0.5)]">
-            <div className="w-full h-full bg-void rounded-[14px] flex items-center justify-center">
-              <Orbit className="w-8 h-8 text-cyan-300 animate-orbit-spin" />
-            </div>
-          </div>
+        <AuthModal
+          isOpen={true}
+          onClose={() => {}}
+          onOpenGoogleChooser={openGoogleChooser}
+        />
 
-          <h1 className="text-2xl font-extrabold tracking-tight text-white mb-2">
-            Trạm Không Gian Git-Pulse
-          </h1>
-          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-            Nền tảng trí tuệ mã nguồn & radar Standup hàng ngày. Xác thực đăng
-            nhập Google thông qua Central Gateway IAM Master.
-          </p>
-
-          <div className="space-y-3">
-            {/* Google Login Trigger (Account Chooser Modal) */}
-            <button
-              onClick={openGoogleChooser}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl text-sm font-bold text-void bg-gradient-to-r from-cyan-400 via-emerald-400 to-teal-300 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] active:scale-[0.98]"
-            >
-              <Shield className="w-4 h-4" />
-              <span>Đăng nhập tài khoản Google</span>
-            </button>
-
-            {/* Central Gateway Direct SSO with PKCE */}
-            <button
-              onClick={initiateGatewaySso}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-void-subtle/80 hover:bg-void-surface border border-slate-700/80 hover:border-cyan-500/40 transition-all"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Chuyển hướng đến Central Gateway SSO</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Google Account Chooser Modal */}
+        {/* Google Account Chooser Modal (Popup on click Google) */}
         <GoogleAccountChooserModal
           isOpen={isGoogleChooserOpen}
           onClose={closeGoogleChooser}

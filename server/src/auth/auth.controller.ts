@@ -12,6 +12,8 @@ import {
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { Response, Request } from "express";
 import { AuthService } from "./auth.service";
+import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { SsoCallbackDto } from "./dto/sso-callback.dto";
 import { JwtAuthGuard, AuthenticatedUser } from "./guards/jwt-auth.guard";
@@ -20,6 +22,36 @@ import { JwtAuthGuard, AuthenticatedUser } from "./guards/jwt-auth.guard";
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post("login")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Đăng nhập bằng tên người dùng hoặc email và mật khẩu",
+  })
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const user = await this.authService.validateUser(dto);
+    return this.authService.login(user, response);
+  }
+
+  @Post("register")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Đăng ký tài khoản mới" })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return this.authService.register(dto, response);
+  }
+
+  @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Yêu cầu khôi phục mật khẩu" })
+  async forgotPassword(@Body("email") email: string) {
+    return this.authService.forgotPassword(email);
+  }
 
   @Post("sso/callback")
   @HttpCode(HttpStatus.OK)

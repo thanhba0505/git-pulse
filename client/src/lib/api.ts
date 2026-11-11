@@ -34,6 +34,24 @@ async function fetchJson<T>(
 export const api = {
   auth: {
     me: () => fetchJson<{ user: User }>("/auth/me"),
+    login: (username: string, password?: string) =>
+      fetchJson<{ message: string; user: User }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password, devBypass: !password }),
+      }),
+    register: (username: string, email: string, password: string) =>
+      fetchJson<{ message: string; user: User }>("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ username, email, password }),
+      }),
+    forgotPassword: (email: string) =>
+      fetchJson<{ success: boolean; message: string }>(
+        "/auth/forgot-password",
+        {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        },
+      ),
     googleLogin: (dto: {
       email?: string;
       name?: string;
