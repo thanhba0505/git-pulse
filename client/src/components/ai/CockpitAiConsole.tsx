@@ -34,21 +34,18 @@ export function CockpitAiConsole({
   const isWebLLM = engine === "WEB_LLM";
 
   return (
-    <div className="astral-card rounded-2xl p-5 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.1)] space-y-4">
+    <div className="astral-card rounded-2xl p-6 sm:p-7 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.1)] space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/25">
+      <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/25">
             <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               Bảng Điều Khiển AI Kép
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                Dual-Core
-              </span>
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5">
               Chọn lõi xử lý AI để chuyển đổi các PR & commit thành bản Standup
               ngắn gọn.
             </p>
@@ -56,7 +53,7 @@ export function CockpitAiConsole({
         </div>
 
         {/* Language selector */}
-        <div className="flex items-center gap-1.5 bg-void-subtle px-2.5 py-1 rounded-xl border border-slate-700/80 text-xs">
+        <div className="flex items-center gap-1.5 bg-void-subtle px-3 py-1.5 rounded-xl border border-slate-700/80 text-xs">
           <Languages className="w-3.5 h-3.5 text-slate-400" />
           <button
             onClick={() => onLanguageChange("vi")}
@@ -83,7 +80,7 @@ export function CockpitAiConsole({
       </div>
 
       {/* Engine Switcher */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {/* Core 1: GitHub Models */}
         <button
           type="button"
@@ -91,22 +88,19 @@ export function CockpitAiConsole({
             onEngineChange("GITHUB_MODELS");
             onModelChange("gpt-4o-mini");
           }}
-          className={`p-3.5 rounded-xl text-left border transition-all ${
+          className={`p-4 sm:p-5 rounded-xl text-left border transition-all ${
             engine === "GITHUB_MODELS"
               ? "bg-cyan-950/40 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
               : "bg-void-subtle/60 border-slate-800 hover:border-slate-700"
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-white">
-              <Globe className="w-4 h-4 text-cyan-400" />
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-white">
               GitHub Models Warp-Drive
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">
-              Cloud AI
-            </span>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Dùng chính token GitHub của bạn gọi endpoint Azure AI. Siêu nhanh,
             thông minh & không tốn key.
           </p>
@@ -119,22 +113,19 @@ export function CockpitAiConsole({
             onEngineChange("WEB_LLM");
             onModelChange("Llama-3.2-1B-Instruct-q4f16_1-MLC");
           }}
-          className={`p-3.5 rounded-xl text-left border transition-all ${
+          className={`p-4 sm:p-5 rounded-xl text-left border transition-all ${
             engine === "WEB_LLM"
               ? "bg-violet-950/40 border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.2)]"
               : "bg-void-subtle/60 border-slate-800 hover:border-slate-700"
           }`}
         >
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-white">
-              <Cpu className="w-4 h-4 text-violet-400" />
+          <div className="flex items-center gap-2 mb-2">
+            <Cpu className="w-4 h-4 text-violet-400" />
+            <span className="text-xs font-bold text-white">
               WebGPU Sub-Light Core
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-300">
-              In-Browser
-            </span>
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Chạy mô hình trực tiếp trong trình duyệt qua WebGPU. 100% riêng tư,
             offline và zero token.
           </p>

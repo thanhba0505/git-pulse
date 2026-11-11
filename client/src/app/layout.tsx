@@ -4,7 +4,7 @@ import { StarfieldCanvas } from "../components/cosmic/StarfieldCanvas";
 import { AuthProvider } from "../lib/auth-context";
 
 export const metadata: Metadata = {
-  title: "Git-Pulse | Celestial Git Radar & Standup Intelligence",
+  title: "Git Pulse | Celestial Git Radar & Standup Intelligence",
   description:
     "Developer Intelligence & Git Workspace with Dual-Core AI and Central Gateway SSO.",
 };

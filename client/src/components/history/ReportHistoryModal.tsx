@@ -47,19 +47,19 @@ export function ReportHistoryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/80 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl max-h-[80vh] flex flex-col astral-card rounded-2xl p-6 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/85 backdrop-blur-md">
+      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">
               <History className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white tracking-tight">
                 Lịch Sử Báo Cáo Standup
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Các bản tóm tắt đã lưu trên cơ sở dữ liệu riêng của bạn.
               </p>
             </div>
@@ -86,7 +86,7 @@ export function ReportHistoryModal({
             reports.map((report) => (
               <div
                 key={report.id}
-                className="p-4 rounded-xl bg-void-subtle/80 border border-slate-800 hover:border-cyan-500/30 transition-all space-y-2"
+                className="p-4 sm:p-5 rounded-xl bg-void-subtle/80 border border-slate-800 hover:border-cyan-500/30 transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2 font-mono text-slate-400">

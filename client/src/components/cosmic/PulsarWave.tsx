@@ -49,7 +49,7 @@ export function PulsarWave({ activityCount }: PulsarWaveProps) {
           );
         })}
       </div>
-      <span className="text-[11px] font-mono font-medium tracking-wider text-cyan-300 pl-1.5">
+      <span className="text-xs font-mono font-medium tracking-wider text-cyan-300 pl-1.5">
         {activityCount > 0 ? `${activityCount} PULSES` : "ORBIT IDLE"}
       </span>
     </div>

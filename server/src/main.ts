@@ -31,7 +31,7 @@ async function bootstrap() {
 
   // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle("Git-Pulse API")
+    .setTitle("Git Pulse API")
     .setDescription(
       "Developer Intelligence & Git Workspace API with Dual-Core AI and GitHub Integration.",
     )
@@ -44,7 +44,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 6101;
   await app.listen(port);
-  console.log(`🌌 Git-Pulse Server running on http://localhost:${port}/api/v1`);
+  console.log(`🌌 Git Pulse Server running on http://localhost:${port}/api/v1`);
   console.log(
     `📡 Swagger documentation available on http://localhost:${port}/api/docs`,
   );

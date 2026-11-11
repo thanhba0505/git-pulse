@@ -213,7 +213,7 @@ export default function HomePage() {
           <Orbit className="w-6 h-6 text-white" />
         </div>
         <p className="text-xs font-mono text-cyan-300 mt-4 tracking-wider animate-pulse">
-          KHỞI ĐỘNG CỔNG KHÔNG GIAN GIT-PULSE...
+          KHỞI ĐỘNG CỔNG KHÔNG GIAN GIT PULSE...
         </p>
       </div>
     );
@@ -234,7 +234,7 @@ export default function HomePage() {
           isOpen={isGoogleChooserOpen}
           onClose={closeGoogleChooser}
           onSelectAccount={handleAccountSelect}
-          appName="Git-Pulse"
+          appName="Git Pulse"
         />
       </main>
     );
@@ -255,19 +255,16 @@ export default function HomePage() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Onboarding Callout if GitHub is NOT connected */}
         {!gitStatus.connected && (
-          <div className="astral-card rounded-2xl p-5 border border-amber-500/40 bg-amber-950/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300">
+          <div className="astral-card rounded-2xl p-6 sm:p-7 border border-amber-500/40 bg-amber-950/20 flex flex-col sm:flex-row items-center justify-between gap-5 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300">
                 <GitBranch className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white tracking-wide uppercase">
                   Chưa Kết Nối Quỹ Đạo GitHub
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
-                    Cần thiết
-                  </span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Để quét PR và commit hôm nay, hãy kết nối tài khoản GitHub qua
                   Personal Access Token (PAT).
                 </p>

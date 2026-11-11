@@ -84,8 +84,10 @@ export function AuthModal({
       if (!result.success) {
         setError(result.error || "Đăng ký tài khoản thất bại.");
       } else {
-        setSuccessMessage("Đăng ký tài khoản thành công!");
-        onClose();
+        setSuccessMessage("Đăng ký tài khoản thành công! Đang chuyển hướng...");
+        setTimeout(() => {
+          onClose();
+        }, 600);
       }
     } finally {
       setIsSubmitting(false);
@@ -116,29 +118,29 @@ export function AuthModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.18)]"
+        className="relative w-full max-w-[440px] overflow-hidden rounded-3xl cosmic-modal-card animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-200/90 px-6 py-4 bg-slate-50/60">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white shadow-xs">
-              <Orbit className="h-4 w-4 animate-spin-slow" />
+        <div className="flex items-center justify-between border-b border-white/[0.08] px-7 py-5 bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-500 text-[#030712] shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+              <Orbit className="h-4 w-4 animate-orbit-spin" />
             </div>
-            <span className="text-base font-bold text-slate-900">
-              {mode === "login" && "Đăng nhập Git-Pulse"}
-              {mode === "register" && "Đăng ký tài khoản Git-Pulse"}
+            <span className="text-base font-bold text-white tracking-tight">
+              {mode === "login" && "Đăng nhập Git Pulse"}
+              {mode === "register" && "Đăng ký tài khoản Git Pulse"}
               {mode === "forgot" && "Khôi phục mật khẩu"}
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition cursor-pointer"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
             aria-label="Đóng cửa sổ"
           >
             <X className="h-4 w-4" />
@@ -146,19 +148,19 @@ export function AuthModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6">
+        <div className="p-7">
           {/* Error Alert */}
           {error && (
-            <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-800">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3.5 text-xs text-rose-300">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
               <div className="font-medium leading-relaxed">{error}</div>
             </div>
           )}
 
           {/* Success Alert */}
           {successMessage && (
-            <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50/90 p-3 text-xs text-emerald-800">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-xs text-emerald-300">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
               <div className="font-medium leading-relaxed">
                 {successMessage}
               </div>
@@ -168,26 +170,14 @@ export function AuthModal({
           {/* 1. VIEW: LOGIN */}
           {mode === "login" && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {/* Optional Quick Dev Account Selector */}
-              {onOpenGoogleChooser && (
-                <button
-                  type="button"
-                  onClick={onOpenGoogleChooser}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50/80 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 hover:border-amber-400 transition cursor-pointer"
-                >
-                  <Database className="h-3.5 w-3.5 text-amber-700" />
-                  Chọn tài khoản trong DB để test (Local Dev)
-                </button>
-              )}
-
-              {/* Username or Email Field */}
+              {/* Field 1: Username or Email */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Tên đăng nhập hoặc Email{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <User className="h-4 w-4" />
                   </div>
                   <input
@@ -195,16 +185,16 @@ export function AuthModal({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="VD: admin hoặc user@domain.com"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Password Field */}
+              {/* Field 2: Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-slate-700">
-                    Mật khẩu <span className="text-rose-500">*</span>
+                  <span className="text-xs font-semibold text-slate-300">
+                    Mật khẩu <span className="text-rose-400">*</span>
                   </span>
                   <button
                     type="button"
@@ -213,13 +203,13 @@ export function AuthModal({
                       setError(null);
                       setSuccessMessage(null);
                     }}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline cursor-pointer"
+                    className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition cursor-pointer"
                   >
                     Quên mật khẩu?
                   </button>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Lock className="h-4 w-4" />
                   </div>
                   <input
@@ -227,12 +217,12 @@ export function AuthModal({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Nhập mật khẩu..."
-                    className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer transition"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -247,18 +237,18 @@ export function AuthModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-sm shadow-xs transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
               >
                 <ArrowRight className="h-4 w-4" />
                 <span>{isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}</span>
               </button>
 
               {/* Divider: HOẶC TIẾP TỤC VỚI */}
-              <div className="relative my-4 flex items-center justify-center">
+              <div className="relative my-5 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-white/10" />
                 </div>
-                <span className="relative bg-white px-3 text-xs font-mono uppercase text-slate-400">
+                <span className="relative bg-[#080e1c] px-3 text-xs font-mono uppercase tracking-wider text-slate-500">
                   Hoặc tiếp tục với
                 </span>
               </div>
@@ -267,7 +257,7 @@ export function AuthModal({
               <button
                 type="button"
                 onClick={onOpenGoogleChooser}
-                className="w-full flex items-center justify-center gap-2.5 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition shadow-2xs cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-white/[0.04] border border-white/12 hover:bg-white/[0.08] hover:border-white/25 text-white font-medium py-3 text-xs transition-all shadow-xs active:scale-[0.98] cursor-pointer"
               >
                 <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -291,8 +281,8 @@ export function AuthModal({
               </button>
 
               {/* Footer */}
-              <div className="pt-2 text-center text-xs text-slate-500">
-                Chưa có tài khoản Git-Pulse?{" "}
+              <div className="pt-2 text-center text-xs text-slate-400">
+                Chưa có tài khoản Git Pulse?{" "}
                 <button
                   type="button"
                   onClick={() => {
@@ -300,24 +290,38 @@ export function AuthModal({
                     setError(null);
                     setSuccessMessage(null);
                   }}
-                  className="font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
                 >
                   Đăng ký ngay
                 </button>
               </div>
+
+              {/* Discrete Dev Mode Helper */}
+              {onOpenGoogleChooser && (
+                <div className="pt-3 text-center">
+                  <button
+                    type="button"
+                    onClick={onOpenGoogleChooser}
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-300/90 transition cursor-pointer"
+                  >
+                    <Database className="h-3 w-3" />
+                    <span>Chọn tài khoản trong DB để test (Dev Mode)</span>
+                  </button>
+                </div>
+              )}
             </form>
           )}
 
           {/* 2. VIEW: REGISTER */}
           {mode === "register" && (
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Tên đăng nhập (Username){" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <User className="h-4 w-4" />
                   </div>
                   <input
@@ -325,17 +329,17 @@ export function AuthModal({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="VD: developer_2026"
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Địa chỉ Email <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Địa chỉ Email <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Mail className="h-4 w-4" />
                   </div>
                   <input
@@ -343,17 +347,17 @@ export function AuthModal({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="VD: developer@domain.com"
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mật khẩu <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Mật khẩu <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Lock className="h-4 w-4" />
                   </div>
                   <input
@@ -361,12 +365,12 @@ export function AuthModal({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Nhập mật khẩu an toàn..."
-                    className="w-full pl-9 pr-10 py-2 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer transition"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -380,7 +384,7 @@ export function AuthModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-sm shadow-xs transition active:scale-[0.99] disabled:opacity-50 cursor-pointer mt-2"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
               >
                 <ArrowRight className="h-4 w-4" />
                 <span>
@@ -388,8 +392,8 @@ export function AuthModal({
                 </span>
               </button>
 
-              <div className="pt-2 text-center text-xs text-slate-500">
-                Đã có tài khoản Git-Pulse?{" "}
+              <div className="pt-2 text-center text-xs text-slate-400">
+                Đã có tài khoản Git Pulse?{" "}
                 <button
                   type="button"
                   onClick={() => {
@@ -397,7 +401,7 @@ export function AuthModal({
                     setError(null);
                     setSuccessMessage(null);
                   }}
-                  className="font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
                 >
                   Đăng nhập ngay
                 </button>
@@ -409,12 +413,12 @@ export function AuthModal({
           {mode === "forgot" && (
             <form onSubmit={handleForgotSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Nhập địa chỉ Email tài khoản của bạn{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Mail className="h-4 w-4" />
                   </div>
                   <input
@@ -422,7 +426,7 @@ export function AuthModal({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="VD: user@domain.com"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-slate-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-sm text-slate-900 placeholder-slate-400 outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -430,7 +434,7 @@ export function AuthModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 text-sm shadow-xs transition active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
               >
                 <ArrowRight className="h-4 w-4" />
                 <span>
@@ -440,7 +444,7 @@ export function AuthModal({
                 </span>
               </button>
 
-              <div className="pt-2 text-center text-xs text-slate-500">
+              <div className="pt-2 text-center text-xs text-slate-400">
                 <button
                   type="button"
                   onClick={() => {
@@ -448,7 +452,7 @@ export function AuthModal({
                     setError(null);
                     setSuccessMessage(null);
                   }}
-                  className="font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
                 >
                   Quay lại đăng nhập
                 </button>

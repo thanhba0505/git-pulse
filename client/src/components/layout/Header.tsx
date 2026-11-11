@@ -32,15 +32,10 @@ export function Header({
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-pulsar-emerald animate-ping" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">
-                Git-Pulse
-              </span>
-              <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded bg-cyan-500/10 border border-cyan-400/30 text-cyan-300">
-                v0.1
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">
+            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">
+              Git Pulse
+            </span>
+            <p className="text-xs text-slate-400 hidden sm:block">
               Celestial Git Radar & Standup Intelligence
             </p>
           </div>
@@ -63,43 +58,43 @@ export function Header({
             <span className="hidden sm:inline">Lịch sử</span>
           </button>
 
-          {/* Git Connection Status Pill */}
+          {/* Git Connection Status */}
           {gitStatus.connected ? (
             <button
               onClick={onOpenGitModal}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400/60 transition-all"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono text-emerald-300 bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-500/25 hover:border-emerald-400/50 transition-all"
               title="GitHub đã kết nối. Nhấn để quản lý."
             >
-              <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               <span>@{gitStatus.gitUsername}</span>
             </button>
           ) : (
             <button
               onClick={onOpenGitModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-950/30 border border-amber-500/30 hover:border-amber-400/60 animate-pulse transition-all"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium text-amber-300 bg-amber-950/25 hover:bg-amber-950/45 border border-amber-500/30 hover:border-amber-400/50 transition-all"
             >
               <GitBranch className="w-3.5 h-3.5 text-amber-400" />
               <span>Kết nối Git</span>
             </button>
           )}
 
-          {/* User Profile / Gateway IAM */}
+          {/* User Profile */}
           {user && (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-900 to-indigo-900 border border-cyan-400/30 flex items-center justify-center text-xs font-bold text-cyan-200">
+            <div className="flex items-center gap-2.5 pl-3 border-l border-slate-800">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-900 to-indigo-900 border border-cyan-400/30 flex items-center justify-center text-xs font-bold text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.25)]">
                 {user.username.slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden lg:block text-left text-xs">
-                <p className="font-medium text-slate-200 truncate max-w-[100px]">
+                <p className="font-medium text-slate-200 truncate max-w-[120px]">
                   {user.username}
                 </p>
-                <p className="text-[10px] text-cyan-400/80 font-mono">
-                  Gateway SSO
+                <p className="text-xs text-slate-400 truncate max-w-[140px]">
+                  {user.email}
                 </p>
               </div>
               <button
                 onClick={onLogout}
-                className="p-1.5 text-slate-400 hover:text-rose-400 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 transition-colors"
                 title="Đăng xuất"
               >
                 <LogOut className="w-4 h-4" />

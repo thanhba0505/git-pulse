@@ -36,22 +36,20 @@ export function StandupOutputDock({
     bullets.map((b) => `• ${b}`).join("\n");
 
   return (
-    <div className="astral-card rounded-2xl p-5 border border-emerald-500/30 shadow-[0_0_35px_rgba(16,185,129,0.12)] space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="astral-card rounded-2xl p-6 sm:p-7 border border-emerald-500/30 shadow-[0_0_35px_rgba(16,185,129,0.12)] space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
             <Terminal className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white tracking-wide uppercase">
               Bản Báo Cáo Daily Standup Đã Sẵn Sàng
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {modelUsed || "AI Core"}
-              </span>
             </h3>
-            <p className="text-xs text-slate-400">
-              Nhấp vào các nút bên phải để sao chép theo định dạng mong muốn.
+            <p className="text-xs text-slate-400 mt-0.5">
+              {modelUsed ? `${modelUsed} • ` : ""}Nhấp vào các nút bên phải để
+              sao chép theo định dạng mong muốn.
             </p>
           </div>
         </div>
@@ -117,10 +115,12 @@ export function StandupOutputDock({
       </div>
 
       {/* Standup Content Box */}
-      <div className="p-4 rounded-xl bg-void-subtle/90 border border-slate-700/80 font-mono text-sm space-y-2.5 text-slate-100 selection:bg-cyan-500 selection:text-void">
+      <div className="p-5 sm:p-6 rounded-xl bg-void-subtle/90 border border-slate-700/80 font-mono text-sm space-y-3 text-slate-100 selection:bg-cyan-500 selection:text-void leading-relaxed">
         {bullets.map((bullet, idx) => (
-          <div key={idx} className="flex items-start gap-2.5 leading-relaxed">
-            <span className="text-emerald-400 font-bold select-none">•</span>
+          <div key={idx} className="flex items-start gap-3 leading-relaxed">
+            <span className="text-emerald-400 font-bold select-none text-base">
+              •
+            </span>
             <span>{bullet}</span>
           </div>
         ))}

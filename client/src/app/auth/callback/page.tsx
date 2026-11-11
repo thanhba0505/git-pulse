@@ -70,7 +70,7 @@ function SsoCallbackHandler() {
               Đang đồng bộ phiên đăng nhập...
             </h2>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Git-Pulse đang xác thực danh tính của bạn thông qua Central
+              Git Pulse đang xác thực danh tính của bạn thông qua Central
               Gateway SSO Hub.
             </p>
           </div>
@@ -85,7 +85,7 @@ function SsoCallbackHandler() {
               Xác thực SSO thành công!
             </h2>
             <p className="text-xs text-slate-400">
-              Đang chuyển bạn về phòng điều khiển Git-Pulse...
+              Đang chuyển bạn về phòng điều khiển Git Pulse...
             </p>
           </div>
         )}
