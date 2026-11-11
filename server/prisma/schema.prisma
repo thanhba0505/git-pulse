@@ -22,6 +22,13 @@ enum AiEngineType {
   WEB_LLM
 }
 
+enum TokenStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  NEEDS_REAUTH
+}
+
 model User {
   id         String            @id @default(uuid())
   username   String            @unique
@@ -41,22 +48,40 @@ model User {
 }
 
 model GitAccount {
-  id             String      @id @default(uuid())
-  userId         String      @unique
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  authType       GitAuthType @default(OAUTH)
-  encryptedToken String      // AES-256-GCM encrypted token
-  tokenIv        String      // Initialization vector for AES-256-GCM
-  tokenTag       String      // Auth tag for AES-256-GCM
-  gitUsername    String
-  gitId          String?
-  gitAvatar      String?
-  scopes         String[]    @default([])
-  lastSyncAt     DateTime?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                 String       @id @default(uuid())
+  userId             String       @unique
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authType           GitAuthType  @default(OAUTH)
+  encryptedToken     String       // AES-256-GCM encrypted token
+  tokenIv            String       // Initialization vector for AES-256-GCM
+  tokenTag           String       // Auth tag for AES-256-GCM
+  keyVersion         Int          @default(1) // Key versioning for rotation
+  gitUsername        String
+  gitId              String?
+  gitAvatar          String?
+  scopes             String[]     @default([])
+  hasExcessiveScopes Boolean      @default(false) // Warning flag for dangerous scopes
+  tokenStatus        TokenStatus  @default(ACTIVE)
+  expiresAt          DateTime?    // Token expiration for Fine-Grained PAT
+  lastSyncAt         DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   @@map("git_accounts")
+}
+
+model TokenAuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // PAT_SAVE | OAUTH_SAVE | ACTIVITY_FETCH | AI_SUMMARIZE | DISCONNECT | TOKEN_REVOKED
+  ipAddress String?
+  userAgent String?
+  status    String   // SUCCESS | FAILED
+  details   String?  // Context info without secret tokens
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("token_audit_logs")
 }
 
 model UserSettings {

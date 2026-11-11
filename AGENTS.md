@@ -25,7 +25,14 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 
 - **Zero Secret Leaks**: Never commit `.env*` or tokens.
 - **Client Boundaries**: Only `NEXT_PUBLIC_*` variables allowed in client code.
-- **Token Security**: GitHub access tokens and PATs stored in the database must be encrypted at rest using AES-256-GCM.
+- **Token Security**:
+  - GitHub access tokens and PATs are encrypted at rest using **AES-256-GCM** with **Per-User HKDF Key Derivation** (`crypto.hkdfSync`).
+  - Production fail-fast: Server strictly requires a high-entropy 256-bit `ENCRYPTION_KEY` in production.
+  - Automatic scope analysis: detects and alerts on over-privileged scopes (`delete_repo`, `admin:org`).
+  - Expiration tracking: reads and stores `expiresAt` for Fine-Grained PATs.
+  - Zero-leak logger: regex redaction for all GitHub token patterns (`ghp_`, `github_pat_`, `gho_`).
+  - Audit logging: all token operations (save, decrypt, purge, revoke) are logged to `token_audit_logs`.
+  - Rate limiting: `@Throttle` (max 5 requests/min) on PAT and OAuth verification endpoints.
 - **SSO Authentication**: Central Gateway handles Google Authentication. Git Pulse syncs shadow profiles and validates sessions via HttpOnly cookies (`git_pulse_session`).
 - **Service-to-Service (S2S) Architecture**:
   - Connections managed dynamically via `service_connections` database table (`slug`, `domain`, `apiPrefix`, `apiKey`, `incomingSecret`, `isActive`).

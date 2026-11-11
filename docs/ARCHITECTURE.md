@@ -33,13 +33,26 @@ S2S communication between Git Pulse, Central Gateway, and Wonderlab enforces HMA
   - `Authorization`: `Bearer <secret>` fallback for backward compatibility.
 - **Constant-Time Verification**: Uses `crypto.timingSafeEqual` to prevent timing attacks.
 
-### 2.3 GitHub Integration (OAuth / PAT)
+### 2.3 GitHub Integration & Token Security (OAuth / PAT)
 
 1. Users connect their GitHub account using either:
    - **Personal Access Token (PAT)** (Fine-grained or Classic with `repo` scope).
    - **1-Click GitHub OAuth Flow**.
-2. GitHub access tokens are **encrypted at rest** using **AES-256-GCM** before persisting in `git_accounts`.
-3. The server decrypts the token on-the-fly only when querying GitHub APIs or Azure AI endpoints.
+2. **Multi-Layer Cryptographic Hardening**:
+   - Encrypted at rest using **AES-256-GCM** with **Per-User HKDF Key Derivation**:
+     $$\text{DEK}_{\text{user}} = \text{HKDF-SHA256}(\text{MasterKey}, \text{Salt}=\text{userId}, \text{Info}=\text{"git-pulse-token-v1"}, 32)$$
+   - Production fail-fast: Server refuses to start if `ENCRYPTION_KEY` is missing in production.
+   - Key Versioning (`keyVersion`) enables zero-downtime key rotation.
+3. **Least Privilege & Scope Guardrails**:
+   - Detects over-privileged scopes (`delete_repo`, `admin:org`, `workflow`) and alerts the user on the UI.
+   - Extracts and tracks token expiration date (`expiresAt`) for Fine-Grained PATs.
+4. **Lifecycle & Self-Healing**:
+   - If GitHub returns HTTP 401 Bad credentials, the token is automatically marked `REVOKED` and background polling ceases immediately.
+   - Disconnecting permanently purges encrypted tokens and logs a `DISCONNECT` audit event.
+5. **Zero-Leak Redaction & Audit Logs**:
+   - Global regex redaction for `ghp_`, `github_pat_`, and `gho_` tokens in logs and traces.
+   - Dedicated `token_audit_logs` table records every decryption, save, and revocation with caller IP and User-Agent.
+   - Rate limited with NestJS Throttler (5 attempts/min).
 
 ---
 

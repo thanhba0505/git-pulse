@@ -129,15 +129,54 @@ export function GitHubConnectModal({
                       ? new Date(status.lastSyncAt).toLocaleTimeString()
                       : "Chưa có"}
                   </p>
+                  {status.expiresAt && (
+                    <p className="text-xs text-amber-300/90 mt-0.5">
+                      Hết hạn: {new Date(status.expiresAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             </div>
 
+            {/* Excessive Scopes Warning */}
+            {status.hasExcessiveScopes && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                <div className="leading-relaxed">
+                  <p className="font-semibold text-amber-200">
+                    Phạm vi quyền hạn cao (Over-Privileged)
+                  </p>
+                  <p className="text-amber-300/80 mt-0.5">
+                    Token có quyền quản trị hoặc xóa repo. Khuyến nghị tạo{" "}
+                    <strong>Fine-Grained Token</strong> chỉ đọc Pull Requests &
+                    Contents để đảm bảo an toàn tuyệt đối.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Token Revoked / Expired Notice */}
+            {(status.tokenStatus === "REVOKED" ||
+              status.tokenStatus === "EXPIRED") && (
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                <div className="leading-relaxed">
+                  <p className="font-semibold text-rose-200">
+                    Token đã bị thu hồi hoặc hết hạn
+                  </p>
+                  <p className="text-rose-300/80 mt-0.5">
+                    GitHub trả về 401 Bad credentials. Vui lòng ngắt kết nối và
+                    cập nhật token mới.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-2">
               <p className="text-xs text-slate-400 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                Token được mã hóa an toàn AES-256-GCM.
+                Mã hóa phân lập HKDF + AES-256-GCM.
               </p>
               <button
                 onClick={handleDisconnect}

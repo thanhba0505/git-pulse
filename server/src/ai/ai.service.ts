@@ -22,7 +22,10 @@ export class AiService {
       );
     }
 
-    const { token } = await this.githubService.getDecryptedToken(userId);
+    const { token } = await this.githubService.getDecryptedToken(
+      userId,
+      "AI_SUMMARIZE",
+    );
     const model = dto.model || "gpt-4o-mini";
     const lang = dto.language === "en" ? "English" : "Vietnamese";
 
@@ -63,6 +66,16 @@ export class AiService {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        await this.prisma.gitAccount.updateMany({
+          where: { userId },
+          data: { tokenStatus: "REVOKED" },
+        });
+        throw new BadRequestException(
+          "GitHub Token không hợp lệ hoặc đã bị thu hồi khi gọi GitHub Models. Vui lòng kết nối lại.",
+        );
+      }
+
       const err = await response.json().catch(() => ({}));
       throw new BadRequestException(
         `Lỗi gọi GitHub Models API: ${err.message || response.statusText}. Đảm bảo token GitHub của bạn có quyền truy cập GitHub Models.`,

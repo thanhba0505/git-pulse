@@ -30,6 +30,11 @@ export interface PrActivity {
   commitDetails: CommitItem[];
 }
 
+export interface RequestMetadata {
+  ip?: string;
+  userAgent?: string;
+}
+
 @Injectable()
 export class GitHubService {
   private readonly logger = new Logger(GitHubService.name);
@@ -39,22 +44,77 @@ export class GitHubService {
     private readonly crypto: CryptoService,
   ) {}
 
-  async savePersonalAccessToken(userId: string, token: string) {
+  /**
+   * Persists an audit log entry for token operations
+   */
+  async recordAuditLog(
+    userId: string,
+    action: string,
+    status: "SUCCESS" | "FAILED",
+    details?: string,
+    meta?: RequestMetadata,
+  ) {
+    try {
+      await this.prisma.tokenAuditLog.create({
+        data: {
+          userId,
+          action,
+          status,
+          details: details ? details.slice(0, 500) : undefined,
+          ipAddress: meta?.ip,
+          userAgent: meta?.userAgent ? meta.userAgent.slice(0, 255) : undefined,
+        },
+      });
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Could not record token audit log: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Validates and saves a GitHub Personal Access Token (PAT) with HKDF encryption
+   */
+  async savePersonalAccessToken(
+    userId: string,
+    token: string,
+    authType: "PAT" | "OAUTH" = "PAT",
+    meta?: RequestMetadata,
+  ) {
     const cleanToken = token.trim();
     if (!cleanToken) {
       throw new BadRequestException("Token không được để trống.");
     }
 
     // Verify token with GitHub API
-    const userRes = await fetch("https://api.github.com/user", {
-      headers: {
-        Authorization: `Bearer ${cleanToken}`,
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "GitPulse-Agent/1.0",
-      },
-    });
+    let userRes: Response;
+    try {
+      userRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "GitPulse-Agent/1.0",
+        },
+      });
+    } catch {
+      await this.recordAuditLog(
+        userId,
+        authType === "OAUTH" ? "OAUTH_SAVE" : "PAT_SAVE",
+        "FAILED",
+        "Network connection to GitHub failed",
+        meta,
+      );
+      throw new BadRequestException("Không thể kết nối tới GitHub API.");
+    }
 
     if (!userRes.ok) {
+      await this.recordAuditLog(
+        userId,
+        authType === "OAUTH" ? "OAUTH_SAVE" : "PAT_SAVE",
+        "FAILED",
+        `GitHub API returned ${userRes.status}`,
+        meta,
+      );
       const err = await userRes.json().catch(() => ({}));
       throw new BadRequestException(
         `Xác thực Personal Access Token thất bại: ${err.message || userRes.statusText}`,
@@ -68,34 +128,74 @@ export class GitHubService {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const encrypted = this.crypto.encrypt(cleanToken);
+    // 1. Detect Over-privileged Scopes
+    const DANGEROUS_SCOPES = [
+      "delete_repo",
+      "admin:org",
+      "admin:repo_hook",
+      "admin:org_hook",
+      "workflow",
+      "admin:enterprise",
+    ];
+    const hasExcessiveScopes = scopes.some((s) => DANGEROUS_SCOPES.includes(s));
+
+    // 2. Extract Token Expiration if provided by GitHub header
+    const expHeader = userRes.headers.get(
+      "github-authentication-token-expiration",
+    );
+    let expiresAt: Date | null = null;
+    if (expHeader) {
+      const parsed = new Date(expHeader);
+      if (!isNaN(parsed.getTime())) {
+        expiresAt = parsed;
+      }
+    }
+
+    // 3. Encrypt token with Per-User HKDF Key Derivation
+    const encrypted = this.crypto.encrypt(cleanToken, userId);
 
     const account = await this.prisma.gitAccount.upsert({
       where: { userId },
       update: {
-        authType: "PAT",
+        authType,
         encryptedToken: encrypted.encryptedText,
         tokenIv: encrypted.iv,
         tokenTag: encrypted.tag,
+        keyVersion: encrypted.keyVersion,
         gitUsername: ghUser.login,
         gitId: String(ghUser.id),
         gitAvatar: ghUser.avatar_url,
         scopes,
+        hasExcessiveScopes,
+        tokenStatus: "ACTIVE",
+        expiresAt,
         lastSyncAt: new Date(),
       },
       create: {
         userId,
-        authType: "PAT",
+        authType,
         encryptedToken: encrypted.encryptedText,
         tokenIv: encrypted.iv,
         tokenTag: encrypted.tag,
+        keyVersion: encrypted.keyVersion,
         gitUsername: ghUser.login,
         gitId: String(ghUser.id),
         gitAvatar: ghUser.avatar_url,
         scopes,
+        hasExcessiveScopes,
+        tokenStatus: "ACTIVE",
+        expiresAt,
         lastSyncAt: new Date(),
       },
     });
+
+    await this.recordAuditLog(
+      userId,
+      authType === "OAUTH" ? "OAUTH_SAVE" : "PAT_SAVE",
+      "SUCCESS",
+      `Scopes: ${scopes.join(", ") || "fine-grained"}${hasExcessiveScopes ? " [EXCESSIVE_SCOPES_DETECTED]" : ""}`,
+      meta,
+    );
 
     return {
       success: true,
@@ -103,10 +203,17 @@ export class GitHubService {
       avatarUrl: account.gitAvatar,
       authType: account.authType,
       scopes: account.scopes,
+      hasExcessiveScopes: account.hasExcessiveScopes,
+      tokenStatus: account.tokenStatus,
+      expiresAt: account.expiresAt,
     };
   }
 
-  async exchangeOAuthCode(userId: string, code: string) {
+  async exchangeOAuthCode(
+    userId: string,
+    code: string,
+    meta?: RequestMetadata,
+  ) {
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
@@ -137,12 +244,24 @@ export class GitHubService {
       error?: string;
     };
     if (!tokenData.access_token) {
+      await this.recordAuditLog(
+        userId,
+        "OAUTH_SAVE",
+        "FAILED",
+        `OAuth token exchange failed: ${tokenData.error || "No token"}`,
+        meta,
+      );
       throw new BadRequestException(
         `Trao đổi OAuth code thất bại: ${tokenData.error || "Token không hợp lệ"}`,
       );
     }
 
-    return this.savePersonalAccessToken(userId, tokenData.access_token);
+    return this.savePersonalAccessToken(
+      userId,
+      tokenData.access_token,
+      "OAUTH",
+      meta,
+    );
   }
 
   async getStatus(userId: string) {
@@ -160,19 +279,31 @@ export class GitHubService {
       gitAvatar: account.gitAvatar,
       authType: account.authType,
       scopes: account.scopes,
+      hasExcessiveScopes: account.hasExcessiveScopes,
+      tokenStatus: account.tokenStatus,
+      expiresAt: account.expiresAt,
       lastSyncAt: account.lastSyncAt,
     };
   }
 
-  async disconnect(userId: string) {
+  async disconnect(userId: string, meta?: RequestMetadata) {
     await this.prisma.gitAccount.deleteMany({
       where: { userId },
     });
+    await this.recordAuditLog(
+      userId,
+      "DISCONNECT",
+      "SUCCESS",
+      "Purged GitHub tokens from database",
+      meta,
+    );
     return { success: true };
   }
 
   async getDecryptedToken(
     userId: string,
+    action = "TOKEN_DECRYPT",
+    meta?: RequestMetadata,
   ): Promise<{ token: string; username: string }> {
     const account = await this.prisma.gitAccount.findUnique({
       where: { userId },
@@ -182,20 +313,47 @@ export class GitHubService {
       throw new NotFoundException("Tài khoản chưa được kết nối với GitHub.");
     }
 
-    const token = this.crypto.decrypt(
-      account.encryptedToken,
-      account.tokenIv,
-      account.tokenTag,
-    );
+    if (
+      account.tokenStatus === "REVOKED" ||
+      account.tokenStatus === "EXPIRED"
+    ) {
+      throw new BadRequestException(
+        `GitHub token hiện ở trạng thái ${account.tokenStatus}. Vui lòng kết nối lại tài khoản.`,
+      );
+    }
 
-    return { token, username: account.gitUsername };
+    try {
+      const token = this.crypto.decrypt(
+        account.encryptedToken,
+        account.tokenIv,
+        account.tokenTag,
+        userId,
+      );
+
+      await this.recordAuditLog(userId, action, "SUCCESS", undefined, meta);
+      return { token, username: account.gitUsername };
+    } catch (err: unknown) {
+      await this.recordAuditLog(
+        userId,
+        action,
+        "FAILED",
+        "Decryption error",
+        meta,
+      );
+      throw err;
+    }
   }
 
   async fetchActivity(
     userId: string,
     sinceIso?: string,
+    meta?: RequestMetadata,
   ): Promise<PrActivity[]> {
-    const { token, username } = await this.getDecryptedToken(userId);
+    const { token, username } = await this.getDecryptedToken(
+      userId,
+      "ACTIVITY_FETCH",
+      meta,
+    );
 
     // Calculate beginning of today in UTC if not provided
     let since: Date;
@@ -217,6 +375,23 @@ export class GitHubService {
 
     const searchRes = await fetch(searchUrl, { headers });
     if (!searchRes.ok) {
+      if (searchRes.status === 401) {
+        await this.prisma.gitAccount.updateMany({
+          where: { userId },
+          data: { tokenStatus: "REVOKED" },
+        });
+        await this.recordAuditLog(
+          userId,
+          "TOKEN_REVOKED",
+          "SUCCESS",
+          "GitHub API search returned 401 Bad credentials",
+          meta,
+        );
+        throw new BadRequestException(
+          "GitHub Token đã hết hạn hoặc bị thu hồi trên GitHub. Vui lòng kết nối lại.",
+        );
+      }
+
       const err = await searchRes.json().catch(() => ({}));
       throw new BadRequestException(
         `Lỗi khi truy vấn PR từ GitHub: ${err.message || searchRes.statusText}`,

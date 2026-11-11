@@ -12,6 +12,9 @@ export interface GitStatus {
   gitAvatar?: string;
   authType?: "OAUTH" | "PAT";
   scopes?: string[];
+  hasExcessiveScopes?: boolean;
+  tokenStatus?: "ACTIVE" | "EXPIRED" | "REVOKED" | "NEEDS_REAUTH";
+  expiresAt?: string | null;
   lastSyncAt?: string;
 }
 
