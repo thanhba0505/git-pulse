@@ -74,6 +74,12 @@ export class S2SService implements OnModuleInit {
     const url = `${connection.domain}${connection.apiPrefix}${cleanEndpoint}`;
     const targetPath = `${connection.apiPrefix}${cleanEndpoint}`;
 
+    if (!connection.apiKey) {
+      throw new Error(
+        `[S2S] Service connection '${slug}' does not have an apiKey configured`,
+      );
+    }
+
     const method = (options.method || "GET").toUpperCase();
     const timestamp = Date.now().toString();
 
@@ -81,19 +87,15 @@ export class S2SService implements OnModuleInit {
       "Content-Type": "application/json",
       "X-S2S-Service": "git-pulse",
       "X-S2S-Timestamp": timestamp,
-      ...((options.headers as Record<string, string>) || {}),
-    };
-
-    if (connection.apiKey) {
-      headers["Authorization"] = `Bearer ${connection.apiKey}`;
-      headers["X-S2S-Signature"] = generateS2SSignature(
+      "X-S2S-Signature": generateS2SSignature(
         connection.apiKey,
         timestamp,
         method,
         normalizeS2SPath(targetPath),
         options.body,
-      );
-    }
+      ),
+      ...((options.headers as Record<string, string>) || {}),
+    };
 
     const controller = new AbortController();
     const timeoutId = setTimeout(
