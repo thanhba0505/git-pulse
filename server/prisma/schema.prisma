@@ -1,0 +1,106 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum GitAuthType {
+  OAUTH
+  PAT
+}
+
+enum AiEngineType {
+  GITHUB_MODELS
+  WEB_LLM
+}
+
+model User {
+  id            String        @id @default(uuid())
+  gatewayUserId String        @unique
+  email         String        @unique
+  username      String
+  avatarUrl     String?
+  role          Role          @default(USER)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  gitAccount    GitAccount?
+  settings      UserSettings?
+  reports       ReportHistory[]
+  bookmarks     GitRepoBookmark[]
+
+  @@map("users")
+}
+
+model GitAccount {
+  id             String      @id @default(uuid())
+  userId         String      @unique
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authType       GitAuthType @default(OAUTH)
+  encryptedToken String      // AES-256-GCM encrypted token
+  tokenIv        String      // Initialization vector for AES-256-GCM
+  tokenTag       String      // Auth tag for AES-256-GCM
+  gitUsername    String
+  gitId          String?
+  gitAvatar      String?
+  scopes         String[]    @default([])
+  lastSyncAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("git_accounts")
+}
+
+model UserSettings {
+  id                  String       @id @default(uuid())
+  userId              String       @unique
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultAiEngine     AiEngineType @default(GITHUB_MODELS)
+  githubModelName     String       @default("gpt-4o-mini")
+  webLlmModelName     String       @default("Llama-3.2-1B-Instruct-q4f16_1-MLC")
+  summaryTone         String       @default("STANDUP_BULLETS")
+  language            String       @default("vi")
+  autoCopyToClipboard Boolean      @default(true)
+  customPrompt        String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("user_settings")
+}
+
+model ReportHistory {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summaryText    String       @db.Text
+  prCount        Int          @default(0)
+  commitCount    Int          @default(0)
+  metadata       Json?
+  aiEngineUsed   AiEngineType
+  modelName      String
+  dateRangeStart DateTime
+  dateRangeEnd   DateTime
+  createdAt      DateTime     @default(now())
+
+  @@map("report_histories")
+}
+
+model GitRepoBookmark {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repoFullName String
+  isFavorite   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, repoFullName])
+  @@map("git_repo_bookmarks")
+}

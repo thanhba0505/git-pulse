@@ -1,0 +1,22 @@
+{
+  "name": "git-pulse-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "dev": "concurrently -n client,server -c cyan,magenta \"pnpm dev:client\" \"pnpm dev:server\"",
+    "dev:client": "pnpm --filter git-pulse-client dev",
+    "dev:server": "pnpm --filter git-pulse-server start:dev",
+    "build": "pnpm --filter git-pulse-server build && pnpm --filter git-pulse-client build",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter git-pulse-server test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3"
+  }
+}

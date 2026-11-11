@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #040714;
+    --foreground: #f1f5f9;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family:
+      "Plus Jakarta Sans",
+      system-ui,
+      -apple-system,
+      sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Scrollbar for Cosmic Aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #040714;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #111d3b;
+  border-radius: 9999px;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4;
+}
+
+/* Astral Glow Utilities */
+.astral-card {
+  background: rgba(11, 19, 43, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(6, 182, 212, 0.18);
+  box-shadow:
+    0 8px 32px 0 rgba(4, 7, 20, 0.6),
+    inset 0 0 20px 0 rgba(6, 182, 212, 0.04);
+}
+
+.astral-card-interactive {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.astral-card-interactive:hover {
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow:
+    0 12px 40px 0 rgba(6, 182, 212, 0.12),
+    inset 0 0 25px 0 rgba(6, 182, 212, 0.08);
+  transform: translateY(-1px);
+}
+
+.pulsar-glow-cyan {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+}
+
+.pulsar-glow-emerald {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+}
