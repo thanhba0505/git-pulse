@@ -15,6 +15,7 @@ import {
   Orbit,
 } from "lucide-react";
 import { useAuth } from "../../lib/auth-context";
+import { BorderBeam } from "../cosmic/BorderBeam";
 
 export type AuthMode = "login" | "register" | "forgot";
 
@@ -125,6 +126,9 @@ export function AuthModal({
         className="relative w-full max-w-[440px] overflow-hidden rounded-3xl cosmic-modal-card animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Kinetic Border Beam */}
+        <BorderBeam colorFrom="#06b6d4" colorTo="#3b82f6" duration={6} />
+
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/[0.08] px-7 py-5 bg-white/[0.02]">
           <div className="flex items-center gap-3">

@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api } from "../../lib/api";
+import { BorderBeam } from "../cosmic/BorderBeam";
 
 export interface DevDbUser {
   id: string;
@@ -114,9 +115,12 @@ export function GoogleAccountChooserModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md cosmic-modal-card rounded-3xl p-7 animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md cosmic-modal-card rounded-3xl p-7 animate-in zoom-in-95 duration-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Kinetic Border Beam */}
+        <BorderBeam colorFrom="#06b6d4" colorTo="#10b981" duration={5} />
+
         {/* Header */}
         <div className="flex items-start justify-between border-b border-white/[0.08] pb-4 mb-5">
           <div className="flex items-center gap-3">

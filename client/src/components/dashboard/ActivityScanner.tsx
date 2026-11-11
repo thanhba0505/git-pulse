@@ -3,6 +3,8 @@
 import React from "react";
 import { PrActivity } from "../../types";
 import { Radar, GitPullRequest, GitCommit, ExternalLink } from "lucide-react";
+import { SpotlightCard } from "../cosmic/SpotlightCard";
+import { RadarSonarHUD } from "../cosmic/RadarSonarHUD";
 
 interface ActivityScannerProps {
   activities: PrActivity[];
@@ -104,18 +106,18 @@ export function ActivityScanner({
       {activities.length > 0 ? (
         <div className="grid grid-cols-1 gap-4">
           {activities.map((pr) => (
-            <div
+            <SpotlightCard
               key={`${pr.repo}#${pr.number}`}
-              className="astral-card astral-card-interactive rounded-2xl p-5 sm:p-6 border border-slate-700/60 hover:border-cyan-500/40"
+              className="p-5 sm:p-6 border border-slate-700/60 hover:border-cyan-500/50 shadow-[0_4px_25px_rgba(0,0,0,0.5)]"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-400/20 mt-0.5">
+                  <div className="p-2.5 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 mt-0.5 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
                     <GitPullRequest className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs text-cyan-300 font-semibold">
+                      <span className="font-mono text-xs text-cyan-300 font-semibold tracking-wide">
                         {pr.repo}
                       </span>
                       <span className="text-slate-500">•</span>
@@ -123,7 +125,7 @@ export function ActivityScanner({
                         #{pr.number}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-md text-xs font-mono font-medium ${
+                        className={`px-2.5 py-0.5 rounded-md text-xs font-mono font-medium ${
                           pr.state === "open"
                             ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
                             : "bg-purple-500/15 text-purple-300 border border-purple-500/30"
@@ -142,7 +144,7 @@ export function ActivityScanner({
                   href={pr.prUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors"
+                  className="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 transition-colors"
                   title="Mở PR trên GitHub"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -155,29 +157,30 @@ export function ActivityScanner({
                   <GitCommit className="w-3.5 h-3.5 text-emerald-400" />
                   {pr.commits.length} commit trong phạm vi quét:
                 </p>
-                <div className="space-y-1.5 pl-4 border-l-2 border-cyan-500/20">
+                <div className="space-y-1.5 pl-4 border-l-2 border-cyan-500/30">
                   {pr.commits.map((commit, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-2 text-xs text-slate-300"
+                      className="flex items-center gap-2.5 text-xs text-slate-300"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
                       <span className="truncate">{commit}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+            </SpotlightCard>
           ))}
         </div>
       ) : (
-        /* Empty State */
-        <div className="astral-card rounded-2xl p-10 sm:p-12 text-center border border-slate-800">
-          <div className="w-12 h-12 mx-auto mb-3.5 rounded-full bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
-            <Radar className="w-6 h-6 animate-pulse" />
-          </div>
-          <h3 className="text-sm font-bold text-white mb-1.5">
-            Chưa có tín hiệu Commit/PR nào trên quỹ đạo
+        /* Empty State with Visual Radar Sonar */
+        <div className="astral-card rounded-2xl p-8 sm:p-10 text-center border border-slate-800/80 flex flex-col items-center justify-center">
+          <RadarSonarHUD isScanning={isLoading} blipCount={0} />
+
+          <h3 className="text-sm font-bold text-white mb-1.5 mt-2 tracking-wide uppercase">
+            {isLoading
+              ? "Đang quét tín hiệu quỹ đạo GitHub..."
+              : "Chưa có tín hiệu Commit/PR nào trên quỹ đạo"}
           </h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
             Nhấn nút &ldquo;Quét Git&rdquo; ở trên để bắt đầu đồng bộ các PR và
@@ -186,9 +189,9 @@ export function ActivityScanner({
           <button
             onClick={onScan}
             disabled={isLoading}
-            className="px-5 py-2.5 rounded-xl text-xs font-semibold text-cyan-300 hover:text-white bg-cyan-950/50 hover:bg-cyan-900/60 border border-cyan-500/30 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+            className="px-6 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] disabled:opacity-50 active:scale-[0.98]"
           >
-            Quét Ngay
+            {isLoading ? "Đang quét..." : "Bắt Đầu Quét Ngay"}
           </button>
         </div>
       )}

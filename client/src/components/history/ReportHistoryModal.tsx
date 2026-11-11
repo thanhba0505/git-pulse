@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ReportItem } from "../../types";
 import { api } from "../../lib/api";
 import { History, X, Copy, Trash2, Calendar, Check } from "lucide-react";
+import { BorderBeam } from "../cosmic/BorderBeam";
 
 interface ReportHistoryModalProps {
   isOpen: boolean;
@@ -48,7 +49,10 @@ export function ReportHistoryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/85 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+        {/* Kinetic Border Beam */}
+        <BorderBeam colorFrom="#06b6d4" colorTo="#8b5cf6" duration={6} />
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-5">
           <div className="flex items-center gap-3">

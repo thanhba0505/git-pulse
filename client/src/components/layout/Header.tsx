@@ -23,16 +23,16 @@ export function Header({
   onLogout,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-pulsar-cyan/15 bg-void/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b border-cyan-500/20 bg-void/80 backdrop-blur-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+          <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-indigo-600 to-emerald-500 shadow-[0_0_25px_rgba(6,182,212,0.5)]">
             <Orbit className="w-5 h-5 text-white animate-orbit-spin" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-pulsar-emerald animate-ping" />
           </div>
           <div>
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">
+            <span className="font-extrabold text-xl tracking-tight shimmer-text">
               Git Pulse
             </span>
             <p className="text-xs text-slate-400 hidden sm:block">

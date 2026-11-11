@@ -253,6 +253,35 @@ export default function HomePage() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Mission Control Telemetry HUD */}
+        <div className="relative overflow-hidden rounded-2xl astral-card p-5 sm:p-6 border border-cyan-500/20 shadow-[0_0_30px_rgba(6,182,212,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+              <span className="absolute w-2 h-2 rounded-full bg-cyan-300" />
+            </div>
+            <div>
+              <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase">
+                Trạm Quỹ Đạo Git Pulse • Không Gian Làm Việc
+              </span>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5">
+                Giám Sát Quỹ Đạo Git & Điều Khiển Standup AI
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap font-mono text-xs text-slate-300">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-subtle/80 border border-slate-700/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              <span>RADAR ONLINE</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-subtle/80 border border-slate-700/60">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+              <span>AI CORE READY</span>
+            </div>
+          </div>
+        </div>
+
         {/* Onboarding Callout if GitHub is NOT connected */}
         {!gitStatus.connected && (
           <div className="astral-card rounded-2xl p-6 sm:p-7 border border-amber-500/40 bg-amber-950/20 flex flex-col sm:flex-row items-center justify-between gap-5 animate-in fade-in duration-300">

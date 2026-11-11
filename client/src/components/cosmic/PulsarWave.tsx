@@ -12,7 +12,7 @@ export function PulsarWave({ activityCount }: PulsarWaveProps) {
   const barCount = 18;
 
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-void-subtle/70 border border-pulsar-cyan/25 backdrop-blur-md">
+    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-void-subtle/80 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.2)] backdrop-blur-md">
       <div className="flex items-center gap-0.5 h-4">
         {Array.from({ length: barCount }).map((_, i) => {
           // Calculate sinusoidal height variation
@@ -37,8 +37,8 @@ export function PulsarWave({ activityCount }: PulsarWaveProps) {
               key={i}
               className={`w-0.5 rounded-full transition-all duration-300 ${
                 isActive
-                  ? "bg-gradient-to-t from-pulsar-cyan to-pulsar-emerald animate-pulse"
-                  : "bg-slate-600"
+                  ? "bg-gradient-to-t from-pulsar-cyan to-pulsar-emerald shadow-[0_0_6px_rgba(6,182,212,0.8)] animate-pulse"
+                  : "bg-slate-700"
               }`}
               style={{
                 height: `${height}%`,

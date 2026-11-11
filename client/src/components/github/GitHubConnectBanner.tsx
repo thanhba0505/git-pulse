@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { BorderBeam } from "../cosmic/BorderBeam";
 
 interface GitHubConnectModalProps {
   isOpen: boolean;
@@ -68,7 +69,10 @@ export function GitHubConnectModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/85 backdrop-blur-md">
-      <div className="relative w-full max-w-lg cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+        {/* Kinetic Border Beam */}
+        <BorderBeam colorFrom="#06b6d4" colorTo="#10b981" duration={5} />
+
         {/* Close Button */}
         <button
           onClick={onClose}

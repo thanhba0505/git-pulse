@@ -3,6 +3,7 @@
 import React from "react";
 import { AiEngine } from "../../types";
 import { Sparkles, Cpu, Globe, Zap, Languages } from "lucide-react";
+import { BorderBeam } from "../cosmic/BorderBeam";
 
 interface CockpitAiConsoleProps {
   engine: AiEngine;
@@ -34,11 +35,18 @@ export function CockpitAiConsole({
   const isWebLLM = engine === "WEB_LLM";
 
   return (
-    <div className="astral-card rounded-2xl p-6 sm:p-7 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.1)] space-y-5">
+    <div className="relative astral-card rounded-2xl p-6 sm:p-7 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.15)] space-y-5 overflow-hidden">
+      {/* Kinetic Border Beam */}
+      <BorderBeam
+        colorFrom={isWebLLM ? "#8b5cf6" : "#06b6d4"}
+        colorTo={isWebLLM ? "#ec4899" : "#3b82f6"}
+        duration={5}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/25">
+          <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/25 shadow-[0_0_15px_rgba(139,92,246,0.25)]">
             <Sparkles className="w-4 h-4 animate-pulse" />
           </div>
           <div>
@@ -88,14 +96,22 @@ export function CockpitAiConsole({
             onEngineChange("GITHUB_MODELS");
             onModelChange("gpt-4o-mini");
           }}
-          className={`p-4 sm:p-5 rounded-xl text-left border transition-all ${
+          className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
             engine === "GITHUB_MODELS"
-              ? "bg-cyan-950/40 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700"
+              ? "bg-cyan-950/40 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/40"
+              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Globe className="w-4 h-4 text-cyan-400" />
+            <div
+              className={`p-1.5 rounded-lg ${
+                engine === "GITHUB_MODELS"
+                  ? "bg-cyan-500/20 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]"
+                  : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              <Globe className="w-4 h-4 animate-pulse" />
+            </div>
             <span className="text-xs font-bold text-white">
               GitHub Models Warp-Drive
             </span>
@@ -113,14 +129,22 @@ export function CockpitAiConsole({
             onEngineChange("WEB_LLM");
             onModelChange("Llama-3.2-1B-Instruct-q4f16_1-MLC");
           }}
-          className={`p-4 sm:p-5 rounded-xl text-left border transition-all ${
+          className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
             engine === "WEB_LLM"
-              ? "bg-violet-950/40 border-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.2)]"
-              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700"
+              ? "bg-violet-950/40 border-violet-400 shadow-[0_0_25px_rgba(139,92,246,0.3)] ring-1 ring-violet-400/40"
+              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle"
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Cpu className="w-4 h-4 text-violet-400" />
+            <div
+              className={`p-1.5 rounded-lg ${
+                engine === "WEB_LLM"
+                  ? "bg-violet-500/20 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.5)]"
+                  : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              <Cpu className="w-4 h-4 animate-pulse" />
+            </div>
             <span className="text-xs font-bold text-white">
               WebGPU Sub-Light Core
             </span>
@@ -167,9 +191,12 @@ export function CockpitAiConsole({
         <button
           onClick={onGenerate}
           disabled={!hasPrs || isGenerating}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 hover:from-violet-300 hover:via-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_25px_rgba(139,92,246,0.35)] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto relative group overflow-hidden flex items-center justify-center gap-2.5 px-7 py-3 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Zap className={`w-4 h-4 ${isGenerating ? "animate-bounce" : ""}`} />
+          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Zap
+            className={`w-4 h-4 ${isGenerating ? "animate-bounce" : "animate-pulse"}`}
+          />
           <span>
             {isGenerating ? "Đang tóm tắt..." : "Kích Hoạt Tóm Tắt Standup"}
           </span>
