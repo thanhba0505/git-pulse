@@ -2,6 +2,7 @@ import { ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { S2SAuthGuard } from "./s2s-auth.guard";
 import { PrismaService } from "../prisma/prisma.service";
 import { generateS2SSignature } from "./s2s-crypto.util";
+import { encryptS2SSecret } from "./s2s-vault.util";
 
 describe("S2SAuthGuard", () => {
   let guard: S2SAuthGuard;
@@ -14,6 +15,8 @@ describe("S2SAuthGuard", () => {
   const secret = "gw_to_gp_s2s_secret_2026";
 
   beforeEach(() => {
+    process.env.S2S_ENCRYPTION_KEY =
+      "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
     prismaMock = {
       serviceConnection: {
         findFirst: jest.fn(),
@@ -137,5 +140,42 @@ describe("S2SAuthGuard", () => {
       (context.switchToHttp().getRequest() as Record<string, unknown>)
         .serviceConnection,
     ).toEqual(mockConnection);
+  });
+
+  it("should successfully decrypt encrypted incomingSecret (enc:v1) and verify HMAC", async () => {
+    const encryptedSecret = encryptS2SSecret(secret);
+    const mockConnection = {
+      slug: "central-gateway",
+      incomingSecret: encryptedSecret,
+      isActive: true,
+    };
+    prismaMock.serviceConnection.findFirst.mockResolvedValue(mockConnection);
+
+    const timestamp = Date.now().toString();
+    const body = { action: "SYNC_USER", userId: "user-456" };
+    const path = "/api/v1/webhook";
+    const method = "POST";
+
+    const validSignature = generateS2SSignature(
+      secret,
+      timestamp,
+      method,
+      path,
+      body,
+    );
+
+    const context = createMockContext(
+      {
+        "x-s2s-service": "central-gateway",
+        "x-s2s-timestamp": timestamp,
+        "x-s2s-signature": validSignature,
+      },
+      body,
+      path,
+      method,
+    );
+
+    const result = await guard.canActivate(context);
+    expect(result).toBe(true);
   });
 });

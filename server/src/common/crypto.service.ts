@@ -19,17 +19,17 @@ export class CryptoService {
     const isProduction =
       process.env.NODE_ENV === "production" ||
       process.env.APP_ENV === "production";
-    const rawKey = process.env.ENCRYPTION_KEY;
+    const rawKey = process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
 
     if (isProduction && !rawKey) {
       throw new Error(
-        "CRITICAL SECURITY FATAL: ENCRYPTION_KEY is strictly required in production environment. Refusing to start.",
+        "CRITICAL SECURITY FATAL: GITHUB_TOKEN_ENCRYPTION_KEY is strictly required in production environment. Refusing to start.",
       );
     }
 
     if (!rawKey) {
       this.logger.warn(
-        "ENCRYPTION_KEY not set. Using local development key. NEVER use this in production!",
+        "GITHUB_TOKEN_ENCRYPTION_KEY not set. Using local development key. NEVER use this in production!",
       );
     }
 
@@ -40,7 +40,7 @@ export class CryptoService {
     this.masterKey = Buffer.from(keyToUse, "hex");
     if (this.masterKey.length !== 32) {
       throw new Error(
-        "ENCRYPTION_KEY must be a valid 64-character hex string (32 bytes / 256 bits).",
+        "GITHUB_TOKEN_ENCRYPTION_KEY must be a valid 64-character hex string (32 bytes / 256 bits).",
       );
     }
   }

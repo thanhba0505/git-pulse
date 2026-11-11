@@ -6,7 +6,7 @@ describe("CryptoService", () => {
     "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
   beforeEach(() => {
-    process.env.ENCRYPTION_KEY = mockMasterKey;
+    process.env.GITHUB_TOKEN_ENCRYPTION_KEY = mockMasterKey;
     delete process.env.NODE_ENV;
     delete process.env.APP_ENV;
     service = new CryptoService();
@@ -65,12 +65,12 @@ describe("CryptoService", () => {
     expect(decrypted).toBe("ghp_legacy_token");
   });
 
-  it("should throw critical fatal error in production if ENCRYPTION_KEY is missing", () => {
+  it("should throw critical fatal error in production if GITHUB_TOKEN_ENCRYPTION_KEY is missing", () => {
     process.env.NODE_ENV = "production";
-    delete process.env.ENCRYPTION_KEY;
+    delete process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
 
     expect(() => new CryptoService()).toThrow(
-      "CRITICAL SECURITY FATAL: ENCRYPTION_KEY is strictly required in production environment",
+      "CRITICAL SECURITY FATAL: GITHUB_TOKEN_ENCRYPTION_KEY is strictly required in production environment",
     );
   });
 });
