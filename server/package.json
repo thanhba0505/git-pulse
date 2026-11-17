@@ -1,6 +1,6 @@
 {
   "name": "git-pulse-server",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "build": "prisma generate && (if [ -n \"$DATABASE_URL\" ]; then prisma migrate deploy; fi) && nest build",
