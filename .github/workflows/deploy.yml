@@ -136,7 +136,7 @@ jobs:
             --jq '.id' 2>/dev/null || echo "")
           if [ -n "$GH_CLIENT_DEPLOY_ID" ]; then
             gh api -X POST /repos/${{ github.repository }}/deployments/$GH_CLIENT_DEPLOY_ID/statuses \
-              --input - <<< '{"state":"in_progress","environment_url":"https://git-pulse-client.vercel.app","log_url":"https://vercel.com/thanhbas-projects","description":"Client '${{ steps.targets.outputs.version }}' building on Vercel..."}' || true
+              --input - <<< '{"state":"in_progress","environment_url":"https://git-pulse-app.vercel.app","log_url":"https://vercel.com/thanhbas-projects","description":"Client '${{ steps.targets.outputs.version }}' building on Vercel..."}' || true
             echo "gh_client_deploy_id=$GH_CLIENT_DEPLOY_ID" >> "$GITHUB_OUTPUT"
           fi
 
@@ -197,7 +197,7 @@ jobs:
             "commit": "$COMMIT",
             "target": "Production ($SERVICE)",
             "actor": "$AUTHOR",
-            "appUrl": "https://git-pulse-client.vercel.app",
+            "appUrl": "https://git-pulse-app.vercel.app",
             "healthUrl": "https://git-pulse-server.vercel.app/api/v1/health",
             "runUrl": "$RUN_URL"
           }

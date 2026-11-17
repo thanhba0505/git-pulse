@@ -78,7 +78,7 @@ done
 
 SERVICE="${SERVICE:-${TARGET_SERVICE:-all}}"
 SERVER_URL="${SERVER_URL:-https://git-pulse-server.vercel.app}"
-CLIENT_URL="${CLIENT_URL:-https://git-pulse-client.vercel.app}"
+CLIENT_URL="${CLIENT_URL:-https://git-pulse-app.vercel.app}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-600}"
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 INITIAL_DELAY="${INITIAL_DELAY:-15}"

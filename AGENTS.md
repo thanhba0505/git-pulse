@@ -34,7 +34,7 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 - **Mission**: Developer Intelligence & Git Workspace. Aggregates daily pull requests and commits, generates high-precision standup reports using Dual-Core AI (GitHub Models & WebLLM WebGPU), and provides developer activity radar.
 - **Brand Naming**: The platform is strictly named **`Git Pulse`** (spaced, never hyphenated as `Git-Pulse`).
 - **Monorepo**: Unified `pnpm` monorepo (`client/`, `server/`, `docs/`, `scripts/`).
-- **Client (`client/`)**: Next.js 15 App Router, React 19, Tailwind CSS. Deployed to Vercel at `https://git-pulse-client.vercel.app`.
+- **Client (`client/`)**: Next.js 15 App Router, React 19, Tailwind CSS. Deployed to Vercel at `https://git-pulse-app.vercel.app`.
 - **Server (`server/`)**: NestJS 10 REST API. Global prefix `/api/v1`, Swagger `/api/docs`, health check `/api/v1/health`. Deployed to Vercel with Fluid Serverless at `https://git-pulse-server.vercel.app`.
 - **Database**: Neon Serverless PostgreSQL 16 (AWS Oregon `us-west-2`) with connection pooling in production; local Docker PostgreSQL 16 on `127.0.0.1:5432` in development.
 - **Runtime & Tools**: Node `v24.x` (`.nvmrc`), `pnpm@12.11.2`. Never use `npm` or `yarn`.
