@@ -175,7 +175,7 @@ def main() -> None:
 
     # 6. Soạn thảo Release Notes
     today_str = datetime.now().strftime("%Y-%m-%d")
-    body_parts = [f"## ✨ Central Gateway {next_tag} ({today_str})\n"]
+    body_parts = [f"## 🚀 Git Pulse {next_tag} ({today_str})\n"]
 
     if features:
         body_parts.append("### 🚀 Tính năng mới & Mô phỏng (Features)")
@@ -204,7 +204,7 @@ def main() -> None:
 
     body_parts.append("---")
     body_parts.append(
-        "*Central Gateway — Centralized Notification Gateway & Cloud Infrastructure Hub.*"
+        "*Git Pulse — Developer Intelligence & Git Workspace.*"
     )
 
     if latest_tag:
@@ -217,7 +217,7 @@ def main() -> None:
         )
 
     body = "\n".join(body_parts).strip() + "\n"
-    title = f"✨ Central Gateway {next_tag}"
+    title = f"🚀 Git Pulse {next_tag}"
 
     # 7. Kiểm tra và cập nhật bản Draft Release trên GitHub
     releases_json = run(["gh", "release", "list", "--json", "isDraft,tagName,name"])
