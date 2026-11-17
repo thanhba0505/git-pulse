@@ -1,12 +1,11 @@
 import { NestFactory } from "@nestjs/core";
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe, INestApplication } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
+import { APP_VERSION } from "./common/version";
 import { AppModule } from "./app.module";
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
+export function configureApp(app: INestApplication): void {
   // Global prefix
   app.setGlobalPrefix("api/v1");
 
@@ -20,13 +19,41 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
-  const clientOrigin = process.env.CORS_ORIGIN || "http://localhost:6100";
+  // CORS configuration
+  const defaultOrigins = [
+    "http://localhost:6100",
+    "http://127.0.0.1:6100",
+    "http://localhost:5100",
+    "http://localhost:4100",
+    "https://git-pulse-client.vercel.app",
+    "https://central-gateway-client.vercel.app",
+    "https://wonderlab-client.vercel.app",
+    "https://wonderlab.io.vn",
+    "https://www.wonderlab.io.vn",
+  ];
+
+  const configuredOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+    : process.env.CORS_ORIGINS
+      ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+      : [];
+
+  const corsOrigins = Array.from(
+    new Set([...defaultOrigins, ...configuredOrigins]),
+  );
+
   app.enableCors({
-    origin: [clientOrigin, "http://127.0.0.1:6100"],
+    origin: corsOrigins.length > 0 ? corsOrigins : true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "X-S2S-Service",
+      "X-S2S-Timestamp",
+      "X-S2S-Signature",
+    ],
   });
 
   // Swagger Documentation
@@ -35,12 +62,17 @@ async function bootstrap() {
     .setDescription(
       "Developer Intelligence & Git Workspace API with Dual-Core AI and GitHub Integration.",
     )
-    .setVersion("0.1.0")
+    .setVersion(APP_VERSION)
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api/docs", app, document);
+}
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  configureApp(app);
 
   const port = process.env.PORT || 6101;
   await app.listen(port);
@@ -50,4 +82,6 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+if (!process.env.VERCEL) {
+  bootstrap();
+}

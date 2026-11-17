@@ -1,0 +1,50 @@
+name: 🌿 Git Activity
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - "v*"
+  pull_request:
+    types: [opened, closed, reopened]
+  create:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-git:
+    name: 🌿 Notify Slack (#git-activity)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run Git Activity Notifier
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL || 'https://central-gateway-server.vercel.app/api/v1' }}
+          GATEWAY_SECRET_KEY: ${{ secrets.GATEWAY_SECRET_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          REF_TYPE: ${{ github.event.ref_type }}
+          REF_NAME: ${{ github.ref_name || github.event.ref }}
+          BASE_BRANCH: ${{ github.event.master_branch || 'develop' }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_COMMIT: ${{ github.sha }}
+          COMPARE_URL: ${{ github.event.compare }}
+          COMMITS_JSON: ${{ toJson(github.event.commits) }}
+        run: |
+          python3 .github/scripts/notify_git_activity.py

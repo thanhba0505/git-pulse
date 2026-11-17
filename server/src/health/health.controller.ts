@@ -1,16 +1,30 @@
 import { Controller, Get } from "@nestjs/common";
-import { ApiTags, ApiOperation } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { PrismaService } from "../prisma/prisma.service";
+import { APP_VERSION } from "../common/version";
 
 @ApiTags("Health & Telemetry")
 @Controller("health")
 export class HealthController {
+  constructor(private readonly prisma: PrismaService) {}
+
   @Get()
   @ApiOperation({ summary: "Health check probe" })
-  check() {
+  @ApiResponse({ status: 200, description: "Service is healthy" })
+  async check() {
+    let dbStatus = "disconnected";
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      dbStatus = "connected";
+    } catch {
+      dbStatus = "unreachable";
+    }
+
     return {
       status: "ok",
       service: "git-pulse-server",
-      version: "0.1.0",
+      database: dbStatus,
+      version: APP_VERSION,
       timestamp: new Date().toISOString(),
     };
   }

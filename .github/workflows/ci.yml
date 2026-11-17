@@ -1,0 +1,146 @@
+name: 🧪 CI Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: 🎨 Quality & Types
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js & pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter git-pulse-server prisma:generate
+
+      - name: Code Formatting Check
+        run: pnpm format:check
+
+      - name: ESLint Check
+        run: pnpm lint
+
+      - name: TypeScript Typecheck
+        run: pnpm typecheck
+
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js & pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter git-pulse-server prisma:generate
+
+      - name: Run Jest Test Suite
+        run: pnpm test
+
+  build:
+    name: 📦 Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js & pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter git-pulse-server prisma:generate
+
+      - name: Build All Workspaces
+        run: pnpm build
+
+  notify-ci:
+    name: 📢 Notify Slack (#ci-cd)
+    needs: [quality, unit-tests, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send CI status to Central Gateway
+        env:
+          GATEWAY_SECRET_KEY: ${{ secrets.GATEWAY_SECRET_KEY }}
+          QUALITY_STATUS: ${{ needs.quality.result }}
+          UNIT_STATUS: ${{ needs.unit-tests.result }}
+          BUILD_STATUS: ${{ needs.build.result }}
+        run: |
+          OVERALL_STATUS="FAIL"
+          if [ "$QUALITY_STATUS" = "success" ] && [ "$UNIT_STATUS" = "success" ] && [ "$BUILD_STATUS" = "success" ]; then
+            OVERALL_STATUS="SUCCESS"
+          fi
+
+          REF="${{ github.ref_name }}"
+          EVENT="${{ github.event_name }}"
+          COMMIT="${{ github.sha }}"
+          AUTHOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="https://github.com/$REPO/actions/runs/${{ github.run_id }}"
+
+          Q_UP=$(echo "$QUALITY_STATUS" | tr "[:lower:]" "[:upper:]")
+          U_UP=$(echo "$UNIT_STATUS" | tr "[:lower:]" "[:upper:]")
+          B_UP=$(echo "$BUILD_STATUS" | tr "[:lower:]" "[:upper:]")
+
+          curl -s -X POST "https://central-gateway-server.vercel.app/api/v1/notifications/slack/ci" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GATEWAY_SECRET_KEY" \
+            -d '{
+              "project": "git-pulse",
+              "status": "'"$OVERALL_STATUS"'",
+              "branch": "'"$REF"'",
+              "commit": "'"$COMMIT"'",
+              "trigger": "'"$EVENT"' by @"'"$AUTHOR"'",
+              "pipeline": {
+                "Quality & Types": "'"$Q_UP"'",
+                "Unit Tests": "'"$U_UP"'",
+                "Production Build": "'"$B_UP"'"
+              },
+              "runUrl": "'"$RUN_URL"'"
+            }' || echo "CI notification skipped or failed"

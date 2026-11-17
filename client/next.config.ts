@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
+import rootPkg from "../package.json";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    // Enable modern features
+  env: {
+    NEXT_PUBLIC_APP_VERSION: rootPkg.version,
   },
 };
 

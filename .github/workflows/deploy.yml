@@ -1,0 +1,210 @@
+name: 🚀 Deploy Production Services
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Target service to deploy (EMERGENCY ONLY - Prefer publishing tag vX.Y.Z)"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - client
+          - server
+
+permissions:
+  contents: write
+  deployments: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: 🚀 Deploy Production Services
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Merge develop into main and Sync Release Version
+        if: ${{ github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          chmod +x scripts/sync-release-version.sh
+          ./scripts/sync-release-version.sh "$RELEASE_TAG"
+
+      - name: Determine Target Deployment Parameters
+        id: targets
+        run: |
+          SERVICE="${{ inputs.service || 'all' }}"
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
+            TARGET_VERSION="${BASH_REMATCH[1]}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            TARGET_VERSION="${TAG#v}"
+          else
+            TARGET_VERSION=$(node -p "require('./package.json').version")
+          fi
+          RELEASE_COMMIT=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+          echo "service=$SERVICE" >> "$GITHUB_OUTPUT"
+          echo "version=$TARGET_VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Slack Deployment Started (#deployments)
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL || 'https://central-gateway-server.vercel.app/api/v1' }}
+          GATEWAY_SECRET_KEY: ${{ secrets.GATEWAY_SECRET_KEY }}
+        run: |
+          VERSION="${{ steps.targets.outputs.version }}"
+          COMMIT="${{ steps.targets.outputs.commit }}"
+          SERVICE="${{ steps.targets.outputs.service }}"
+          AUTHOR="${{ github.actor }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "project": "git-pulse",
+            "status": "STARTED",
+            "version": "$VERSION",
+            "commit": "$COMMIT",
+            "target": "Production ($SERVICE)",
+            "actor": "$AUTHOR",
+            "runUrl": "$RUN_URL"
+          }
+          EOF
+          )
+
+          curl -s -X POST "$GATEWAY_URL/notifications/slack/deploy" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GATEWAY_SECRET_KEY" \
+            -d "$PAYLOAD" || echo "Deployment started notification skipped or failed"
+
+      - name: Trigger Server Deploy (Vercel Deploy Hook)
+        id: trigger_server
+        if: ${{ steps.targets.outputs.service == 'all' || steps.targets.outputs.service == 'server' }}
+        env:
+          VERCEL_SERVER_DEPLOY_HOOK: ${{ secrets.VERCEL_SERVER_DEPLOY_HOOK }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_SERVER_DEPLOY_HOOK" ]; then
+            echo "Triggering git-pulse-server deploy via Vercel Deploy Hook..."
+            curl -s -X POST "$VERCEL_SERVER_DEPLOY_HOOK"
+          else
+            echo "VERCEL_SERVER_DEPLOY_HOOK not set. Relying on Git push to main for Vercel deployment."
+          fi
+
+          echo "Recording initial GitHub Deployment for server (in_progress)..."
+          GH_SERVER_DEPLOY_ID=$(gh api -X POST /repos/${{ github.repository }}/deployments \
+            --input - <<< '{"ref":"main","environment":"main - git-pulse-server","description":"Server '${{ steps.targets.outputs.version }}' deploying on Vercel","auto_merge":false,"required_contexts":[],"production_environment":true}' \
+            --jq '.id' 2>/dev/null || echo "")
+          if [ -n "$GH_SERVER_DEPLOY_ID" ]; then
+            gh api -X POST /repos/${{ github.repository }}/deployments/$GH_SERVER_DEPLOY_ID/statuses \
+              --input - <<< '{"state":"in_progress","environment_url":"https://git-pulse-server.vercel.app/api/v1/health","log_url":"https://vercel.com/thanhbas-projects","description":"Server '${{ steps.targets.outputs.version }}' building on Vercel..."}' || true
+            echo "gh_server_deploy_id=$GH_SERVER_DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger Client Deploy (Vercel Deploy Hook)
+        id: trigger_client
+        if: ${{ steps.targets.outputs.service == 'all' || steps.targets.outputs.service == 'client' }}
+        env:
+          VERCEL_CLIENT_DEPLOY_HOOK: ${{ secrets.VERCEL_CLIENT_DEPLOY_HOOK }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_CLIENT_DEPLOY_HOOK" ]; then
+            echo "Triggering git-pulse-client deploy via Vercel Deploy Hook..."
+            curl -s -X POST "$VERCEL_CLIENT_DEPLOY_HOOK"
+          else
+            echo "VERCEL_CLIENT_DEPLOY_HOOK not set. Relying on Git push to main for Vercel deployment."
+          fi
+
+          echo "Recording initial GitHub Deployment for client (in_progress)..."
+          GH_CLIENT_DEPLOY_ID=$(gh api -X POST /repos/${{ github.repository }}/deployments \
+            --input - <<< '{"ref":"main","environment":"main - git-pulse-client","description":"Client '${{ steps.targets.outputs.version }}' deploying on Vercel","auto_merge":false,"required_contexts":[],"production_environment":true}' \
+            --jq '.id' 2>/dev/null || echo "")
+          if [ -n "$GH_CLIENT_DEPLOY_ID" ]; then
+            gh api -X POST /repos/${{ github.repository }}/deployments/$GH_CLIENT_DEPLOY_ID/statuses \
+              --input - <<< '{"state":"in_progress","environment_url":"https://git-pulse-client.vercel.app","log_url":"https://vercel.com/thanhbas-projects","description":"Client '${{ steps.targets.outputs.version }}' building on Vercel..."}' || true
+            echo "gh_client_deploy_id=$GH_CLIENT_DEPLOY_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Monitor & Verify Live Deployment Rollout
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x scripts/verify-deployment.sh
+          ./scripts/verify-deployment.sh \
+            --service "${{ steps.targets.outputs.service }}" \
+            --version "${{ steps.targets.outputs.version }}" \
+            --commit "${{ steps.targets.outputs.commit }}" \
+            --gh-repo "${{ github.repository }}" \
+            --gh-server-deploy-id "${{ steps.trigger_server.outputs.gh_server_deploy_id }}" \
+            --gh-client-deploy-id "${{ steps.trigger_client.outputs.gh_client_deploy_id }}" \
+            --timeout 600 \
+            --interval 10 \
+            --initial-delay 15
+
+      - name: Record Failed Deployments (Failure)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SERVER_ID="${{ steps.trigger_server.outputs.gh_server_deploy_id }}"
+          CLIENT_ID="${{ steps.trigger_client.outputs.gh_client_deploy_id }}"
+          if [ -n "$SERVER_ID" ]; then
+            gh api -X POST /repos/${{ github.repository }}/deployments/$SERVER_ID/statuses \
+              --input - <<< '{"state":"failure","description":"Server deployment failed or timed out","log_url":"https://vercel.com/thanhbas-projects"}' || true
+          fi
+          if [ -n "$CLIENT_ID" ]; then
+            gh api -X POST /repos/${{ github.repository }}/deployments/$CLIENT_ID/statuses \
+              --input - <<< '{"state":"failure","description":"Client deployment failed or timed out","log_url":"https://vercel.com/thanhbas-projects"}' || true
+          fi
+
+      - name: Notify Slack Deployment Result (#deployments)
+        if: always()
+        env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL || 'https://central-gateway-server.vercel.app/api/v1' }}
+          GATEWAY_SECRET_KEY: ${{ secrets.GATEWAY_SECRET_KEY }}
+        run: |
+          STATUS="FAIL"
+          if [ "${{ job.status }}" = "success" ]; then
+            STATUS="SUCCESS"
+          fi
+
+          VERSION="${{ steps.targets.outputs.version }}"
+          COMMIT="${{ steps.targets.outputs.commit }}"
+          SERVICE="${{ steps.targets.outputs.service }}"
+          AUTHOR="${{ github.actor }}"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "project": "git-pulse",
+            "status": "$STATUS",
+            "version": "$VERSION",
+            "commit": "$COMMIT",
+            "target": "Production ($SERVICE)",
+            "actor": "$AUTHOR",
+            "appUrl": "https://git-pulse-client.vercel.app",
+            "healthUrl": "https://git-pulse-server.vercel.app/api/v1/health",
+            "runUrl": "$RUN_URL"
+          }
+          EOF
+          )
+
+          curl -s -X POST "$GATEWAY_URL/notifications/slack/deploy" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $GATEWAY_SECRET_KEY" \
+            -d "$PAYLOAD" || echo "Deployment result notification skipped or failed"
