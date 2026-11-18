@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { I18nProvider } from '../i18n';
+import { ToastProvider } from '../components/ui/Toast';
+import { InteractiveBackdrop } from '../components/ui/InteractiveBackdrop';
 import { AuthProvider } from '../lib/auth-context';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -28,22 +30,40 @@ export const metadata: Metadata = {
   description: 'Developer Intelligence & AI Standup Workspace.',
 };
 
+function getSafeOrigin(urlValue?: string): string | null {
+  if (!urlValue) return null;
+  try {
+    return new URL(urlValue).origin;
+  } catch {
+    return null;
+  }
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const apiOrigin = getSafeOrigin(process.env.NEXT_PUBLIC_API_URL);
+
   return (
     <html
       lang="vi"
       className={`dark ${plusJakartaSans.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh gp-canvas-backdrop text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
+      <head>
+        {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
+        <link rel="preconnect" href="https://accounts.google.com" />
+      </head>
+      <body className="min-h-dvh bg-[#090B10] text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
+        <InteractiveBackdrop />
         <I18nProvider>
-          <AuthProvider>
-            <div className="relative flex min-h-dvh flex-col">{children}</div>
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <div className="relative z-10 flex min-h-dvh flex-col">{children}</div>
+            </AuthProvider>
+          </ToastProvider>
         </I18nProvider>
       </body>
     </html>

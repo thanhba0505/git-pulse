@@ -14,11 +14,15 @@ export interface CommonDictionary {
   loading: string;
   confirm: string;
   backHome: string;
+  edit: string;
+  done: string;
 }
 
 export interface HeaderDictionary {
   brand: string;
   subtitle: string;
+  commandPaletteBtn: string;
+  commandPaletteTooltip: string;
   history: string;
   historyTitle: string;
   connectGit: string;
@@ -30,6 +34,15 @@ export interface HeaderDictionary {
 export interface WorkspaceDictionary {
   title: string;
   subtitle: string;
+}
+
+export interface SummaryStripDictionary {
+  prsLabel: string;
+  prsBreakdown: string;
+  commitsLabel: string;
+  commitsSubtitle: string;
+  reposLabel: string;
+  reposSubtitle: string;
 }
 
 export interface OnboardingDictionary {
@@ -48,7 +61,15 @@ export interface ScannerDictionary {
   range7d: string;
   syncBtn: string;
   syncingBtn: string;
+  revalidatingHint: string;
+  allRepos: string;
+  selectAll: string;
+  clearSelection: string;
+  selectedSummary: string;
+  selectPrAria: string;
   commitsCount: string;
+  showMoreCommits: string;
+  collapseCommits: string;
   openPrExternal: string;
   emptyTitle: string;
   emptyLoadingTitle: string;
@@ -83,9 +104,13 @@ export interface AiConsoleDictionary {
   outputLangLabel: string;
   outputLangVi: string;
   outputLangEn: string;
+  webgpuCachedHint: string;
+  webgpuDownloadHint: string;
   generateBtn: string;
+  generateSelectedBtn: string;
   generatingBtn: string;
   noActivitiesError: string;
+  noSelectedPrsError: string;
   webgpuUnsupported: string;
   generateFailed: string;
   loadingModel: string;
@@ -94,17 +119,53 @@ export interface AiConsoleDictionary {
 
 export interface StandupDockDictionary {
   title: string;
+  generatingTitle: string;
+  generatingSubtitle: string;
   subtitle: string;
   copyBullet: string;
-  copiedBullet: string;
   copyParabol: string;
-  copiedParabol: string;
   copySlack: string;
-  copiedSlack: string;
+  copyMarkdown: string;
+  copyJira: string;
+  copiedToast: string;
+  editPlaceholder: string;
   parabolYesterday: string;
   parabolToday: string;
   parabolBlockers: string;
   slackHeader: string;
+  markdownHeader: string;
+  jiraHeader: string;
+}
+
+export interface CommandPaletteDictionary {
+  placeholder: string;
+  dialogTitle: string;
+  empty: string;
+  shortcutHint: string;
+  groups: {
+    git: string;
+    ai: string;
+    navigation: string;
+  };
+  actions: {
+    syncToday: string;
+    sync24h: string;
+    sync7d: string;
+    generateStandup: string;
+    switchCloudAi: string;
+    switchWebGpuAi: string;
+    openHistory: string;
+    openGitModal: string;
+    toggleLanguage: string;
+  };
+}
+
+export interface ToastsDictionary {
+  syncSuccess: string;
+  standupReady: string;
+  gitConnected: string;
+  gitDisconnected: string;
+  reportDeleted: string;
 }
 
 export interface GithubModalDictionary {
@@ -216,10 +277,13 @@ export interface TranslationDictionary {
   common: CommonDictionary;
   header: HeaderDictionary;
   workspace: WorkspaceDictionary;
+  summaryStrip: SummaryStripDictionary;
   onboarding: OnboardingDictionary;
   scanner: ScannerDictionary;
   aiConsole: AiConsoleDictionary;
   standupDock: StandupDockDictionary;
+  commandPalette: CommandPaletteDictionary;
+  toasts: ToastsDictionary;
   githubModal: GithubModalDictionary;
   historyModal: HistoryModalDictionary;
   auth: AuthDictionary;

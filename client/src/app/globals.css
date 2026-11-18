@@ -2,12 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@property --spot-radius {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
 @layer base {
   :root {
     --background: #090b10;
     --foreground: #f1f5f9;
     --scrollbar-thumb: #64748b;
     --scrollbar-track: #090b10;
+    --ease-smooth-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: linear(
+      0,
+      0.009,
+      0.035 2.1%,
+      0.141,
+      0.723 12.1%,
+      0.938 16.5%,
+      1.017,
+      1.055 21.8%,
+      1.071 24.4%,
+      1.069 27.2%,
+      1.014 35.8%,
+      0.996 42.3%,
+      0.992 48%,
+      1.001 65%,
+      1
+    );
     color-scheme: dark;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
@@ -42,58 +66,125 @@
   }
 }
 
-/* Subtle static architectural backdrop (zero JS / zero GPU loop) */
-.gp-canvas-backdrop {
-  background-color: #090b10;
-  background-image:
-    radial-gradient(ellipse 75% 40% at 50% 0%, rgba(56, 189, 248, 0.055), transparent 70%),
-    radial-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px);
-  background-size:
-    100% 100%,
-    24px 24px;
-  background-position:
-    0 0,
-    center top;
+/* ========================================================
+   INTERACTIVE ARCHITECTURAL GRID & AURA MESH
+   ======================================================== */
+
+.gp-grid-base {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.085) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center top;
 }
 
-/* Carbon-Slate Precision Surfaces */
+.gp-grid-illuminated {
+  background-image:
+    linear-gradient(to right, rgba(56, 189, 248, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.09) 1px, transparent 1px),
+    radial-gradient(rgba(56, 189, 248, 0.35) 1.25px, transparent 1.25px);
+  background-size:
+    28px 28px,
+    28px 28px,
+    28px 28px;
+  background-position:
+    center top,
+    center top,
+    center top;
+  transition: --spot-radius 240ms var(--ease-smooth-out);
+  -webkit-mask-image: radial-gradient(
+    var(--spot-radius, 0px) circle at var(--px, -500px) var(--py, -500px),
+    black 0%,
+    rgba(0, 0, 0, 0.45) 45%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(
+    var(--spot-radius, 0px) circle at var(--px, -500px) var(--py, -500px),
+    black 0%,
+    rgba(0, 0, 0, 0.45) 45%,
+    transparent 75%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+@keyframes gp-aura-drift-a {
+  from {
+    transform: translate3d(-4%, -2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 4%, 0) scale(1.06);
+  }
+}
+
+@keyframes gp-aura-drift-b {
+  from {
+    transform: translate3d(4%, 2%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(-5%, -3%, 0) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gp-aura-orb-a {
+    animation: gp-aura-drift-a 22s ease-in-out infinite alternate;
+  }
+
+  .gp-aura-orb-b {
+    animation: gp-aura-drift-b 26s ease-in-out infinite alternate;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-grid-illuminated {
+    transition: none !important;
+  }
+}
+
+/* ========================================================
+   PRECISION SURFACES & SHOWCASE BORDER SPOTLIGHT
+   ======================================================== */
+
 .gp-card {
   background-color: #11141c;
   border: 1px solid rgba(30, 41, 59, 0.9);
   box-shadow:
     0 1px 3px 0 rgba(0, 0, 0, 0.4),
-    0 4px 12px -2px rgba(0, 0, 0, 0.3);
+    0 4px 12px -2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.055);
 }
 
-.gp-item-card {
-  background-color: #161a24;
-  border: 1px solid rgba(30, 41, 59, 0.8);
-  transition:
-    border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
-    background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+.gp-showcase-surface {
+  background: radial-gradient(
+    420px circle at var(--card-x, -500px) var(--card-y, -500px),
+    rgba(56, 189, 248, 0.055),
+    transparent 70%
+  );
 }
 
-.gp-item-card:hover {
-  background-color: #191e2a;
-  border-color: rgba(51, 65, 85, 0.95);
+.gp-showcase-border-glow {
+  padding: 1px;
+  background: radial-gradient(
+    300px circle at var(--card-x, -500px) var(--card-y, -500px),
+    rgba(56, 189, 248, 0.55),
+    rgba(99, 102, 241, 0.3) 45%,
+    transparent 75%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
 }
 
 .gp-modal-surface {
   background-color: #141821;
-  border: 1px solid rgba(51, 65, 85, 0.8);
-  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.75);
-}
-
-/* Native Modal Dialog Scroll Containment & Backdrop */
-dialog:modal {
-  overscroll-behavior: contain;
-}
-
-dialog::backdrop {
-  background-color: rgba(3, 6, 14, 0.78);
-  backdrop-filter: blur(4px);
-  overflow: hidden;
-  overscroll-behavior: contain;
+  border: 1px solid rgba(51, 65, 85, 0.85);
+  box-shadow:
+    0 24px 60px -12px rgba(0, 0, 0, 0.82),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
 }
 
 .gp-scroll-area {
@@ -101,7 +192,77 @@ dialog::backdrop {
   overscroll-behavior: contain;
 }
 
-/* Clean, functional micro-transitions */
+/* ========================================================
+   TOP-LAYER DIALOG ANIMATION (Entry & Exit)
+   ======================================================== */
+
+dialog.gp-top-dialog {
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-smooth-out);
+  transition-behavior: allow-discrete;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  dialog.gp-top-dialog {
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+dialog.gp-top-dialog::backdrop {
+  background-color: rgba(3, 6, 14, 0);
+  backdrop-filter: blur(0px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  transition-property: background-color, backdrop-filter, display, overlay;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-smooth-out);
+  transition-behavior: allow-discrete;
+}
+
+dialog.gp-top-dialog[open]:where(:not([data-closing])) {
+  opacity: 1;
+}
+
+@starting-style {
+  dialog.gp-top-dialog[open]:where(:not([data-closing])) {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  dialog.gp-top-dialog[open]:where(:not([data-closing])) {
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    dialog.gp-top-dialog[open]:where(:not([data-closing])) {
+      transform: translateY(8px) scale(0.97);
+    }
+  }
+}
+
+dialog.gp-top-dialog[open]:where(:not([data-closing]))::backdrop {
+  background-color: rgba(3, 6, 14, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+@starting-style {
+  dialog.gp-top-dialog[open]:where(:not([data-closing]))::backdrop {
+    background-color: rgba(3, 6, 14, 0);
+    backdrop-filter: blur(0px);
+  }
+}
+
+dialog.gp-top-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+/* ========================================================
+   COMPOSITOR ANIMATIONS, SKELETON SHIMMER & CTA SWEEP
+   ======================================================== */
+
 @keyframes gp-fade-in {
   from {
     opacity: 0;
@@ -114,7 +275,7 @@ dialog::backdrop {
 @keyframes gp-popover-in {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.98);
+    transform: translateY(-4px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -122,33 +283,163 @@ dialog::backdrop {
   }
 }
 
-@keyframes gp-dialog-in {
+@keyframes gp-stagger-enter {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.985);
+    translate: 0 8px;
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    translate: 0 0;
+  }
+}
+
+@keyframes gp-skeleton-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes gp-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes gp-completion-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 28px -2px rgba(16, 185, 129, 0.25);
+  }
+  100% {
+    box-shadow:
+      0 1px 3px 0 rgba(0, 0, 0, 0.4),
+      0 4px 12px -2px rgba(0, 0, 0, 0.3);
   }
 }
 
 .gp-fade-in {
-  animation: gp-fade-in 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: gp-fade-in 150ms var(--ease-smooth-out) both;
 }
 
 .gp-popover-in {
-  animation: gp-popover-in 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: gp-popover-in 200ms var(--ease-smooth-out) both;
+  animation-timing-function: var(--ease-spring);
 }
 
-.gp-dialog-in {
-  animation: gp-dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.gp-toast-enter {
+  animation: gp-toast-in 260ms var(--ease-smooth-out) both;
+  animation-timing-function: var(--ease-spring);
+}
+
+.gp-completion-once {
+  animation: gp-completion-glow 900ms var(--ease-smooth-out) 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gp-stagger-item {
+    animation: gp-stagger-enter 280ms var(--ease-smooth-out) both;
+    animation-delay: calc(min(var(--stagger-idx, 0), 6) * 45ms);
+  }
+}
+
+/* GPU-compositor Skeleton Shimmer */
+.gp-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(30, 41, 59, 0.55);
+}
+
+.gp-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.12) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gp-skeleton::after {
+    animation: gp-skeleton-sweep 1.5s ease-in-out infinite;
+  }
+}
+
+/* Primary CTA Specular Light Sweep on Hover */
+.gp-cta-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.gp-cta-shimmer::after {
+  content: '';
+  position: absolute;
+  inset-block: -20%;
+  inset-inline-start: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  transform: translateX(-180%) skewX(-20deg);
+  pointer-events: none;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .gp-cta-shimmer:not(:disabled):hover::after {
+    transition: transform 650ms var(--ease-smooth-out);
+    transform: translateX(320%) skewX(-20deg);
+  }
+}
+
+/* CSS Grid Accordion Transition */
+.gp-accordion-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms var(--ease-smooth-out);
+}
+
+.gp-accordion-grid[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+
+.gp-accordion-inner {
+  overflow: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  dialog.gp-top-dialog,
+  dialog.gp-top-dialog::backdrop {
+    transition-duration: 80ms;
+  }
+
   .gp-fade-in,
   .gp-popover-in,
-  .gp-dialog-in {
+  .gp-toast-enter,
+  .gp-completion-once,
+  .gp-stagger-item {
     animation: none !important;
+  }
+
+  .gp-accordion-grid {
+    transition: none !important;
   }
 }

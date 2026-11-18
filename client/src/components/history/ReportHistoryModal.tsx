@@ -5,7 +5,9 @@ import { ReportItem } from '../../types';
 import { api } from '../../lib/api';
 import { useTranslation } from '../../i18n';
 import { ModalDialog } from '../ui/ModalDialog';
-import { History, X, Copy, Trash2, Calendar, Check, Loader2 } from 'lucide-react';
+import { HistoryListSkeleton } from '../ui/Skeleton';
+import { useToast } from '../ui/Toast';
+import { History, X, Copy, Trash2, Calendar, Check } from 'lucide-react';
 
 interface ReportHistoryModalProps {
   isOpen: boolean;
@@ -14,6 +16,7 @@ interface ReportHistoryModalProps {
 
 export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps) {
   const { locale, dict, t } = useTranslation();
+  const { showToast } = useToast();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -44,6 +47,10 @@ export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps)
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
+    showToast({
+      title: t('standupDock.copiedToast', { format: dict.standupDock.copyBullet }),
+      variant: 'success',
+    });
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -51,6 +58,10 @@ export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps)
     try {
       await api.reports.delete(id);
       setReports((prev) => prev.filter((r) => r.id !== id));
+      showToast({
+        title: dict.toasts.reportDeleted,
+        variant: 'info',
+      });
     } catch {
       // ignore
     } finally {
@@ -102,21 +113,19 @@ export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps)
       {/* Scrollable Content List */}
       <div className="flex-1 overflow-y-auto gp-scroll-area p-6 space-y-3">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-xs text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin text-sky-400" aria-hidden="true" />
-            <span>{dict.historyModal.loading}</span>
-          </div>
+          <HistoryListSkeleton count={3} />
         ) : reports.length === 0 ? (
           <p className="text-center text-xs text-slate-400 py-12">{dict.historyModal.empty}</p>
         ) : (
           <ul role="list" className="space-y-3">
-            {reports.map((report) => {
+            {reports.map((report, index) => {
               const isConfirming = confirmDeleteId === report.id;
 
               return (
                 <li
                   key={report.id}
-                  className="p-4 rounded-xl bg-[#0C0E14] border border-slate-800 hover:border-slate-700/90 transition-colors space-y-3"
+                  style={{ '--stagger-idx': index } as React.CSSProperties}
+                  className="p-4 rounded-xl bg-[#0C0E14] border border-slate-800 hover:border-slate-700/90 transition-colors space-y-3 gp-stagger-item"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="flex items-center flex-wrap gap-2 font-mono text-slate-400 min-w-0">

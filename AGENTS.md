@@ -66,25 +66,28 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 
 ## 3. UI/UX Standard ("Precision Developer Dark")
 
-- **Aesthetic**: Elevated layered Carbon-Slate surfaces (`#090B10` canvas -> `#11141C` cards -> `#161A24` elevated items -> `#0C0E14` recessed inputs/controls -> `#141821` floating overlays), clean hairline slate borders (`border-slate-800/90`), and a crisp monochromatic primary accent (`Sky-500` `#0EA5E9`). Static CSS dot-grid/radial canvas backdrop only — strictly forbid continuous `requestAnimationFrame` starfields, scanline overlays, spinning ambient logos, radar HUDs, border beams, or decorative `animate-ping`/`animate-pulse` dots.
+- **Aesthetic**: Elevated layered Carbon-Slate surfaces (`#090B10` canvas -> `#11141C` cards -> `#161A24` elevated items -> `#0C0E14` recessed inputs/controls -> `#141821` floating overlays), clean hairline slate borders (`border-slate-800/90`), and a crisp monochromatic primary accent (`Sky-500` `#0EA5E9`). Pointer-driven interactive architectural grid spotlight (`InteractiveBackdrop`) and ambient aura updated lazily via `rAF`-throttled CSS custom properties — strictly forbid continuous idle `requestAnimationFrame` starfields, scanline overlays, spinning ambient logos, radar HUDs, continuous rotating border beams, or decorative `animate-ping`/`animate-pulse` dots.
 - **Typography & Font Rules**:
   - Sans / Headings / Body: `Plus Jakarta Sans` & `Inter` (`subsets: ['latin', 'vietnamese']`)
   - Code / Git Identifiers / Counters: `JetBrains Mono` with `tabular-nums`
   - **Min Font Size ($\ge 12\text{px}$)**: Strictly forbid text below `12px` (`text-xs`). Never use `text-[10px]` or `text-[11px]`.
 - **Zero Redundant Tags / Sci-Fi Jargon**:
   - Strictly forbid decorative status badges (`RADAR ONLINE`, `AI CORE READY`, `0 PULSES`), sci-fi terminology (_"quỹ đạo"_, _"chòm sao"_, _"radar"_, _"Warp-Drive"_, _"Sub-Light"_), or internal tech boasting (`HKDF`, `AES-256-GCM`, `Gateway SSO`, `PAT`, `v0.1`).
-  - Animations are reserved strictly for functional progress states (`Loader2` / `RefreshCw` spinning only while an async task is actively running).
+  - Animations follow GPU-composited properties (`transform`, `opacity`, `clip-path`, `mask-image`), `linear()` physics spring easing (`--ease-spring`), `@starting-style` + `allow-discrete` dialog transitions (with cross-browser exit fallback), and `prefers-reduced-motion`; `Loader2` / `RefreshCw` spin only during active async operations.
 - **UI Primitives & Accessible Forms (`client/src/components/ui/`)**:
-  - Standardize controls across the app via `Select` (WAI-ARIA combobox + top-layer listbox option rows), `Input` (recessed field, `<label htmlFor>`, hint/error linking, password visibility toggle), `SegmentedControl`, and native `<dialog>`-backed `ModalDialog` (`showModal()`, scroll containment, light-dismiss).
+  - Standardize controls across the app via `ShowcaseCard` (hover-gated 1px perimeter border spotlight & subtle surface sheen), `Skeleton` (loading placeholders), `Toast` (non-blocking corner feedback), `CommandPalette` (`⌘K` quick actions), `Select` (WAI-ARIA combobox + top-layer listbox option rows), `Input` (recessed field, `<label htmlFor>`, hint/error linking, password visibility toggle), gliding-pill `SegmentedControl`, and native `<dialog>`-backed `ModalDialog` (`showModal()`, scroll containment, light-dismiss).
   - Strictly forbid native browser `window.alert()` / `window.confirm()`; render inline errors and inline 2-step destructive confirmations.
+- **Performance & Bundle Architecture**:
+  - Heavy browser AI dependencies (`@mlc-ai/web-llm`) are dynamically imported (`import('../../lib/webllm')`) on hover/focus/execution, and secondary modals (`ReportHistoryModal`, `CommandPalette`, `GoogleAccountChooserModal`, `AuthModal` when unneeded) are loaded via `next/dynamic` so initial `/` route JS stays lightweight. Workspace loads use `sessionStorage` stale-while-revalidate caching with `WorkspaceSkeleton` / `ActivityListSkeleton` placeholders.
 - **Full Internationalization (`client/src/i18n/`)**:
   - Complete Vietnamese (`vi`) and English (`en`) dictionary coverage with UI language switching (`VI | EN`) separated cleanly from AI standup report output language.
 - **Auth Form Hierarchy**:
   - Replicate Wonderlab's clean form field hierarchy (Username/Email input, Password input + eye toggle + "Quên mật khẩu?" link, solid primary submit CTA, "Hoặc tiếp tục với" divider, Google Sign-In button, register/login switch link) styled with the Carbon-Slate overlay surface (`#141821`).
 - **Workspace Modules**:
-  - Git Activity Scanner (`ActivityScanner`): Timeframe switcher + Pull Request & Commit timeline cards.
-  - Standup AI Console (`CockpitAiConsole`): Dual-engine switcher (GitHub Models & WebLLM WebGPU) with custom `Select` for model and report language.
-  - Standup Output Dock (`StandupOutputDock`): 1-click formatted clipboard export (Bullet list, Parabol, Slack).
+  - Activity Summary Strip (`ActivitySummaryStrip`): 3-metric Bento summary strip displaying real synced PRs, commits, and active repos.
+  - Git Activity Scanner (`ActivityScanner`): Timeframe switcher, repo filter pills, PR selection checkboxes, Pull Request cards with commit CSS Grid accordions.
+  - Standup AI Console (`CockpitAiConsole`): Dual-engine switcher (GitHub Models & WebLLM WebGPU) with predictive preload, custom `Select` for model and report language, and `⌘↵` trigger.
+  - Standup Output Dock (`StandupOutputDock`): Inline quick-edit mode & 1-click formatted clipboard export (`Bullets`, `Parabol`, `Slack`, `Markdown`, `Jira`).
 
 ---
 

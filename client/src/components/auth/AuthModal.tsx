@@ -293,7 +293,7 @@ export function AuthModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -419,7 +419,7 @@ export function AuthModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -484,7 +484,7 @@ export function AuthModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

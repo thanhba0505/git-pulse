@@ -4,21 +4,29 @@ import React from 'react';
 import { User, GitStatus } from '../../types';
 import { useTranslation } from '../../i18n';
 import { SegmentedControl } from '../ui/SegmentedControl';
-import { Activity, GitBranch, History, LogOut } from 'lucide-react';
+import { Activity, GitBranch, History, LogOut, Search } from 'lucide-react';
 
 interface HeaderProps {
   user: User | null;
   gitStatus: GitStatus;
+  onOpenCommandPalette: () => void;
   onOpenHistory: () => void;
   onOpenGitModal: () => void;
   onLogout: () => void;
 }
 
-export function Header({ user, gitStatus, onOpenHistory, onOpenGitModal, onLogout }: HeaderProps) {
+export function Header({
+  user,
+  gitStatus,
+  onOpenCommandPalette,
+  onOpenHistory,
+  onOpenGitModal,
+  onLogout,
+}: HeaderProps) {
   const { locale, setLocale, dict } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#090B10]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#090B10]/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Brand Identity */}
         <div className="flex items-center gap-3 min-w-0">
@@ -40,6 +48,21 @@ export function Header({ user, gitStatus, onOpenHistory, onOpenGitModal, onLogou
 
         {/* Right Toolbar */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Quick Command Palette Trigger (⌘K) */}
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            title={dict.header.commandPaletteTooltip}
+            aria-label={dict.header.commandPaletteTooltip}
+            className="hidden md:inline-flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 bg-[#0C0E14] hover:bg-[#11141C] border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+          >
+            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+            <span>{dict.header.commandPaletteBtn}</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-[#161A24] border border-slate-700/80 text-xs font-mono text-slate-400">
+              ⌘K
+            </kbd>
+          </button>
+
           {/* UI Language Switcher */}
           <SegmentedControl
             value={locale}

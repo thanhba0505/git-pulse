@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useLayoutEffect, useRef, useCallback } from 'react';
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -26,32 +26,105 @@ export function SegmentedControl<T extends string>({
   fullWidth = false,
   className = '',
 }: SegmentedControlProps<T>) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLSpanElement>(null);
+  const buttonRefs = useRef<Map<T, HTMLButtonElement>>(new Map());
   const paddingClass = size === 'sm' ? 'px-2.5 py-1' : 'px-3 py-1.5';
+
+  const syncIndicator = useCallback(
+    (animate: boolean) => {
+      const container = containerRef.current;
+      const indicator = indicatorRef.current;
+      const activeBtn = buttonRefs.current.get(value);
+      if (!container || !indicator || !activeBtn) return;
+
+      const x = activeBtn.offsetLeft;
+      const width = activeBtn.offsetWidth;
+      if (width <= 0) return;
+
+      if (!animate) {
+        indicator.style.transition = 'none';
+      } else {
+        indicator.style.transition = '';
+      }
+
+      indicator.style.width = `${width}px`;
+      indicator.style.transform = `translate3d(${x}px, 0, 0)`;
+      indicator.style.opacity = '1';
+      container.dataset.measured = 'true';
+
+      if (!animate) {
+        // Flush layout before re-enabling transitions
+        void indicator.offsetWidth;
+        indicator.style.transition = '';
+      }
+    },
+    [value],
+  );
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const isMeasured = container?.dataset.measured === 'true';
+    syncIndicator(isMeasured);
+  }, [syncIndicator, options]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      syncIndicator(false);
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [syncIndicator]);
 
   return (
     <div
+      ref={containerRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className={`inline-flex items-center p-1 rounded-lg bg-[#0C0E14] border border-slate-800 ${
+      data-measured="false"
+      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#0C0E14] border border-slate-800 ${
         fullWidth ? 'w-full' : ''
       } ${className}`}
     >
+      {/* Gliding Active Pill Indicator */}
+      <span
+        ref={indicatorRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-slate-800 border border-slate-700/80 shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
+        style={{
+          transitionTimingFunction: 'var(--ease-spring)',
+        }}
+      />
+
       {options.map((option) => {
         const isActive = option.value === value;
 
         return (
           <button
             key={option.value}
+            ref={(el) => {
+              if (el) {
+                buttonRefs.current.set(option.value, el);
+              } else {
+                buttonRefs.current.delete(option.value);
+              }
+            }}
             type="button"
             role="radio"
             aria-checked={isActive}
             onClick={() => onChange(option.value)}
-            className={`${paddingClass} ${
+            className={`relative z-10 ${paddingClass} ${
               fullWidth ? 'flex-1 justify-center' : ''
-            } inline-flex items-center rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+            } inline-flex items-center rounded-md text-xs font-medium transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               isActive
-                ? 'bg-slate-800 text-slate-100 border border-slate-700/80 shadow-sm font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                ? 'text-slate-100 font-semibold group-data-[measured=false]/seg:bg-slate-800'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             {option.label}
