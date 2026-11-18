@@ -28,7 +28,7 @@ Git Pulse uses a unified trunk-based workflow targeting `develop`:
 
 1. **Branch Off `origin/develop`**:
    ```bash
-   cd /Users/lethanhba/workspace/app/git-pulse
+   cd git-pulse
    git fetch origin
    git checkout -B <type>/<task-name> origin/develop
    ```

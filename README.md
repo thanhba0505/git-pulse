@@ -142,4 +142,4 @@ Explore in-depth technical guides in `docs/`:
 
 ## 📄 License
 
-Licensed under the [MIT License](LICENSE) © 2026 **Bá Lê Thanh** (thanhba0505).
+Licensed under the [MIT License](LICENSE) © 2026 **thanhba0505**.
