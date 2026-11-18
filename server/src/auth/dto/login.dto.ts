@@ -1,18 +1,18 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
   @ApiProperty({
-    example: "admin",
-    description: "Username or Email address",
+    example: 'admin',
+    description: 'Username or Email address',
   })
   @IsString()
-  @IsNotEmpty({ message: "Vui lòng nhập tên đăng nhập hoặc email" })
+  @IsNotEmpty({ message: 'Vui lòng nhập tên đăng nhập hoặc email' })
   username!: string;
 
   @ApiPropertyOptional({
-    example: "password123",
-    description: "User password",
+    example: 'password123',
+    description: 'User password',
   })
   @IsString()
   @IsOptional()
@@ -20,7 +20,7 @@ export class LoginDto {
 
   @ApiPropertyOptional({
     example: false,
-    description: "Dev bypass flag for testing without password",
+    description: 'Dev bypass flag for testing without password',
   })
   @IsBoolean()
   @IsOptional()

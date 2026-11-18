@@ -1,14 +1,8 @@
-"use client";
+'use client';
 
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
-import { User } from "../types";
-import { api } from "./api";
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { User } from '../types';
+import { api } from './api';
 
 export interface DevUser {
   id: string;
@@ -24,10 +18,7 @@ interface AuthContextType {
   isGoogleChooserOpen: boolean;
   openGoogleChooser: () => void;
   closeGoogleChooser: () => void;
-  login: (
-    username: string,
-    password?: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   register: (
     username: string,
     email: string,
@@ -57,19 +48,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 async function generatePkce() {
   const array = new Uint8Array(32);
   window.crypto.getRandomValues(array);
-  const verifier = Array.from(array, (dec) =>
-    dec.toString(16).padStart(2, "0"),
-  ).join("");
+  const verifier = Array.from(array, (dec) => dec.toString(16).padStart(2, '0')).join('');
 
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
-  const hash = await window.crypto.subtle.digest("SHA-256", data);
+  const hash = await window.crypto.subtle.digest('SHA-256', data);
 
   const hashArray = Array.from(new Uint8Array(hash));
   const base64 = btoa(String.fromCharCode.apply(null, hashArray))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 
   return { verifier, challenge: base64 };
 }
@@ -107,11 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (
-    username: string,
-    email: string,
-    password: string,
-  ) => {
+  const register = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
       const res = await api.auth.register(username, email, password);
@@ -168,10 +153,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initiateGatewaySso = async () => {
     try {
       const { verifier, challenge } = await generatePkce();
-      sessionStorage.setItem("sso_code_verifier", verifier);
+      sessionStorage.setItem('sso_code_verifier', verifier);
 
-      const gatewayBase =
-        process.env.NEXT_PUBLIC_GATEWAY_CLIENT_URL || "http://localhost:5100";
+      const gatewayBase = process.env.NEXT_PUBLIC_GATEWAY_CLIENT_URL || 'http://localhost:5100';
       const redirectUri = `${window.location.origin}/auth/callback`;
       const state = Math.random().toString(36).substring(2, 15);
 
@@ -186,8 +170,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await api.auth.logout();
-    setUser(null);
+    try {
+      await api.auth.logout();
+    } finally {
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
   };
 
   return (
@@ -216,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

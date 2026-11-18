@@ -1,21 +1,21 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
-import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { APP_GUARD } from "@nestjs/core";
-import { PrismaModule } from "./prisma/prisma.module";
-import { CommonModule } from "./common/common.module";
-import { S2SModule } from "./s2s/s2s.module";
-import { AuthModule } from "./auth/auth.module";
-import { GitHubModule } from "./github/github.module";
-import { AiModule } from "./ai/ai.module";
-import { ReportsModule } from "./reports/reports.module";
-import { HealthController } from "./health/health.controller";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { PrismaModule } from './prisma/prisma.module';
+import { CommonModule } from './common/common.module';
+import { S2SModule } from './s2s/s2s.module';
+import { AuthModule } from './auth/auth.module';
+import { GitHubModule } from './github/github.module';
+import { AiModule } from './ai/ai.module';
+import { ReportsModule } from './reports/reports.module';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [".env.local", ".env", "../.env.local"],
+      envFilePath: ['.env.local', '.env', '../.env.local'],
     }),
     ThrottlerModule.forRoot([
       {

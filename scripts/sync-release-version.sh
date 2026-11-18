@@ -4,13 +4,13 @@ set -euo pipefail
 # ==============================================================================
 # Git Pulse — Synchronize Monorepo Version on Official Release
 # Runs ONLY when a release is officially published, updating package.json across
-# workspaces and pushing the official release commit to main.
+# workspaces and README.md, then pushing the official release commit to main.
 # ==============================================================================
 
 TARGET_TAG="${1:-}"
 
 if [ -z "$TARGET_TAG" ]; then
-  echo "::error::Target tag is required (e.g. v0.1.1)"
+  echo "::error::Target tag is required (e.g. v0.3.1)"
   exit 1
 fi
 
@@ -45,7 +45,7 @@ CURRENT_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || ech
 if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
   echo "✅ Monorepo version is already $TARGET_VERSION."
 else
-  echo "• Updating package.json in monorepo root, client, and server..."
+  echo "• Updating package.json across workspaces and README.md..."
 
   node -e '
     const fs = require("fs");
@@ -59,12 +59,22 @@ else
         console.log(`  ✓ ${f} -> ${targetVer}`);
       }
     }
+
+    // Automatically update version in README.md
+    if (fs.existsSync("README.md")) {
+      let readme = fs.readFileSync("README.md", "utf-8");
+      readme = readme.replace(/(img\.shields\.io\/badge\/version-v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)/g, `$1${targetVer}$2`);
+      readme = readme.replace(/(<!-- VERSION -->v?)[0-9]+\.[0-9]+\.[0-9]+(<!-- \/VERSION -->)/g, `$1${targetVer}$2`);
+      readme = readme.replace(/(\*\*Version\*\*:\s*`v?)[0-9]+\.[0-9]+\.[0-9]+(`)/g, `$1${targetVer}$2`);
+      fs.writeFileSync("README.md", readme);
+      console.log(`  ✓ README.md -> v${targetVer}`);
+    }
   ' "$TARGET_VERSION"
 fi
 
 if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
   echo "• Committing official release version bump to main..."
-  git add package.json client/package.json server/package.json
+  git add package.json client/package.json server/package.json README.md
   git commit -m "chore(release): v${TARGET_VERSION} [skip ci]" || echo "No version changes to commit"
   
   echo "• Pushing release commit to main..."

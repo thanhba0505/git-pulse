@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { GitStatus } from "../../types";
+import React, { useState } from 'react';
+import { GitStatus } from '../../types';
 import {
   GitBranch,
   Key,
@@ -10,8 +10,8 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-} from "lucide-react";
-import { BorderBeam } from "../cosmic/BorderBeam";
+} from 'lucide-react';
+import { BorderBeam } from '../cosmic/BorderBeam';
 
 interface GitHubConnectModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export function GitHubConnectModal({
   onSavePat,
   onDisconnect,
 }: GitHubConnectModalProps) {
-  const [patInput, setPatInput] = useState("");
+  const [patInput, setPatInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,25 +37,24 @@ export function GitHubConnectModal({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patInput.trim()) {
-      setError("Vui lòng nhập GitHub Personal Access Token.");
+      setError('Vui lòng nhập GitHub Personal Access Token.');
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
       await onSavePat(patInput.trim());
-      setPatInput("");
+      setPatInput('');
       onClose();
     } catch (err) {
-      setError((err as Error).message || "Không thể lưu token GitHub.");
+      setError((err as Error).message || 'Không thể lưu token GitHub.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("Bạn có chắc chắn muốn ngắt kết nối tài khoản GitHub này?"))
-      return;
+    if (!confirm('Bạn có chắc chắn muốn ngắt kết nối tài khoản GitHub này?')) return;
     setIsLoading(true);
     try {
       await onDisconnect();
@@ -88,9 +87,7 @@ export function GitHubConnectModal({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white tracking-tight">
-              {status.connected
-                ? "Quản lý Kết nối GitHub"
-                : "Cổng Kết Nối Quỹ Đạo GitHub"}
+              {status.connected ? 'Quản lý Kết nối GitHub' : 'Cổng Kết Nối Quỹ Đạo GitHub'}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               Cho phép Git Pulse quét commit, PR trong ngày để tổng hợp Standup.
@@ -119,15 +116,13 @@ export function GitHubConnectModal({
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-sm">
-                      @{status.gitUsername}
-                    </span>
+                    <span className="font-bold text-white text-sm">@{status.gitUsername}</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    Đồng bộ lần cuối:{" "}
+                    Đồng bộ lần cuối:{' '}
                     {status.lastSyncAt
                       ? new Date(status.lastSyncAt).toLocaleTimeString()
-                      : "Chưa có"}
+                      : 'Chưa có'}
                   </p>
                   {status.expiresAt && (
                     <p className="text-xs text-amber-300/90 mt-0.5">
@@ -148,26 +143,22 @@ export function GitHubConnectModal({
                     Phạm vi quyền hạn cao (Over-Privileged)
                   </p>
                   <p className="text-amber-300/80 mt-0.5">
-                    Token có quyền quản trị hoặc xóa repo. Khuyến nghị tạo{" "}
-                    <strong>Fine-Grained Token</strong> chỉ đọc Pull Requests &
-                    Contents để đảm bảo an toàn tuyệt đối.
+                    Token có quyền quản trị hoặc xóa repo. Khuyến nghị tạo{' '}
+                    <strong>Fine-Grained Token</strong> chỉ đọc Pull Requests & Contents để đảm bảo
+                    an toàn tuyệt đối.
                   </p>
                 </div>
               </div>
             )}
 
             {/* Token Revoked / Expired Notice */}
-            {(status.tokenStatus === "REVOKED" ||
-              status.tokenStatus === "EXPIRED") && (
+            {(status.tokenStatus === 'REVOKED' || status.tokenStatus === 'EXPIRED') && (
               <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                 <div className="leading-relaxed">
-                  <p className="font-semibold text-rose-200">
-                    Token đã bị thu hồi hoặc hết hạn
-                  </p>
+                  <p className="font-semibold text-rose-200">Token đã bị thu hồi hoặc hết hạn</p>
                   <p className="text-rose-300/80 mt-0.5">
-                    GitHub trả về 401 Bad credentials. Vui lòng ngắt kết nối và
-                    cập nhật token mới.
+                    GitHub trả về 401 Bad credentials. Vui lòng ngắt kết nối và cập nhật token mới.
                   </p>
                 </div>
               </div>
@@ -183,7 +174,7 @@ export function GitHubConnectModal({
                 disabled={isLoading}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-rose-300 hover:text-white bg-rose-950/30 hover:bg-rose-900/60 border border-rose-500/30 transition-all"
               >
-                {isLoading ? "Đang xử lý..." : "Ngắt kết nối"}
+                {isLoading ? 'Đang xử lý...' : 'Ngắt kết nối'}
               </button>
             </div>
           </div>
@@ -214,9 +205,8 @@ export function GitHubConnectModal({
                 className="w-full px-4 py-3 rounded-xl bg-void-subtle/90 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
               />
               <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Chỉ cần quyền <code className="text-cyan-300">repo</code> (với
-                repo private) hoặc quyền đọc công khai. Token được mã hóa
-                AES-256 trước khi lưu vào DB.
+                Chỉ cần quyền <code className="text-cyan-300">repo</code> (với repo private) hoặc
+                quyền đọc công khai. Token được mã hóa AES-256 trước khi lưu vào DB.
               </p>
             </div>
 
@@ -233,7 +223,7 @@ export function GitHubConnectModal({
                 disabled={isLoading}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] disabled:opacity-50"
               >
-                {isLoading ? "Đang xác thực..." : "Lưu & Kích hoạt Git"}
+                {isLoading ? 'Đang xác thực...' : 'Lưu & Kích hoạt Git'}
               </button>
             </div>
           </form>

@@ -6,7 +6,7 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 >
 > ### 🚨 Mandatory Single-Workspace & Standard Ports Protocol
 >
-> 1. **Primary Workspace**: `/Users/lethanhba/workspace/app/git-pulse` is the sole and primary development workspace.
+> 1. **Primary Workspace**: The repository root directory is the sole and primary development workspace.
 > 2. **Standard Ecosystem Ports (Prism Hub)**:
 >    - Git Pulse Client: `http://localhost:6100`
 >    - Git Pulse Server: `http://localhost:6101` (`/api/v1`)
@@ -17,7 +17,6 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 >    - Database: Local PostgreSQL 16 on `127.0.0.1:5432` (`git_pulse`)
 > 3. **Execution Workflow**:
 >    ```bash
->    cd /Users/lethanhba/workspace/app/git-pulse
 >    git fetch origin && git checkout -B <type>/<task-name> origin/develop
 >    # Edits & verification:
 >    pnpm check

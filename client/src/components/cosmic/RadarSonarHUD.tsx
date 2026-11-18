@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 
 interface RadarSonarHUDProps {
   isScanning?: boolean;
@@ -11,7 +11,7 @@ interface RadarSonarHUDProps {
 export function RadarSonarHUD({
   isScanning = false,
   blipCount = 0,
-  className = "",
+  className = '',
 }: RadarSonarHUDProps) {
   return (
     <div
@@ -36,13 +36,11 @@ export function RadarSonarHUD({
         {/* Rotating Sonar Sweep Cone */}
         <div
           className={`absolute inset-0 rounded-full ${
-            isScanning
-              ? "animate-radar-sweep"
-              : "animate-radar-sweep opacity-75"
+            isScanning ? 'animate-radar-sweep' : 'animate-radar-sweep opacity-75'
           }`}
           style={{
             background:
-              "conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6, 182, 212, 0.05) 310deg, rgba(34, 211, 238, 0.4) 360deg)",
+              'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(6, 182, 212, 0.05) 310deg, rgba(34, 211, 238, 0.4) 360deg)',
           }}
         />
 
@@ -55,21 +53,21 @@ export function RadarSonarHUD({
           <>
             <span
               className="absolute w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse"
-              style={{ top: "35%", left: "68%" }}
+              style={{ top: '35%', left: '68%' }}
             />
             <span
               className="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#22d3ee] animate-pulse"
-              style={{ top: "62%", left: "28%" }}
+              style={{ top: '62%', left: '28%' }}
             />
             <span
               className="absolute w-2 h-2 rounded-full bg-violet-400 shadow-[0_0_10px_#a78bfa] animate-pulse"
-              style={{ top: "25%", left: "38%" }}
+              style={{ top: '25%', left: '38%' }}
             />
           </>
         ) : (
           <span
             className="absolute w-2 h-2 rounded-full bg-cyan-400/60 shadow-[0_0_8px_rgba(6,182,212,0.5)] animate-pulse"
-            style={{ top: "30%", left: "65%" }}
+            style={{ top: '30%', left: '65%' }}
           />
         )}
 

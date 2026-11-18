@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback } from 'react';
 
 interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -10,8 +10,8 @@ interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function SpotlightCard({
   children,
-  className = "",
-  spotlightColor = "rgba(6, 182, 212, 0.12)",
+  className = '',
+  spotlightColor = 'rgba(6, 182, 212, 0.12)',
   ...props
 }: SpotlightCardProps) {
   const divRef = useRef<HTMLDivElement>(null);

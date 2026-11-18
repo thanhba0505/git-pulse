@@ -12,7 +12,7 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family:
-      "Plus Jakarta Sans",
+      'Plus Jakarta Sans',
       system-ui,
       -apple-system,
       sans-serif;
@@ -79,7 +79,7 @@
    ======================================================== */
 
 @property --beam-angle {
-  syntax: "<angle>";
+  syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
@@ -104,13 +104,7 @@
 }
 
 .shimmer-text {
-  background: linear-gradient(
-    110deg,
-    #ffffff 20%,
-    #22d3ee 40%,
-    #a78bfa 60%,
-    #ffffff 80%
-  );
+  background: linear-gradient(110deg, #ffffff 20%, #22d3ee 40%, #a78bfa 60%, #ffffff 80%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -136,12 +130,7 @@
 .scanline-overlay {
   background:
     linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-    linear-gradient(
-      90deg,
-      rgba(255, 0, 0, 0.03),
-      rgba(0, 255, 0, 0.01),
-      rgba(0, 0, 255, 0.03)
-    );
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
   background-size:
     100% 3px,
     6px 100%;

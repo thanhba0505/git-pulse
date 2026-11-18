@@ -4,10 +4,10 @@ import {
   Injectable,
   UnauthorizedException,
   Logger,
-} from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { verifyS2SSignature } from "./s2s-crypto.util";
-import { decryptS2SSecret } from "./s2s-vault.util";
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { verifyS2SSignature } from './s2s-crypto.util';
+import { decryptS2SSecret } from './s2s-vault.util';
 
 @Injectable()
 export class S2SAuthGuard implements CanActivate {
@@ -17,17 +17,14 @@ export class S2SAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const s2sSignature = request.headers["x-s2s-signature"] as
-      string | undefined;
-    const s2sTimestamp = request.headers["x-s2s-timestamp"] as
-      string | undefined;
-    const s2sServiceSlug = request.headers["x-s2s-service"] as
-      string | undefined;
+    const s2sSignature = request.headers['x-s2s-signature'] as string | undefined;
+    const s2sTimestamp = request.headers['x-s2s-timestamp'] as string | undefined;
+    const s2sServiceSlug = request.headers['x-s2s-service'] as string | undefined;
 
     // Strict HMAC-SHA256 protocol: All 3 headers are mandatory
     if (!s2sSignature || !s2sTimestamp || !s2sServiceSlug) {
       throw new UnauthorizedException(
-        "Missing required S2S signature headers (X-S2S-Signature, X-S2S-Timestamp, X-S2S-Service)",
+        'Missing required S2S signature headers (X-S2S-Signature, X-S2S-Timestamp, X-S2S-Service)',
       );
     }
 
@@ -36,9 +33,7 @@ export class S2SAuthGuard implements CanActivate {
 
     // Replay attack prevention: max 5-minute skew tolerance
     if (isNaN(ts) || Math.abs(now - ts) > 5 * 60 * 1000) {
-      throw new UnauthorizedException(
-        "S2S request timestamp expired or clock skew too high",
-      );
+      throw new UnauthorizedException('S2S request timestamp expired or clock skew too high');
     }
 
     // Look up connection by sender slug
@@ -51,20 +46,14 @@ export class S2SAuthGuard implements CanActivate {
     });
 
     if (!connection || !connection.incomingSecret) {
-      this.logger.warn(
-        `Unauthorized or unconfigured S2S service: '${s2sServiceSlug}'`,
-      );
-      throw new UnauthorizedException(
-        `Unauthorized S2S service: ${s2sServiceSlug}`,
-      );
+      this.logger.warn(`Unauthorized or unconfigured S2S service: '${s2sServiceSlug}'`);
+      throw new UnauthorizedException(`Unauthorized S2S service: ${s2sServiceSlug}`);
     }
 
     const rawIncomingSecret = decryptS2SSecret(connection.incomingSecret);
     if (!rawIncomingSecret) {
-      this.logger.warn(
-        `Could not decrypt incoming secret for S2S service '${s2sServiceSlug}'`,
-      );
-      throw new UnauthorizedException("Invalid S2S configuration");
+      this.logger.warn(`Could not decrypt incoming secret for S2S service '${s2sServiceSlug}'`);
+      throw new UnauthorizedException('Invalid S2S configuration');
     }
 
     const targetPath = request.originalUrl || request.url;
@@ -82,7 +71,7 @@ export class S2SAuthGuard implements CanActivate {
       this.logger.warn(
         `Invalid S2S HMAC signature for service '${s2sServiceSlug}' on path: ${targetPath}`,
       );
-      throw new UnauthorizedException("Invalid S2S HMAC signature");
+      throw new UnauthorizedException('Invalid S2S HMAC signature');
     }
 
     request.serviceConnection = connection;

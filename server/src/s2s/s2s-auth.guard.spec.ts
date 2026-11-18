@@ -1,10 +1,10 @@
-import { ExecutionContext, UnauthorizedException } from "@nestjs/common";
-import { S2SAuthGuard } from "./s2s-auth.guard";
-import { PrismaService } from "../prisma/prisma.service";
-import { generateS2SSignature } from "./s2s-crypto.util";
-import { encryptS2SSecret } from "./s2s-vault.util";
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { S2SAuthGuard } from './s2s-auth.guard';
+import { PrismaService } from '../prisma/prisma.service';
+import { generateS2SSignature } from './s2s-crypto.util';
+import { encryptS2SSecret } from './s2s-vault.util';
 
-describe("S2SAuthGuard", () => {
+describe('S2SAuthGuard', () => {
   let guard: S2SAuthGuard;
   let prismaMock: {
     serviceConnection: {
@@ -12,11 +12,11 @@ describe("S2SAuthGuard", () => {
     };
   };
 
-  const secret = "gw_to_gp_s2s_secret_2026";
+  const secret = 'gw_to_gp_s2s_secret_2026';
 
   beforeEach(() => {
     process.env.S2S_ENCRYPTION_KEY =
-      "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+      'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
     prismaMock = {
       serviceConnection: {
         findFirst: jest.fn(),
@@ -28,8 +28,8 @@ describe("S2SAuthGuard", () => {
   function createMockContext(
     headers: Record<string, string>,
     body?: unknown,
-    url = "/api/v1/webhook",
-    method = "POST",
+    url = '/api/v1/webhook',
+    method = 'POST',
   ) {
     const request = {
       headers,
@@ -45,89 +45,79 @@ describe("S2SAuthGuard", () => {
     } as unknown as ExecutionContext;
   }
 
-  it("should throw UnauthorizedException when signature headers are missing", async () => {
+  it('should throw UnauthorizedException when signature headers are missing', async () => {
     const context = createMockContext({});
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     await expect(guard.canActivate(context)).rejects.toThrow(
-      UnauthorizedException,
-    );
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      "Missing required S2S signature headers",
+      'Missing required S2S signature headers',
     );
   });
 
-  it("should throw UnauthorizedException when timestamp is expired (> 5 min)", async () => {
+  it('should throw UnauthorizedException when timestamp is expired (> 5 min)', async () => {
     const expiredTimestamp = (Date.now() - 6 * 60 * 1000).toString();
     const context = createMockContext({
-      "x-s2s-service": "central-gateway",
-      "x-s2s-timestamp": expiredTimestamp,
-      "x-s2s-signature": "mock_signature",
+      'x-s2s-service': 'central-gateway',
+      'x-s2s-timestamp': expiredTimestamp,
+      'x-s2s-signature': 'mock_signature',
     });
 
     await expect(guard.canActivate(context)).rejects.toThrow(
-      "S2S request timestamp expired or clock skew too high",
+      'S2S request timestamp expired or clock skew too high',
     );
   });
 
-  it("should throw UnauthorizedException when service is not registered", async () => {
+  it('should throw UnauthorizedException when service is not registered', async () => {
     prismaMock.serviceConnection.findFirst.mockResolvedValue(null);
 
     const timestamp = Date.now().toString();
     const context = createMockContext({
-      "x-s2s-service": "unregistered-service",
-      "x-s2s-timestamp": timestamp,
-      "x-s2s-signature": "mock_signature",
+      'x-s2s-service': 'unregistered-service',
+      'x-s2s-timestamp': timestamp,
+      'x-s2s-signature': 'mock_signature',
     });
 
     await expect(guard.canActivate(context)).rejects.toThrow(
-      "Unauthorized S2S service: unregistered-service",
+      'Unauthorized S2S service: unregistered-service',
     );
   });
 
-  it("should throw UnauthorizedException when HMAC signature is invalid", async () => {
+  it('should throw UnauthorizedException when HMAC signature is invalid', async () => {
     prismaMock.serviceConnection.findFirst.mockResolvedValue({
-      slug: "central-gateway",
+      slug: 'central-gateway',
       incomingSecret: secret,
       isActive: true,
     });
 
     const timestamp = Date.now().toString();
     const context = createMockContext({
-      "x-s2s-service": "central-gateway",
-      "x-s2s-timestamp": timestamp,
-      "x-s2s-signature": "tampered_or_invalid_signature",
+      'x-s2s-service': 'central-gateway',
+      'x-s2s-timestamp': timestamp,
+      'x-s2s-signature': 'tampered_or_invalid_signature',
     });
 
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      "Invalid S2S HMAC signature",
-    );
+    await expect(guard.canActivate(context)).rejects.toThrow('Invalid S2S HMAC signature');
   });
 
-  it("should pass and attach serviceConnection when valid signature is provided", async () => {
+  it('should pass and attach serviceConnection when valid signature is provided', async () => {
     const mockConnection = {
-      slug: "central-gateway",
+      slug: 'central-gateway',
       incomingSecret: secret,
       isActive: true,
     };
     prismaMock.serviceConnection.findFirst.mockResolvedValue(mockConnection);
 
     const timestamp = Date.now().toString();
-    const body = { event: "PING" };
-    const path = "/api/v1/webhook";
-    const method = "POST";
+    const body = { event: 'PING' };
+    const path = '/api/v1/webhook';
+    const method = 'POST';
 
-    const validSignature = generateS2SSignature(
-      secret,
-      timestamp,
-      method,
-      path,
-      body,
-    );
+    const validSignature = generateS2SSignature(secret, timestamp, method, path, body);
 
     const context = createMockContext(
       {
-        "x-s2s-service": "central-gateway",
-        "x-s2s-timestamp": timestamp,
-        "x-s2s-signature": validSignature,
+        'x-s2s-service': 'central-gateway',
+        'x-s2s-timestamp': timestamp,
+        'x-s2s-signature': validSignature,
       },
       body,
       path,
@@ -137,38 +127,31 @@ describe("S2SAuthGuard", () => {
     const result = await guard.canActivate(context);
     expect(result).toBe(true);
     expect(
-      (context.switchToHttp().getRequest() as Record<string, unknown>)
-        .serviceConnection,
+      (context.switchToHttp().getRequest() as Record<string, unknown>).serviceConnection,
     ).toEqual(mockConnection);
   });
 
-  it("should successfully decrypt encrypted incomingSecret (enc:v1) and verify HMAC", async () => {
+  it('should successfully decrypt encrypted incomingSecret (enc:v1) and verify HMAC', async () => {
     const encryptedSecret = encryptS2SSecret(secret);
     const mockConnection = {
-      slug: "central-gateway",
+      slug: 'central-gateway',
       incomingSecret: encryptedSecret,
       isActive: true,
     };
     prismaMock.serviceConnection.findFirst.mockResolvedValue(mockConnection);
 
     const timestamp = Date.now().toString();
-    const body = { action: "SYNC_USER", userId: "user-456" };
-    const path = "/api/v1/webhook";
-    const method = "POST";
+    const body = { action: 'SYNC_USER', userId: 'user-456' };
+    const path = '/api/v1/webhook';
+    const method = 'POST';
 
-    const validSignature = generateS2SSignature(
-      secret,
-      timestamp,
-      method,
-      path,
-      body,
-    );
+    const validSignature = generateS2SSignature(secret, timestamp, method, path, body);
 
     const context = createMockContext(
       {
-        "x-s2s-service": "central-gateway",
-        "x-s2s-timestamp": timestamp,
-        "x-s2s-signature": validSignature,
+        'x-s2s-service': 'central-gateway',
+        'x-s2s-timestamp': timestamp,
+        'x-s2s-signature': validSignature,
       },
       body,
       path,

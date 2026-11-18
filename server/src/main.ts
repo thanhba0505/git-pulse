@@ -1,13 +1,13 @@
-import { NestFactory } from "@nestjs/core";
-import { ValidationPipe, INestApplication } from "@nestjs/common";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import cookieParser from "cookie-parser";
-import { APP_VERSION } from "./common/version";
-import { AppModule } from "./app.module";
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, INestApplication } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import { APP_VERSION } from './common/version';
+import { AppModule } from './app.module';
 
 export function configureApp(app: INestApplication): void {
   // Global prefix
-  app.setGlobalPrefix("api/v1");
+  app.setGlobalPrefix('api/v1');
 
   // Middlewares
   app.use(cookieParser());
@@ -21,53 +21,51 @@ export function configureApp(app: INestApplication): void {
 
   // CORS configuration
   const defaultOrigins = [
-    "http://localhost:6100",
-    "http://127.0.0.1:6100",
-    "http://localhost:5100",
-    "http://localhost:4100",
-    "https://git-pulse-client.vercel.app",
-    "https://central-gateway-client.vercel.app",
-    "https://wonderlab-client.vercel.app",
-    "https://wonderlab.io.vn",
-    "https://www.wonderlab.io.vn",
+    'http://localhost:6100',
+    'http://127.0.0.1:6100',
+    'http://localhost:5100',
+    'http://localhost:4100',
+    'https://git-pulse-client.vercel.app',
+    'https://central-gateway-client.vercel.app',
+    'https://wonderlab-client.vercel.app',
+    'https://wonderlab.io.vn',
+    'https://www.wonderlab.io.vn',
   ];
 
   const configuredOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
     : process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+      ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
       : [];
 
-  const corsOrigins = Array.from(
-    new Set([...defaultOrigins, ...configuredOrigins]),
-  );
+  const corsOrigins = Array.from(new Set([...defaultOrigins, ...configuredOrigins]));
 
   app.enableCors({
     origin: corsOrigins.length > 0 ? corsOrigins : true,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-S2S-Service",
-      "X-S2S-Timestamp",
-      "X-S2S-Signature",
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-S2S-Service',
+      'X-S2S-Timestamp',
+      'X-S2S-Signature',
     ],
   });
 
   // Swagger Documentation
   const config = new DocumentBuilder()
-    .setTitle("Git Pulse API")
+    .setTitle('Git Pulse API')
     .setDescription(
-      "Developer Intelligence & Git Workspace API with Dual-Core AI and GitHub Integration.",
+      'Developer Intelligence & Git Workspace API with Dual-Core AI and GitHub Integration.',
     )
     .setVersion(APP_VERSION)
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("api/docs", app, document);
+  SwaggerModule.setup('api/docs', app, document);
 }
 
 async function bootstrap() {
@@ -77,9 +75,7 @@ async function bootstrap() {
   const port = process.env.PORT || 6101;
   await app.listen(port);
   console.log(`🌌 Git Pulse Server running on http://localhost:${port}/api/v1`);
-  console.log(
-    `📡 Swagger documentation available on http://localhost:${port}/api/docs`,
-  );
+  console.log(`📡 Swagger documentation available on http://localhost:${port}/api/docs`);
 }
 
 if (!process.env.VERCEL) {

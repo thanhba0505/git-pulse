@@ -1,16 +1,9 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import {
-  ShieldCheck,
-  Plus,
-  X,
-  Loader2,
-  ArrowRight,
-  RefreshCw,
-} from "lucide-react";
-import { api } from "../../lib/api";
-import { BorderBeam } from "../cosmic/BorderBeam";
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Plus, X, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
+import { api } from '../../lib/api';
+import { BorderBeam } from '../cosmic/BorderBeam';
 
 export interface DevDbUser {
   id: string;
@@ -36,15 +29,13 @@ export function GoogleAccountChooserModal({
   isOpen,
   onClose,
   onSelectAccount,
-  appName = "Git Pulse",
+  appName = 'Git Pulse',
 }: GoogleAccountChooserModalProps) {
   const [users, setUsers] = useState<DevDbUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [customUsername, setCustomUsername] = useState("");
+  const [customUsername, setCustomUsername] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [selectingUsername, setSelectingUsername] = useState<string | null>(
-    null,
-  );
+  const [selectingUsername, setSelectingUsername] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -63,10 +54,10 @@ export function GoogleAccountChooserModal({
         if (isMounted) {
           setUsers([
             {
-              id: "admin-fallback",
-              username: "admin",
-              email: "admin@wonderlab.local",
-              role: "ADMIN",
+              id: 'admin-fallback',
+              username: 'admin',
+              email: 'admin@wonderlab.local',
+              role: 'ADMIN',
             },
           ]);
         }
@@ -131,9 +122,7 @@ export function GoogleAccountChooserModal({
               <h3 className="text-sm font-bold text-white tracking-wide uppercase">
                 Tài khoản Google
               </h3>
-              <p className="text-xs text-slate-400">
-                Đăng nhập vào {appName} qua Central Gateway
-              </p>
+              <p className="text-xs text-slate-400">Đăng nhập vào {appName} qua Central Gateway</p>
             </div>
           </div>
           <button
@@ -226,9 +215,7 @@ export function GoogleAccountChooserModal({
                 />
                 <button
                   type="submit"
-                  disabled={
-                    !customUsername.trim() || Boolean(selectingUsername)
-                  }
+                  disabled={!customUsername.trim() || Boolean(selectingUsername)}
                   className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#030712] bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 transition-all disabled:opacity-40 cursor-pointer"
                 >
                   Vào

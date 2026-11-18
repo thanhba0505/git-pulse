@@ -1,12 +1,11 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { StarfieldCanvas } from "../components/cosmic/StarfieldCanvas";
-import { AuthProvider } from "../lib/auth-context";
+import type { Metadata } from 'next';
+import './globals.css';
+import { StarfieldCanvas } from '../components/cosmic/StarfieldCanvas';
+import { AuthProvider } from '../lib/auth-context';
 
 export const metadata: Metadata = {
-  title: "Git Pulse | Celestial Git Radar & Standup Intelligence",
-  description:
-    "Developer Intelligence & Git Workspace with Dual-Core AI and Central Gateway SSO.",
+  title: 'Git Pulse | Celestial Git Radar & Standup Intelligence',
+  description: 'Developer Intelligence & Git Workspace with Dual-Core AI and Central Gateway SSO.',
 };
 
 export default function RootLayout({
@@ -19,9 +18,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-void text-slate-100 antialiased selection:bg-cyan-500 selection:text-void relative">
         <StarfieldCanvas />
         <AuthProvider>
-          <div className="relative z-10 flex min-h-screen flex-col">
-            {children}
-          </div>
+          <div className="relative z-10 flex min-h-screen flex-col">{children}</div>
         </AuthProvider>
       </body>
     </html>

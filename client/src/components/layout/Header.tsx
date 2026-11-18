@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import { User, GitStatus } from "../../types";
-import { PulsarWave } from "../cosmic/PulsarWave";
-import { Orbit, GitBranch, History, LogOut } from "lucide-react";
+import React from 'react';
+import { User, GitStatus } from '../../types';
+import { PulsarWave } from '../cosmic/PulsarWave';
+import { Orbit, GitBranch, History, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   user: User | null;
@@ -32,9 +32,7 @@ export function Header({
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-pulsar-emerald animate-ping" />
           </div>
           <div>
-            <span className="font-extrabold text-xl tracking-tight shimmer-text">
-              Git Pulse
-            </span>
+            <span className="font-extrabold text-xl tracking-tight shimmer-text">Git Pulse</span>
             <p className="text-xs text-slate-400 hidden sm:block">
               Celestial Git Radar & Standup Intelligence
             </p>
@@ -85,12 +83,8 @@ export function Header({
                 {user.username.slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden lg:block text-left text-xs">
-                <p className="font-medium text-slate-200 truncate max-w-[120px]">
-                  {user.username}
-                </p>
-                <p className="text-xs text-slate-400 truncate max-w-[140px]">
-                  {user.email}
-                </p>
+                <p className="font-medium text-slate-200 truncate max-w-[120px]">{user.username}</p>
+                <p className="text-xs text-slate-400 truncate max-w-[140px]">{user.email}</p>
               </div>
               <button
                 onClick={onLogout}

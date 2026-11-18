@@ -3,9 +3,9 @@ name: 🌿 Git Activity
 on:
   push:
     branches:
-      - "**"
+      - '**'
     tags-ignore:
-      - "v*"
+      - 'v*'
   pull_request:
     types: [opened, closed, reopened]
   create:
@@ -24,7 +24,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
       - name: Run Git Activity Notifier
         env:
