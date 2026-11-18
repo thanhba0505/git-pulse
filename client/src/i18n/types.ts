@@ -74,7 +74,6 @@ export interface OnboardingDictionary {
 
 export interface ScannerDictionary {
   title: string;
-  description: string;
   summaryStats: string;
   rangeLabel: string;
   rangeToday: string;

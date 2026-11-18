@@ -16,10 +16,10 @@ export const en: TranslationDictionary = {
     done: 'Done',
   },
   intro: {
-    tagline: 'Git Activity Sync & Standup Intelligence',
+    tagline: 'Git Activity Management',
   },
   footer: {
-    tagline: 'Git Activity Sync & Standup Intelligence',
+    tagline: 'Git Activity Management',
   },
   header: {
     brand: 'Git Pulse',
@@ -50,7 +50,7 @@ export const en: TranslationDictionary = {
   summaryStrip: {
     prsLabel: 'Pull Requests',
     prsBreakdown: '{open} Open • {merged} Merged',
-    commitsLabel: 'Commits Synced',
+    commitsLabel: 'Commits',
     commitsSubtitle: 'In selected window',
     reposLabel: 'Active Repositories',
     reposSubtitle: 'With contributions',
@@ -66,7 +66,6 @@ export const en: TranslationDictionary = {
   },
   scanner: {
     title: 'Pull Requests & Commits',
-    description: 'Sync your Pull Requests and Commits created within the selected timeframe.',
     summaryStats: '{prs} PRs • {commits} Commits',
     rangeLabel: 'Sync timeframe',
     rangeToday: 'Today',
@@ -80,7 +79,7 @@ export const en: TranslationDictionary = {
     clearSelection: 'Clear selection',
     selectedSummary: '{selected}/{total} PRs included in summary',
     selectPrAria: 'Include Pull Request {title}',
-    commitsCount: '{count} commit(s) in range',
+    commitsCount: '{count} commit(s)',
     showMoreCommits: 'Show {count} more commit(s)',
     collapseCommits: 'Collapse commits',
     openPrExternal: 'Open Pull Request on GitHub',

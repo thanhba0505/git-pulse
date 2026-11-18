@@ -131,9 +131,6 @@ export function ActivityScanner({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                {dict.scanner.description}
-              </p>
             </div>
 
             {/* Timeframe Filter & Sync Trigger */}

@@ -16,10 +16,10 @@ export const vi: TranslationDictionary = {
     done: 'Xong',
   },
   intro: {
-    tagline: 'Đồng bộ hoạt động Git & Tổng hợp Standup',
+    tagline: 'Quản lý hoạt động Git',
   },
   footer: {
-    tagline: 'Đồng bộ hoạt động Git & Tổng hợp Standup',
+    tagline: 'Quản lý hoạt động Git',
   },
   header: {
     brand: 'Git Pulse',
@@ -50,7 +50,7 @@ export const vi: TranslationDictionary = {
   summaryStrip: {
     prsLabel: 'Pull Requests',
     prsBreakdown: '{open} Mở • {merged} Đã gộp',
-    commitsLabel: 'Commits đã đồng bộ',
+    commitsLabel: 'Commits',
     commitsSubtitle: 'Trong khoảng thời gian chọn',
     reposLabel: 'Repositories hoạt động',
     reposSubtitle: 'Dự án có đóng góp',
@@ -66,7 +66,6 @@ export const vi: TranslationDictionary = {
   },
   scanner: {
     title: 'Hoạt động Pull Request & Commit',
-    description: 'Đồng bộ các Pull Request và Commit bạn đã tạo trong khoảng thời gian đã chọn.',
     summaryStats: '{prs} PR • {commits} Commit',
     rangeLabel: 'Khoảng thời gian đồng bộ',
     rangeToday: 'Hôm nay',
@@ -80,7 +79,7 @@ export const vi: TranslationDictionary = {
     clearSelection: 'Bỏ chọn hết',
     selectedSummary: 'Đã chọn {selected}/{total} PR đưa vào báo cáo',
     selectPrAria: 'Chọn Pull Request {title}',
-    commitsCount: '{count} commit trong phạm vi',
+    commitsCount: '{count} commit',
     showMoreCommits: 'Xem thêm {count} commit',
     collapseCommits: 'Thu gọn commit',
     openPrExternal: 'Mở Pull Request trên GitHub',
