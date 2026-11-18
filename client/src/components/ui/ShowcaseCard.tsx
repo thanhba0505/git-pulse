@@ -82,18 +82,34 @@ export function ShowcaseCard({
     };
 
     const handlePointerLeave = () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
       nextX = -500;
       nextY = -500;
       tiltX = 0;
       tiltY = 0;
-      if (!rafId) {
-        rafId = window.requestAnimationFrame(flushCoords);
+      el.style.setProperty('--card-x', '-500px');
+      el.style.setProperty('--card-y', '-500px');
+      if (tiltStrength > 0) {
+        el.style.setProperty('--tilt-x', '0deg');
+        el.style.setProperty('--tilt-y', '0deg');
+      }
+    };
+
+    const handleDocumentPointerOut = (e: PointerEvent) => {
+      if (!e.relatedTarget) {
+        handlePointerLeave();
       }
     };
 
     el.addEventListener('pointerenter', handlePointerEnter, { passive: true });
     el.addEventListener('pointermove', handlePointerMove, { passive: true });
     el.addEventListener('pointerleave', handlePointerLeave, { passive: true });
+    el.addEventListener('pointercancel', handlePointerLeave, { passive: true });
+    document.addEventListener('pointerout', handleDocumentPointerOut);
+    window.addEventListener('blur', handlePointerLeave);
 
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
@@ -101,6 +117,9 @@ export function ShowcaseCard({
       el.removeEventListener('pointerenter', handlePointerEnter);
       el.removeEventListener('pointermove', handlePointerMove);
       el.removeEventListener('pointerleave', handlePointerLeave);
+      el.removeEventListener('pointercancel', handlePointerLeave);
+      document.removeEventListener('pointerout', handleDocumentPointerOut);
+      window.removeEventListener('blur', handlePointerLeave);
     };
   }, [tiltStrength]);
 

@@ -72,6 +72,7 @@ export const api = {
     savePat: (token: string) =>
       fetchJson<{
         success: boolean;
+        id?: string;
         username: string;
         avatarUrl: string;
         authType: string;
@@ -79,10 +80,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       }),
-    disconnect: () =>
-      fetchJson<{ success: boolean }>('/github/disconnect', {
-        method: 'DELETE',
+    switchAccount: (accountId: string) =>
+      fetchJson<GitStatus>(`/github/accounts/${encodeURIComponent(accountId)}/active`, {
+        method: 'PATCH',
       }),
+    disconnect: (accountId?: string) =>
+      fetchJson<GitStatus>(
+        accountId ? `/github/accounts/${encodeURIComponent(accountId)}` : '/github/disconnect',
+        {
+          method: 'DELETE',
+        },
+      ),
     getActivity: (since?: string) => {
       const q = since ? `?since=${encodeURIComponent(since)}` : '';
       return fetchJson<PrActivity[]>(`/github/activity${q}`);

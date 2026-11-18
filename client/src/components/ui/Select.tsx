@@ -198,10 +198,10 @@ export function Select<T extends string>({
         disabled={disabled}
         onClick={() => (isOpen ? closeMenu() : openMenu())}
         onKeyDown={handleKeyDown}
-        className={`flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-lg bg-[#0C0E14] border text-left text-xs sm:text-sm transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-lg bg-[#090B10]/45 backdrop-blur-md border text-left text-xs sm:text-sm transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen
-            ? 'border-sky-500 ring-2 ring-sky-500/20 text-slate-100'
-            : 'border-slate-800 hover:border-slate-700 hover:bg-[#10131B] text-slate-200 focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-500/20'
+            ? 'border-sky-400/70 ring-2 ring-sky-500/20 text-slate-100'
+            : 'border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.06] text-slate-200 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/20'
         }`}
       >
         <span id={valueId} className="truncate font-medium">
@@ -220,7 +220,7 @@ export function Select<T extends string>({
           id={listboxId}
           role="listbox"
           aria-labelledby={label ? labelId : valueId}
-          className={`absolute z-50 min-w-full w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl bg-[#141821] border border-slate-700/80 p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.85)] gp-popover-in ${
+          className={`gp-glass-panel absolute z-50 min-w-full w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in ${
             openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           } ${align === 'right' ? 'right-0' : 'left-0'}`}
         >

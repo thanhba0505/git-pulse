@@ -21,14 +21,16 @@ interface GitHubConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
   status: GitStatus;
+  mode?: 'connect' | 'add' | 'manage';
   onSavePat: (token: string) => Promise<void>;
-  onDisconnect: () => Promise<void>;
+  onDisconnect: (accountId?: string) => Promise<void>;
 }
 
 export function GitHubConnectModal({
   isOpen,
   onClose,
   status,
+  mode = 'manage',
   onSavePat,
   onDisconnect,
 }: GitHubConnectModalProps) {
@@ -71,7 +73,7 @@ export function GitHubConnectModal({
     setIsLoading(true);
     setError(null);
     try {
-      await onDisconnect();
+      await onDisconnect(status.activeAccountId);
       setConfirmingDisconnect(false);
       onClose();
     } catch (err) {
@@ -82,6 +84,13 @@ export function GitHubConnectModal({
   };
 
   const dateLocale = locale === 'en' ? 'en-US' : 'vi-VN';
+  const showManageView = Boolean(status.connected && mode !== 'add');
+  const modalTitle =
+    mode === 'add'
+      ? dict.githubModal.titleAdd
+      : showManageView
+        ? dict.githubModal.titleManage
+        : dict.githubModal.titleConnect;
 
   return (
     <ModalDialog
@@ -91,10 +100,10 @@ export function GitHubConnectModal({
       maxWidthClass="max-w-lg"
     >
       {/* Modal Header */}
-      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-800/80">
+      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-white/[0.08]">
         <div className="flex items-center gap-3.5 min-w-0">
           <div
-            className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400 shrink-0"
+            className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
             aria-hidden="true"
           >
             <GitBranch className="w-5 h-5" />
@@ -104,7 +113,7 @@ export function GitHubConnectModal({
               id="github-connect-title"
               className="text-base font-semibold text-slate-100 tracking-tight"
             >
-              {status.connected ? dict.githubModal.titleManage : dict.githubModal.titleConnect}
+              {modalTitle}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
               {dict.githubModal.subtitle}
@@ -134,10 +143,10 @@ export function GitHubConnectModal({
           </div>
         )}
 
-        {status.connected ? (
+        {showManageView ? (
           <div className="space-y-4">
             {/* Connected Profile Card */}
-            <div className="p-4 rounded-xl bg-[#0C0E14] border border-slate-800 flex items-center justify-between gap-3">
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3">
               <div className="flex items-center gap-3.5 min-w-0">
                 {status.gitAvatar && (
                   <img
@@ -286,18 +295,18 @@ export function GitHubConnectModal({
               className="font-mono"
             />
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800/80">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/[0.08]">
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-[#161A24] hover:bg-slate-800 border border-slate-700/80 transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] transition-colors cursor-pointer"
               >
                 {dict.common.close}
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex items-center justify-center min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="gp-cta-shimmer inline-flex items-center justify-center min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {isLoading ? dict.githubModal.savingBtn : dict.githubModal.saveBtn}
               </button>

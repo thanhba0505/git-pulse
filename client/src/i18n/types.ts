@@ -21,6 +21,13 @@ export interface CommonDictionary {
 export interface HeaderDictionary {
   brand: string;
   subtitle: string;
+  gitSwitcherLabel: string;
+  gitConnectPrompt: string;
+  gitAccountsHeading: string;
+  addGitAccount: string;
+  activeBadge: string;
+  userMenuLabel: string;
+  settings: string;
   commandPaletteBtn: string;
   commandPaletteTooltip: string;
   toggleMotionPause: string;
@@ -33,9 +40,14 @@ export interface HeaderDictionary {
   languageSwitchLabel: string;
 }
 
+export interface IntroDictionary {
+  tagline: string;
+}
+
 export interface WorkspaceDictionary {
   title: string;
   subtitle: string;
+  activeAccountContext: string;
 }
 
 export interface SummaryStripDictionary {
@@ -51,6 +63,9 @@ export interface OnboardingDictionary {
   title: string;
   description: string;
   connectNow: string;
+  featureSync: string;
+  featureAi: string;
+  featureExport: string;
 }
 
 export interface ScannerDictionary {
@@ -168,12 +183,14 @@ export interface ToastsDictionary {
   syncSuccess: string;
   standupReady: string;
   gitConnected: string;
+  gitSwitched: string;
   gitDisconnected: string;
   reportDeleted: string;
 }
 
 export interface GithubModalDictionary {
   titleConnect: string;
+  titleAdd: string;
   titleManage: string;
   subtitle: string;
   lastSync: string;
@@ -277,8 +294,26 @@ export interface AuthDictionary {
   };
 }
 
+export interface SettingsModalDictionary {
+  title: string;
+  subtitle: string;
+  interfaceSection: string;
+  languageLabel: string;
+  motionLabel: string;
+  motionOn: string;
+  motionOff: string;
+  gitAccountsSection: string;
+  addAccountBtn: string;
+  noAccounts: string;
+  activeLabel: string;
+  switchToBtn: string;
+  disconnectAccountBtn: string;
+  confirmDisconnectBtn: string;
+}
+
 export interface TranslationDictionary {
   common: CommonDictionary;
+  intro: IntroDictionary;
   header: HeaderDictionary;
   workspace: WorkspaceDictionary;
   summaryStrip: SummaryStripDictionary;
@@ -289,6 +324,7 @@ export interface TranslationDictionary {
   commandPalette: CommandPaletteDictionary;
   toasts: ToastsDictionary;
   githubModal: GithubModalDictionary;
+  settingsModal: SettingsModalDictionary;
   historyModal: HistoryModalDictionary;
   auth: AuthDictionary;
 }

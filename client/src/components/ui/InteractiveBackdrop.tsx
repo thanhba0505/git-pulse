@@ -366,9 +366,7 @@ function FloatingFieldLayer({ illuminated }: { illuminated: boolean }) {
   return (
     <div
       className={
-        illuminated
-          ? 'absolute inset-0 gp-float-spotlight-mask opacity-95'
-          : 'absolute inset-0 opacity-60'
+        illuminated ? 'absolute inset-0 gp-float-spotlight-mask' : 'absolute inset-0 opacity-60'
       }
     >
       {/* Translucent Architectural Geometric Tiles */}
@@ -490,6 +488,22 @@ export function InteractiveBackdrop() {
       }
     };
 
+    const deactivateSpotlight = () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      isActive = false;
+      normX = 0;
+      normY = 0;
+      lastTrailX = -999;
+      lastTrailY = -999;
+      el.style.setProperty('--nx', '0');
+      el.style.setProperty('--ny', '0');
+      el.style.setProperty('--spot-radius', '0px');
+      el.style.setProperty('--spot-opacity', '0');
+    };
+
     const spawnTrailSpark = (x: number, y: number, dx: number, dy: number) => {
       if (!canSpawnFx()) return;
       const spark = trailPoolRef.current[trailIdx];
@@ -545,6 +559,11 @@ export function InteractiveBackdrop() {
     };
 
     const handlePointerMove = (e: PointerEvent) => {
+      if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= viewportW || e.clientY >= viewportH) {
+        deactivateSpotlight();
+        return;
+      }
+
       latestX = e.clientX;
       latestY = e.clientY;
       normX = (e.clientX / viewportW - 0.5) * 2;
@@ -564,6 +583,9 @@ export function InteractiveBackdrop() {
     };
 
     const handlePointerDown = (e: PointerEvent) => {
+      if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= viewportW || e.clientY >= viewportH) {
+        return;
+      }
       latestX = e.clientX;
       latestY = e.clientY;
       isActive = true;
@@ -571,28 +593,37 @@ export function InteractiveBackdrop() {
       spawnClickRipple(e.clientX, e.clientY);
     };
 
-    const handlePointerLeave = () => {
-      isActive = false;
-      normX = 0;
-      normY = 0;
-      lastTrailX = -999;
-      lastTrailY = -999;
-      scheduleUpdate();
+    const handlePointerOut = (e: PointerEvent) => {
+      if (!e.relatedTarget) {
+        deactivateSpotlight();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        deactivateSpotlight();
+      }
     };
 
     window.addEventListener('resize', updateViewport, { passive: true });
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('pointerdown', handlePointerDown, { passive: true });
-    document.addEventListener('mouseleave', handlePointerLeave);
-    window.addEventListener('blur', handlePointerLeave);
+    document.addEventListener('pointerout', handlePointerOut);
+    document.addEventListener('mouseleave', deactivateSpotlight);
+    document.documentElement.addEventListener('pointerleave', deactivateSpotlight);
+    window.addEventListener('blur', deactivateSpotlight);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updateViewport);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('mouseleave', handlePointerLeave);
-      window.removeEventListener('blur', handlePointerLeave);
+      document.removeEventListener('pointerout', handlePointerOut);
+      document.removeEventListener('mouseleave', deactivateSpotlight);
+      document.documentElement.removeEventListener('pointerleave', deactivateSpotlight);
+      window.removeEventListener('blur', deactivateSpotlight);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

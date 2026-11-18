@@ -14,7 +14,7 @@ export function WorkspaceSkeleton() {
   return (
     <div aria-busy="true" aria-label={dict.auth.workspaceLoading} className="flex-1 flex flex-col">
       {/* Skeleton Header */}
-      <div className="w-full border-b border-slate-800/80 bg-[#090B10]/90">
+      <div className="w-full border-b border-white/[0.08] bg-[#090B10]/55 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Skeleton className="w-8 h-8 rounded-lg" />

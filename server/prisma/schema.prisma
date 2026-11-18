@@ -39,17 +39,17 @@ model User {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
-  gitAccount GitAccount?
-  settings   UserSettings?
-  reports    ReportHistory[]
-  bookmarks  GitRepoBookmark[]
+  gitAccounts GitAccount[]
+  settings    UserSettings?
+  reports     ReportHistory[]
+  bookmarks   GitRepoBookmark[]
 
   @@map("users")
 }
 
 model GitAccount {
   id                 String       @id @default(uuid())
-  userId             String       @unique
+  userId             String
   user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   authType           GitAuthType  @default(OAUTH)
   encryptedToken     String       // AES-256-GCM encrypted token
@@ -62,11 +62,14 @@ model GitAccount {
   scopes             String[]     @default([])
   hasExcessiveScopes Boolean      @default(false) // Warning flag for dangerous scopes
   tokenStatus        TokenStatus  @default(ACTIVE)
+  isActive           Boolean      @default(true)
   expiresAt          DateTime?    // Token expiration for Fine-Grained PAT
   lastSyncAt         DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
+  @@unique([userId, gitUsername])
+  @@index([userId, isActive])
   @@map("git_accounts")
 }
 

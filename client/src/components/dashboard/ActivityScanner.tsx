@@ -166,7 +166,7 @@ export function ActivityScanner({
 
           {/* Repo Filter Pills & Selection Toolbar */}
           {activities.length > 0 && (
-            <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="pt-3 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               {uniqueRepos.length > 1 ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
@@ -174,8 +174,8 @@ export function ActivityScanner({
                     onClick={() => onRepoFilterChange('ALL')}
                     className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                       repoFilter === 'ALL'
-                        ? 'bg-sky-500/15 text-sky-300 border border-sky-500/35'
-                        : 'bg-[#0C0E14] text-slate-400 hover:text-slate-200 border border-slate-800'
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
+                        : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
                     }`}
                   >
                     {dict.scanner.allRepos}
@@ -191,8 +191,8 @@ export function ActivityScanner({
                         title={repo}
                         className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors cursor-pointer max-w-[180px] truncate ${
                           active
-                            ? 'bg-sky-500/15 text-sky-300 border border-sky-500/35'
-                            : 'bg-[#0C0E14] text-slate-400 hover:text-slate-200 border border-slate-800'
+                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
+                            : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
                         }`}
                       >
                         {shortName}
@@ -290,15 +290,15 @@ export function ActivityScanner({
                       onClick={() => onTogglePrSelection(prKey)}
                       className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
                         isSelected
-                          ? 'bg-sky-500 border-sky-500 text-slate-950'
-                          : 'bg-[#0C0E14] border-slate-700 hover:border-slate-500 text-transparent'
+                          ? 'bg-sky-500 border-sky-400 text-slate-950'
+                          : 'bg-white/[0.04] border-white/[0.15] hover:border-white/[0.3] text-transparent'
                       }`}
                     >
                       <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
                     </button>
 
                     <div
-                      className={`w-9 h-9 rounded-lg bg-[#161A24] border border-slate-800 flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
+                      className={`w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.09] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
                       aria-hidden="true"
                     >
                       <StateIcon className="w-4 h-4" />

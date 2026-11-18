@@ -86,7 +86,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={item.id}
               role={isError ? 'alert' : 'status'}
-              className={`pointer-events-auto gp-toast-enter flex items-start gap-3 p-3.5 rounded-xl bg-[#141821]/95 backdrop-blur-md border ${borderClass} shadow-[0_16px_40px_-10px_rgba(0,0,0,0.75)]`}
+              className={`pointer-events-auto gp-toast-enter gp-glass-panel flex items-start gap-3 p-3.5 rounded-xl border ${borderClass}`}
             >
               <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${iconClass}`} aria-hidden="true" />
               <div className="min-w-0 flex-1">

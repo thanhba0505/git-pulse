@@ -167,7 +167,7 @@ export function StandupOutputDock({
                   className={`inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
                     isCopied
                       ? 'bg-emerald-500 text-slate-950 border-emerald-500 font-semibold'
-                      : 'bg-[#161A24] hover:bg-[#191E2A] text-slate-200 border-slate-700/80 hover:border-slate-600'
+                      : 'bg-white/[0.045] hover:bg-white/[0.09] text-slate-200 border-white/[0.09] hover:border-white/[0.18]'
                   }`}
                 >
                   {isCopied ? (
@@ -190,10 +190,10 @@ export function StandupOutputDock({
             placeholder={dict.standupDock.editPlaceholder}
             rows={Math.max(4, activeBullets.length + 1)}
             aria-label={dict.common.edit}
-            className="w-full p-4 rounded-lg bg-[#0C0E14] border border-sky-500/60 focus:ring-2 focus:ring-sky-500/20 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed outline-none resize-y"
+            className="w-full p-4 rounded-lg bg-[#090B10]/50 backdrop-blur-md border border-sky-400/60 focus:ring-2 focus:ring-sky-500/20 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed outline-none resize-y"
           />
         ) : (
-          <div className="p-4 sm:p-5 rounded-lg bg-[#0C0E14] border border-slate-800 font-mono text-xs sm:text-sm text-slate-200 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
+          <div className="p-4 sm:p-5 rounded-lg bg-[#090B10]/45 backdrop-blur-md border border-white/[0.08] font-mono text-xs sm:text-sm text-slate-200 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
             <ul role="list" className="space-y-2.5">
               {activeBullets.map((bullet, idx) => (
                 <li

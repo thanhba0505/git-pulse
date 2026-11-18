@@ -6,8 +6,22 @@ export interface User {
   role: string;
 }
 
+export interface GitAccountSummary {
+  id: string;
+  gitUsername: string;
+  gitAvatar?: string | null;
+  authType?: 'OAUTH' | 'PAT';
+  scopes?: string[];
+  hasExcessiveScopes?: boolean;
+  tokenStatus?: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
+  expiresAt?: string | null;
+  lastSyncAt?: string | null;
+  isActive: boolean;
+}
+
 export interface GitStatus {
   connected: boolean;
+  activeAccountId?: string;
   gitUsername?: string;
   gitAvatar?: string;
   authType?: 'OAUTH' | 'PAT';
@@ -16,6 +30,7 @@ export interface GitStatus {
   tokenStatus?: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
   expiresAt?: string | null;
   lastSyncAt?: string;
+  accounts?: GitAccountSummary[];
 }
 
 export interface CommitItem {

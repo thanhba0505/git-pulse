@@ -30,6 +30,34 @@ export interface RequestMetadata {
   userAgent?: string;
 }
 
+export interface GitAccountSummaryResponse {
+  id: string;
+  gitUsername: string;
+  gitAvatar: string | null;
+  authType: 'OAUTH' | 'PAT';
+  scopes: string[];
+  hasExcessiveScopes: boolean;
+  tokenStatus: string;
+  expiresAt: Date | null;
+  lastSyncAt: Date | null;
+  isActive: boolean;
+}
+
+export interface GitStatusResponse {
+  connected: boolean;
+  success?: boolean;
+  activeAccountId?: string;
+  gitUsername?: string;
+  gitAvatar?: string | null;
+  authType?: 'OAUTH' | 'PAT';
+  scopes?: string[];
+  hasExcessiveScopes?: boolean;
+  tokenStatus?: string;
+  expiresAt?: Date | null;
+  lastSyncAt?: Date | null;
+  accounts: GitAccountSummaryResponse[];
+}
+
 @Injectable()
 export class GitHubService {
   private readonly logger = new Logger(GitHubService.name);
@@ -145,51 +173,66 @@ export class GitHubService {
     // 3. Encrypt token with Per-User HKDF Key Derivation
     const encrypted = this.crypto.encrypt(cleanToken, userId);
 
-    const account = await this.prisma.gitAccount.upsert({
-      where: { userId },
-      update: {
-        authType,
-        encryptedToken: encrypted.encryptedText,
-        tokenIv: encrypted.iv,
-        tokenTag: encrypted.tag,
-        keyVersion: encrypted.keyVersion,
-        gitUsername: ghUser.login,
-        gitId: String(ghUser.id),
-        gitAvatar: ghUser.avatar_url,
-        scopes,
-        hasExcessiveScopes,
-        tokenStatus: 'ACTIVE',
-        expiresAt,
-        lastSyncAt: new Date(),
-      },
-      create: {
-        userId,
-        authType,
-        encryptedToken: encrypted.encryptedText,
-        tokenIv: encrypted.iv,
-        tokenTag: encrypted.tag,
-        keyVersion: encrypted.keyVersion,
-        gitUsername: ghUser.login,
-        gitId: String(ghUser.id),
-        gitAvatar: ghUser.avatar_url,
-        scopes,
-        hasExcessiveScopes,
-        tokenStatus: 'ACTIVE',
-        expiresAt,
-        lastSyncAt: new Date(),
-      },
+    const account = await this.prisma.$transaction(async (tx) => {
+      await tx.gitAccount.updateMany({
+        where: { userId },
+        data: { isActive: false },
+      });
+
+      return tx.gitAccount.upsert({
+        where: {
+          userId_gitUsername: {
+            userId,
+            gitUsername: ghUser.login,
+          },
+        },
+        update: {
+          authType,
+          encryptedToken: encrypted.encryptedText,
+          tokenIv: encrypted.iv,
+          tokenTag: encrypted.tag,
+          keyVersion: encrypted.keyVersion,
+          gitUsername: ghUser.login,
+          gitId: String(ghUser.id),
+          gitAvatar: ghUser.avatar_url,
+          scopes,
+          hasExcessiveScopes,
+          tokenStatus: 'ACTIVE',
+          isActive: true,
+          expiresAt,
+          lastSyncAt: new Date(),
+        },
+        create: {
+          userId,
+          authType,
+          encryptedToken: encrypted.encryptedText,
+          tokenIv: encrypted.iv,
+          tokenTag: encrypted.tag,
+          keyVersion: encrypted.keyVersion,
+          gitUsername: ghUser.login,
+          gitId: String(ghUser.id),
+          gitAvatar: ghUser.avatar_url,
+          scopes,
+          hasExcessiveScopes,
+          tokenStatus: 'ACTIVE',
+          isActive: true,
+          expiresAt,
+          lastSyncAt: new Date(),
+        },
+      });
     });
 
     await this.recordAuditLog(
       userId,
       authType === 'OAUTH' ? 'OAUTH_SAVE' : 'PAT_SAVE',
       'SUCCESS',
-      `Scopes: ${scopes.join(', ') || 'fine-grained'}${hasExcessiveScopes ? ' [EXCESSIVE_SCOPES_DETECTED]' : ''}`,
+      `Account: @${ghUser.login} | Scopes: ${scopes.join(', ') || 'fine-grained'}${hasExcessiveScopes ? ' [EXCESSIVE_SCOPES_DETECTED]' : ''}`,
       meta,
     );
 
     return {
       success: true,
+      id: account.id,
       username: account.gitUsername,
       avatarUrl: account.gitAvatar,
       authType: account.authType,
@@ -197,6 +240,7 @@ export class GitHubService {
       hasExcessiveScopes: account.hasExcessiveScopes,
       tokenStatus: account.tokenStatus,
       expiresAt: account.expiresAt,
+      isActive: account.isActive,
     };
   }
 
@@ -243,29 +287,122 @@ export class GitHubService {
     return this.savePersonalAccessToken(userId, tokenData.access_token, 'OAUTH', meta);
   }
 
-  async getStatus(userId: string) {
-    const account = await this.prisma.gitAccount.findUnique({
+  async getStatus(userId: string): Promise<GitStatusResponse> {
+    const accounts = await this.prisma.gitAccount.findMany({
       where: { userId },
+      orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
     });
 
-    if (!account) {
-      return { connected: false };
+    if (accounts.length === 0) {
+      return { connected: false, accounts: [] };
     }
+
+    const active = accounts.find((a) => a.isActive) ?? accounts[0];
+
+    const mappedAccounts = accounts.map((acc) => ({
+      id: acc.id,
+      gitUsername: acc.gitUsername,
+      gitAvatar: acc.gitAvatar,
+      authType: acc.authType,
+      scopes: acc.scopes,
+      hasExcessiveScopes: acc.hasExcessiveScopes,
+      tokenStatus: acc.tokenStatus,
+      expiresAt: acc.expiresAt,
+      lastSyncAt: acc.lastSyncAt,
+      isActive: acc.id === active.id,
+    }));
 
     return {
       connected: true,
-      gitUsername: account.gitUsername,
-      gitAvatar: account.gitAvatar,
-      authType: account.authType,
-      scopes: account.scopes,
-      hasExcessiveScopes: account.hasExcessiveScopes,
-      tokenStatus: account.tokenStatus,
-      expiresAt: account.expiresAt,
-      lastSyncAt: account.lastSyncAt,
+      activeAccountId: active.id,
+      gitUsername: active.gitUsername,
+      gitAvatar: active.gitAvatar,
+      authType: active.authType,
+      scopes: active.scopes,
+      hasExcessiveScopes: active.hasExcessiveScopes,
+      tokenStatus: active.tokenStatus,
+      expiresAt: active.expiresAt,
+      lastSyncAt: active.lastSyncAt,
+      accounts: mappedAccounts,
     };
   }
 
-  async disconnect(userId: string, meta?: RequestMetadata) {
+  async switchActiveAccount(
+    userId: string,
+    accountId: string,
+    meta?: RequestMetadata,
+  ): Promise<GitStatusResponse> {
+    const target = await this.prisma.gitAccount.findFirst({
+      where: { id: accountId, userId },
+    });
+
+    if (!target) {
+      throw new NotFoundException('Không tìm thấy tài khoản GitHub đã liên kết.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.gitAccount.updateMany({
+        where: { userId },
+        data: { isActive: false },
+      });
+      await tx.gitAccount.updateMany({
+        where: { id: accountId, userId },
+        data: { isActive: true },
+      });
+    });
+
+    await this.recordAuditLog(
+      userId,
+      'ACCOUNT_SWITCH',
+      'SUCCESS',
+      `Switched active GitHub account to @${target.gitUsername}`,
+      meta,
+    );
+
+    return this.getStatus(userId);
+  }
+
+  async disconnect(
+    userId: string,
+    meta?: RequestMetadata,
+    accountId?: string,
+  ): Promise<GitStatusResponse> {
+    if (accountId) {
+      const target = await this.prisma.gitAccount.findFirst({
+        where: { id: accountId, userId },
+      });
+      if (!target) {
+        throw new NotFoundException('Không tìm thấy tài khoản GitHub đã liên kết.');
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.gitAccount.deleteMany({
+          where: { id: accountId, userId },
+        });
+
+        const remaining = await tx.gitAccount.findMany({
+          where: { userId },
+          orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
+        });
+
+        if (remaining.length > 0 && !remaining.some((a) => a.isActive)) {
+          await tx.gitAccount.updateMany({
+            where: { id: remaining[0].id, userId },
+            data: { isActive: true },
+          });
+        }
+      });
+
+      await this.recordAuditLog(
+        userId,
+        'DISCONNECT',
+        'SUCCESS',
+        `Purged GitHub account @${target.gitUsername} from database`,
+        meta,
+      );
+      return this.getStatus(userId);
+    }
+
     await this.prisma.gitAccount.deleteMany({
       where: { userId },
     });
@@ -273,19 +410,20 @@ export class GitHubService {
       userId,
       'DISCONNECT',
       'SUCCESS',
-      'Purged GitHub tokens from database',
+      'Purged all GitHub tokens from database',
       meta,
     );
-    return { success: true };
+    return { success: true, connected: false, accounts: [] };
   }
 
   async getDecryptedToken(
     userId: string,
     action = 'TOKEN_DECRYPT',
     meta?: RequestMetadata,
-  ): Promise<{ token: string; username: string }> {
-    const account = await this.prisma.gitAccount.findUnique({
+  ): Promise<{ token: string; username: string; accountId: string }> {
+    const account = await this.prisma.gitAccount.findFirst({
       where: { userId },
+      orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
     });
 
     if (!account) {
@@ -307,7 +445,7 @@ export class GitHubService {
       );
 
       await this.recordAuditLog(userId, action, 'SUCCESS', undefined, meta);
-      return { token, username: account.gitUsername };
+      return { token, username: account.gitUsername, accountId: account.id };
     } catch (err: unknown) {
       await this.recordAuditLog(userId, action, 'FAILED', 'Decryption error', meta);
       throw err;
@@ -319,7 +457,11 @@ export class GitHubService {
     sinceIso?: string,
     meta?: RequestMetadata,
   ): Promise<PrActivity[]> {
-    const { token, username } = await this.getDecryptedToken(userId, 'ACTIVITY_FETCH', meta);
+    const { token, username, accountId } = await this.getDecryptedToken(
+      userId,
+      'ACTIVITY_FETCH',
+      meta,
+    );
 
     // Calculate beginning of today in UTC if not provided
     let since: Date;
@@ -343,7 +485,7 @@ export class GitHubService {
     if (!searchRes.ok) {
       if (searchRes.status === 401) {
         await this.prisma.gitAccount.updateMany({
-          where: { userId },
+          where: { id: accountId, userId },
           data: { tokenStatus: 'REVOKED' },
         });
         await this.recordAuditLog(
@@ -428,9 +570,9 @@ export class GitHubService {
       }
     }
 
-    // Update last sync
+    // Update last sync on active account
     await this.prisma.gitAccount.updateMany({
-      where: { userId },
+      where: { id: accountId, userId },
       data: { lastSyncAt: new Date() },
     });
 

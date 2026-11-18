@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/layout/Header';
+import { IntroScreen } from '../components/layout/IntroScreen';
 import { ActivitySummaryStrip } from '../components/dashboard/ActivitySummaryStrip';
 import { ActivityScanner, getPrKey } from '../components/dashboard/ActivityScanner';
 import { CockpitAiConsole } from '../components/ai/CockpitAiConsole';
@@ -16,7 +17,7 @@ import { WorkspaceSkeleton } from '../components/ui/Skeleton';
 import { ShowcaseCard } from '../components/ui/ShowcaseCard';
 import { useToast } from '../components/ui/Toast';
 import { useAmbientMotionPreference } from '../lib/motion-preference';
-import { GitBranch, Pause, Sparkles } from 'lucide-react';
+import { CheckCircle2, GitBranch, Pause, RefreshCw, Sparkles } from 'lucide-react';
 
 // Lazy-load secondary modal overlays to keep initial page JS lean
 const GitHubConnectModal = dynamic(
@@ -40,6 +41,11 @@ const CommandPalette = dynamic(
   { ssr: false },
 );
 
+const SettingsModal = dynamic(
+  () => import('../components/settings/SettingsModal').then((m) => m.SettingsModal),
+  { ssr: false },
+);
+
 const ACTIVITY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 interface CachedActivityPayload {
@@ -47,17 +53,22 @@ interface CachedActivityPayload {
   activities: PrActivity[];
 }
 
-function getCacheKey(userId: string, sinceOption: 'today' | '24h' | '7d'): string {
-  return `git_pulse_activity_cache:${userId}:${sinceOption}`;
+function getCacheKey(
+  userId: string,
+  accountKey: string,
+  sinceOption: 'today' | '24h' | '7d',
+): string {
+  return `git_pulse_activity_cache:${userId}:${accountKey}:${sinceOption}`;
 }
 
 function readCachedActivities(
   userId: string,
+  accountKey: string,
   sinceOption: 'today' | '24h' | '7d',
 ): PrActivity[] | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.sessionStorage.getItem(getCacheKey(userId, sinceOption));
+    const raw = window.sessionStorage.getItem(getCacheKey(userId, accountKey, sinceOption));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedActivityPayload;
     if (!parsed || !Array.isArray(parsed.activities)) return null;
@@ -70,6 +81,7 @@ function readCachedActivities(
 
 function writeCachedActivities(
   userId: string,
+  accountKey: string,
   sinceOption: 'today' | '24h' | '7d',
   activities: PrActivity[],
 ): void {
@@ -79,7 +91,10 @@ function writeCachedActivities(
       timestamp: Date.now(),
       activities,
     };
-    window.sessionStorage.setItem(getCacheKey(userId, sinceOption), JSON.stringify(payload));
+    window.sessionStorage.setItem(
+      getCacheKey(userId, accountKey, sinceOption),
+      JSON.stringify(payload),
+    );
   } catch {
     // Ignore storage quota errors
   }
@@ -112,9 +127,12 @@ export default function HomePage() {
     logout,
   } = useAuth();
 
-  const [gitStatus, setGitStatus] = useState<GitStatus>({ connected: false });
+  const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const [gitStatus, setGitStatus] = useState<GitStatus>({ connected: false, accounts: [] });
+  const [gitModalMode, setGitModalMode] = useState<'connect' | 'add' | 'manage'>('connect');
   const [isGitModalOpen, setIsGitModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const [activities, setActivities] = useState<PrActivity[]>([]);
@@ -150,26 +168,38 @@ export default function HomePage() {
     setSelectedPrKeys(new Set(nextActivities.map(getPrKey)));
   }, []);
 
+  const gitStatusRef = useRef<GitStatus>(gitStatus);
+  useEffect(() => {
+    gitStatusRef.current = gitStatus;
+  }, [gitStatus]);
+
   const loadGitStatus = useCallback(async () => {
     try {
       const status = await api.github.getStatus();
       setGitStatus(status);
       return status;
     } catch {
-      setGitStatus({ connected: false });
-      return { connected: false };
+      const empty: GitStatus = { connected: false, accounts: [] };
+      setGitStatus(empty);
+      return empty;
     }
   }, []);
 
   const handleScanActivity = useCallback(
-    async (overrideRange?: 'today' | '24h' | '7d', notifyToast = true) => {
+    async (
+      overrideRange?: 'today' | '24h' | '7d',
+      notifyToast = true,
+      statusOverride?: GitStatus,
+    ) => {
+      const activeStatus = statusOverride ?? gitStatusRef.current;
+      const accountKey = activeStatus.activeAccountId || activeStatus.gitUsername || 'default';
       const targetRange = overrideRange ?? sinceOption;
       if (overrideRange && overrideRange !== sinceOption) {
         setSinceOption(overrideRange);
       }
 
       if (user) {
-        const cached = readCachedActivities(user.id, targetRange);
+        const cached = readCachedActivities(user.id, accountKey, targetRange);
         if (cached) {
           applyScannedActivities(cached);
         }
@@ -196,7 +226,7 @@ export default function HomePage() {
         applyScannedActivities(data);
 
         if (user) {
-          writeCachedActivities(user.id, targetRange, data);
+          writeCachedActivities(user.id, accountKey, targetRange, data);
         }
 
         if (notifyToast) {
@@ -215,15 +245,24 @@ export default function HomePage() {
     [sinceOption, user, applyScannedActivities, dict.scanner.scanError, showToast, t],
   );
 
+  const scanRef = useRef(handleScanActivity);
   useEffect(() => {
-    if (user) {
-      loadGitStatus().then((status) => {
-        if (status.connected) {
-          handleScanActivity(undefined, false);
-        }
-      });
+    scanRef.current = handleScanActivity;
+  }, [handleScanActivity]);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) {
+      setGitStatus({ connected: false, accounts: [] });
+      return;
     }
-  }, [user, loadGitStatus, handleScanActivity]);
+
+    loadGitStatus().then((status) => {
+      if (status.connected) {
+        void scanRef.current(undefined, false, status);
+      }
+    });
+  }, [userId, loadGitStatus]);
 
   const handleAccountSelect = async (account: {
     username: string;
@@ -245,17 +284,50 @@ export default function HomePage() {
 
   const handleSavePat = async (token: string) => {
     await api.github.savePat(token);
-    await loadGitStatus();
-    await handleScanActivity(undefined, false);
+    const nextStatus = await loadGitStatus();
+    setBullets([]);
+    setModelUsed('');
+    setScanError(null);
+    setAiError(null);
+    await handleScanActivity(undefined, false, nextStatus);
     showToast({ title: dict.toasts.gitConnected, variant: 'success' });
   };
 
-  const handleDisconnectGit = async () => {
-    await api.github.disconnect();
-    setGitStatus({ connected: false });
+  const handleSelectGitAccount = async (accountId: string) => {
+    const nextStatus = await api.github.switchAccount(accountId);
+    setGitStatus(nextStatus);
+    applyScannedActivities([]);
+    setBullets([]);
+    setModelUsed('');
+    setScanError(null);
+    setAiError(null);
+    if (nextStatus.gitUsername) {
+      showToast({
+        title: t('toasts.gitSwitched', { username: nextStatus.gitUsername }),
+        variant: 'info',
+      });
+    }
+    if (nextStatus.connected) {
+      await handleScanActivity(undefined, false, nextStatus);
+    }
+  };
+
+  const handleDisconnectGit = async (accountId?: string) => {
+    const nextStatus = await api.github.disconnect(accountId);
     clearAllActivityCache();
     applyScannedActivities([]);
+    setBullets([]);
+    setModelUsed('');
+    setGitStatus(nextStatus);
     showToast({ title: dict.toasts.gitDisconnected, variant: 'info' });
+    if (nextStatus.connected) {
+      await handleScanActivity(undefined, false, nextStatus);
+    }
+  };
+
+  const openGitConnectModal = (mode: 'connect' | 'add' | 'manage') => {
+    setGitModalMode(mode);
+    setIsGitModalOpen(true);
   };
 
   const handleLogout = async () => {
@@ -353,9 +425,9 @@ export default function HomePage() {
     generateRef.current = handleGenerateSummary;
   }, [handleGenerateSummary]);
 
-  // Global keyboard shortcuts (⌘K / Ctrl+K for Command Palette, ⌘Enter for Generate)
+  // Global keyboard shortcuts (⌘K / Ctrl+K for Command Palette, ⌘Enter for Generate when connected)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !gitStatus.connected) return;
 
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -371,7 +443,7 @@ export default function HomePage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [user, selectedActivities.length, isGenerating]);
+  }, [user, gitStatus.connected, selectedActivities.length, isGenerating]);
 
   const handleTogglePrSelection = (key: string) => {
     setAiError(null);
@@ -411,6 +483,10 @@ export default function HomePage() {
     });
   };
 
+  if (!isIntroComplete) {
+    return <IntroScreen onComplete={() => setIsIntroComplete(true)} />;
+  }
+
   if (isAuthLoading) {
     return <WorkspaceSkeleton />;
   }
@@ -436,110 +512,142 @@ export default function HomePage() {
       <Header
         user={user}
         gitStatus={gitStatus}
+        onSelectGitAccount={(accountId) => void handleSelectGitAccount(accountId)}
+        onOpenAddGitAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
         onOpenCommandPalette={() => setIsPaletteOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
-        onOpenGitModal={() => setIsGitModalOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         onLogout={handleLogout}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        {/* Clean Workspace Title */}
-        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
-            {dict.workspace.title}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400">{dict.workspace.subtitle}</p>
-        </div>
-
-        {/* Real-Time Summary Bento Strip when GitHub is Connected */}
-        {gitStatus.connected && <ActivitySummaryStrip activities={activities} />}
-
-        {/* GitHub Onboarding Callout */}
-        {!gitStatus.connected && (
-          <ShowcaseCard className="border-amber-500/25 bg-amber-500/[0.04] p-4 sm:p-5 gp-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+        {!gitStatus.connected ? (
+          /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
+          <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
+            <ShowcaseCard tiltStrength={0.75} className="w-full max-w-xl p-6 sm:p-8 gp-fade-in">
+              <div className="flex flex-col items-center text-center space-y-5">
                 <div
-                  className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0"
+                  className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.2)]"
                   aria-hidden="true"
                 >
-                  <GitBranch className="w-5 h-5" />
+                  <GitBranch className="w-6 h-6" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-sm font-semibold text-slate-100">{dict.onboarding.title}</h2>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+
+                <div className="space-y-2 max-w-md">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                    {dict.onboarding.title}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
                     {dict.onboarding.description}
                   </p>
                 </div>
+
+                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
+                    <p className="text-xs text-slate-300 leading-snug">
+                      {dict.onboarding.featureSync}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                    <p className="text-xs text-slate-300 leading-snug">
+                      {dict.onboarding.featureAi}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                    <p className="text-xs text-slate-300 leading-snug">
+                      {dict.onboarding.featureExport}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openGitConnectModal('connect')}
+                  className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer shadow-[0_8px_24px_-6px_rgba(14,165,233,0.45)]"
+                >
+                  <GitBranch className="w-4 h-4" aria-hidden="true" />
+                  <span>{dict.onboarding.connectNow}</span>
+                </button>
+              </div>
+            </ShowcaseCard>
+          </div>
+        ) : (
+          /* Active Workspace (Rendered Only When At Least One GitHub Account Is Connected) */
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                {dict.workspace.title}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 font-mono">
+                {gitStatus.gitUsername
+                  ? t('workspace.activeAccountContext', { username: gitStatus.gitUsername })
+                  : dict.workspace.subtitle}
+              </p>
+            </div>
+
+            <ActivitySummaryStrip activities={activities} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-7 min-w-0">
+                <ActivityScanner
+                  activities={activities}
+                  isLoading={isScanning}
+                  error={scanError}
+                  onScan={() => handleScanActivity(undefined, true)}
+                  sinceOption={sinceOption}
+                  onSinceOptionChange={(opt) => {
+                    setScanError(null);
+                    void handleScanActivity(opt, true);
+                  }}
+                  repoFilter={repoFilter}
+                  onRepoFilterChange={setRepoFilter}
+                  selectedPrKeys={selectedPrKeys}
+                  onTogglePrSelection={handleTogglePrSelection}
+                  onSelectAllPrs={handleSelectAllVisiblePrs}
+                  onClearPrSelection={handleClearVisiblePrSelection}
+                />
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsGitModalOpen(true)}
-                className="gp-cta-shimmer inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.97] transition-all shrink-0 cursor-pointer"
-              >
-                {dict.onboarding.connectNow}
-              </button>
+              <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6 min-w-0">
+                <CockpitAiConsole
+                  engine={aiEngine}
+                  onEngineChange={(next) => {
+                    setAiEngine(next);
+                    setAiError(null);
+                  }}
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  language={reportLanguage}
+                  onLanguageChange={setReportLanguage}
+                  onGenerate={handleGenerateSummary}
+                  isGenerating={isGenerating}
+                  error={aiError}
+                  webLlmProgressText={webLlmProgressText}
+                  webLlmProgressPercent={webLlmProgressPercent}
+                  selectedPrCount={selectedActivities.length}
+                />
+
+                <StandupOutputDock
+                  bullets={bullets}
+                  isGenerating={isGenerating}
+                  modelUsed={modelUsed}
+                  reportLanguage={generatedLanguage}
+                  onUpdateBullets={setBullets}
+                />
+              </div>
             </div>
-          </ShowcaseCard>
+          </>
         )}
-
-        {/* Main 12-Column Responsive Workspace */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7 min-w-0">
-            <ActivityScanner
-              activities={activities}
-              isLoading={isScanning}
-              error={scanError}
-              onScan={() => handleScanActivity(undefined, true)}
-              sinceOption={sinceOption}
-              onSinceOptionChange={(opt) => {
-                setScanError(null);
-                void handleScanActivity(opt, true);
-              }}
-              repoFilter={repoFilter}
-              onRepoFilterChange={setRepoFilter}
-              selectedPrKeys={selectedPrKeys}
-              onTogglePrSelection={handleTogglePrSelection}
-              onSelectAllPrs={handleSelectAllVisiblePrs}
-              onClearPrSelection={handleClearVisiblePrSelection}
-            />
-          </div>
-
-          <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6 min-w-0">
-            <CockpitAiConsole
-              engine={aiEngine}
-              onEngineChange={(next) => {
-                setAiEngine(next);
-                setAiError(null);
-              }}
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              language={reportLanguage}
-              onLanguageChange={setReportLanguage}
-              onGenerate={handleGenerateSummary}
-              isGenerating={isGenerating}
-              error={aiError}
-              webLlmProgressText={webLlmProgressText}
-              webLlmProgressPercent={webLlmProgressPercent}
-              selectedPrCount={selectedActivities.length}
-            />
-
-            <StandupOutputDock
-              bullets={bullets}
-              isGenerating={isGenerating}
-              modelUsed={modelUsed}
-              reportLanguage={generatedLanguage}
-              onUpdateBullets={setBullets}
-            />
-          </div>
-        </div>
       </main>
 
       <GitHubConnectModal
         isOpen={isGitModalOpen}
         onClose={() => setIsGitModalOpen(false)}
         status={gitStatus}
+        mode={gitModalMode}
         onSavePat={handleSavePat}
         onDisconnect={handleDisconnectGit}
       />
@@ -549,21 +657,34 @@ export default function HomePage() {
         onClose={() => setIsHistoryModalOpen(false)}
       />
 
-      <CommandPalette
-        isOpen={isPaletteOpen}
-        onClose={() => setIsPaletteOpen(false)}
-        canGenerate={selectedActivities.length > 0 && !isGenerating}
-        onSyncRange={(range) => void handleScanActivity(range, true)}
-        onGenerate={() => void handleGenerateSummary()}
-        onSwitchEngine={(eng) => {
-          setAiEngine(eng);
-          setSelectedModel(eng === 'WEB_LLM' ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC' : 'gpt-4o-mini');
-          setAiError(null);
-        }}
-        onOpenHistory={() => setIsHistoryModalOpen(true)}
-        onOpenGitModal={() => setIsGitModalOpen(true)}
-        onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        accounts={gitStatus.accounts ?? []}
+        onSwitchAccount={handleSelectGitAccount}
+        onDisconnectAccount={handleDisconnectGit}
+        onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
       />
+
+      {gitStatus.connected && (
+        <CommandPalette
+          isOpen={isPaletteOpen}
+          onClose={() => setIsPaletteOpen(false)}
+          canGenerate={selectedActivities.length > 0 && !isGenerating}
+          onSyncRange={(range) => void handleScanActivity(range, true)}
+          onGenerate={() => void handleGenerateSummary()}
+          onSwitchEngine={(eng) => {
+            setAiEngine(eng);
+            setSelectedModel(
+              eng === 'WEB_LLM' ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC' : 'gpt-4o-mini',
+            );
+            setAiError(null);
+          }}
+          onOpenHistory={() => setIsHistoryModalOpen(true)}
+          onOpenGitModal={() => openGitConnectModal('manage')}
+          onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
+        />
+      )}
     </>
   );
 }

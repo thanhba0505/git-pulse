@@ -3,173 +3,306 @@
 import React from 'react';
 import { User, GitStatus } from '../../types';
 import { useTranslation } from '../../i18n';
-import { useAmbientMotionPreference } from '../../lib/motion-preference';
-import { SegmentedControl } from '../ui/SegmentedControl';
-import { Activity, GitBranch, History, LogOut, Pause, Search, Sparkles } from 'lucide-react';
+import { DropdownMenu } from '../ui/DropdownMenu';
+import {
+  Activity,
+  Check,
+  ChevronDown,
+  ChevronsUpDown,
+  GitBranch,
+  History,
+  LogOut,
+  Plus,
+  Search,
+  Settings,
+  User as UserIcon,
+} from 'lucide-react';
 
 interface HeaderProps {
   user: User | null;
   gitStatus: GitStatus;
+  onSelectGitAccount: (accountId: string) => void;
+  onOpenAddGitAccount: () => void;
   onOpenCommandPalette: () => void;
   onOpenHistory: () => void;
-  onOpenGitModal: () => void;
+  onOpenSettings: () => void;
   onLogout: () => void;
 }
 
 export function Header({
   user,
   gitStatus,
+  onSelectGitAccount,
+  onOpenAddGitAccount,
   onOpenCommandPalette,
   onOpenHistory,
-  onOpenGitModal,
+  onOpenSettings,
   onLogout,
 }: HeaderProps) {
-  const { locale, setLocale, dict } = useTranslation();
-  const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
-
-  const motionLabel = isMotionPaused ? dict.header.toggleMotionPlay : dict.header.toggleMotionPause;
+  const { dict } = useTranslation();
+  const accounts = gitStatus.accounts ?? [];
+  const hasConnectedAccounts = Boolean(gitStatus.connected && accounts.length > 0);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#090B10]/85 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
-        {/* Brand Identity */}
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
-          <div
-            className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
-            aria-hidden="true"
-          >
-            <Activity className="w-4 h-4" />
-          </div>
-          <div className="flex items-center gap-3 min-w-0">
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.28)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[#090B10]/60 backdrop-blur-xl"
+      />
+      <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
+        {/* Left: Brand + Contextual GitHub Account Selector */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-400/30 text-sky-400 shrink-0 shadow-[0_0_16px_rgba(56,189,248,0.16)]"
+              aria-hidden="true"
+            >
+              <Activity className="w-4 h-4" />
+            </div>
             <span className="hidden sm:inline font-bold text-base sm:text-lg tracking-tight text-slate-100 whitespace-nowrap">
               {dict.header.brand}
             </span>
-            <span className="hidden lg:inline-block border-l border-slate-800 pl-3 text-xs text-slate-400 truncate">
-              {dict.header.subtitle}
-            </span>
           </div>
-        </div>
 
-        {/* Right Toolbar */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Quick Command Palette Trigger (⌘K) */}
-          <button
-            type="button"
-            onClick={onOpenCommandPalette}
-            title={dict.header.commandPaletteTooltip}
-            aria-label={dict.header.commandPaletteTooltip}
-            className="hidden md:inline-flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 bg-[#0C0E14] hover:bg-[#11141C] border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
-          >
-            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
-            <span>{dict.header.commandPaletteBtn}</span>
-            <kbd className="px-1.5 py-0.5 rounded bg-[#161A24] border border-slate-700/80 text-xs font-mono text-slate-400">
-              ⌘K
-            </kbd>
-          </button>
+          <span className="text-slate-600/80 font-light select-none shrink-0" aria-hidden="true">
+            /
+          </span>
 
-          {/* Ambient Background Motion Toggle (WCAG 2.2.2) */}
-          <button
-            type="button"
-            onClick={toggleMotion}
-            title={motionLabel}
-            aria-label={motionLabel}
-            className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-              isMotionPaused
-                ? 'bg-[#0C0E14] border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
-            }`}
-          >
-            {isMotionPaused ? (
-              <Pause className="w-3.5 h-3.5" aria-hidden="true" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-            )}
-          </button>
-
-          {/* UI Language Switcher */}
-          <SegmentedControl
-            value={locale}
-            onChange={setLocale}
-            ariaLabel={dict.header.languageSwitchLabel}
-            size="sm"
-            options={[
-              { value: 'vi', label: 'VI' },
-              { value: 'en', label: 'EN' },
-            ]}
-          />
-
-          {/* History Action */}
-          <button
-            type="button"
-            onClick={onOpenHistory}
-            title={dict.header.historyTitle}
-            aria-label={dict.header.historyTitle}
-            className="inline-flex items-center gap-1.5 min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-[#11141C] hover:bg-[#161A24] border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
-          >
-            <History className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">{dict.header.history}</span>
-          </button>
-
-          {/* GitHub Connection Status */}
-          {gitStatus.connected ? (
+          {/* Multi-Account GitHub Selector OR Connect CTA */}
+          {!hasConnectedAccounts ? (
             <button
               type="button"
-              onClick={onOpenGitModal}
-              title={dict.header.manageGitTitle}
-              aria-label={`${dict.header.manageGitTitle}: @${gitStatus.gitUsername || ''}`}
-              className="inline-flex items-center gap-2 min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 hover:border-emerald-500/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+              onClick={onOpenAddGitAccount}
+              title={dict.header.connectGit}
+              className="inline-flex items-center gap-2 min-h-[34px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-500/[0.1] hover:bg-amber-500/[0.18] border border-amber-400/25 hover:border-amber-400/40 backdrop-blur-md transition-colors cursor-pointer min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
-              <span className="truncate max-w-[72px] sm:max-w-[140px]">
-                @{gitStatus.gitUsername}
+              <GitBranch className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+              <span className="truncate max-w-[140px] sm:max-w-none">
+                {dict.header.gitConnectPrompt}
               </span>
             </button>
           ) : (
+            <DropdownMenu
+              align="start"
+              widthClass="w-64"
+              trigger={({ id, isOpen, onClick, onKeyDown, ariaProps }) => (
+                <button
+                  id={id}
+                  type="button"
+                  onClick={onClick}
+                  onKeyDown={onKeyDown}
+                  aria-label={dict.header.gitSwitcherLabel}
+                  className={`inline-flex items-center gap-2 min-h-[34px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors cursor-pointer max-w-[175px] sm:max-w-[240px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 ${
+                    isOpen
+                      ? 'bg-white/[0.1] border-sky-400/45 text-white'
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-slate-200'
+                  }`}
+                  {...ariaProps}
+                >
+                  {gitStatus.gitAvatar ? (
+                    <img
+                      src={gitStatus.gitAvatar}
+                      alt={gitStatus.gitUsername || 'GitHub'}
+                      className="w-4 h-4 rounded-full border border-white/20 object-cover shrink-0"
+                    />
+                  ) : (
+                    <span
+                      className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="font-mono truncate">@{gitStatus.gitUsername}</span>
+                  <ChevronsUpDown
+                    className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-auto"
+                    aria-hidden="true"
+                  />
+                </button>
+              )}
+            >
+              {({ close }) => (
+                <div className="space-y-1">
+                  <div className="px-2.5 py-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
+                    {dict.header.gitAccountsHeading}
+                  </div>
+
+                  {accounts.map((account) => (
+                    <button
+                      key={account.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        close();
+                        if (!account.isActive) {
+                          onSelectGitAccount(account.id);
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left transition-colors cursor-pointer ${
+                        account.isActive
+                          ? 'bg-sky-500/15 text-sky-200 font-medium'
+                          : 'text-slate-200 hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {account.gitAvatar ? (
+                          <img
+                            src={account.gitAvatar}
+                            alt={account.gitUsername}
+                            className="w-5 h-5 rounded-full border border-white/15 object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-white/[0.08] flex items-center justify-center text-xs font-mono text-slate-300 shrink-0">
+                            {account.gitUsername.slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="font-mono truncate">@{account.gitUsername}</span>
+                      </div>
+
+                      {account.isActive && (
+                        <Check
+                          className="w-3.5 h-3.5 text-emerald-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                  ))}
+
+                  <hr className="border-white/[0.08] my-1" />
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      close();
+                      onOpenAddGitAccount();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 hover:bg-sky-500/15 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>{dict.header.addGitAccount}</span>
+                  </button>
+                </div>
+              )}
+            </DropdownMenu>
+          )}
+        </div>
+
+        {/* Right: Quick Command Palette (when connected) + User Icon Dropdown */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {hasConnectedAccounts && (
             <button
               type="button"
-              onClick={onOpenGitModal}
-              title={dict.header.connectGit}
-              aria-label={dict.header.connectGit}
-              className="inline-flex items-center gap-1.5 min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/25 hover:border-amber-500/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              onClick={onOpenCommandPalette}
+              title={dict.header.commandPaletteTooltip}
+              aria-label={dict.header.commandPaletteTooltip}
+              className="hidden md:inline-flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.09] hover:border-white/[0.16] backdrop-blur-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
             >
-              <GitBranch className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
-              <span className="hidden sm:inline">{dict.header.connectGit}</span>
+              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+              <span>{dict.header.commandPaletteBtn}</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-slate-300">
+                ⌘K
+              </kbd>
             </button>
           )}
 
-          {/* User Profile & Logout */}
           {user && (
-            <div className="flex items-center gap-2 pl-1.5 sm:pl-2.5 border-l border-slate-800">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.username}
-                  className="hidden sm:block w-8 h-8 rounded-full border border-slate-700 object-cover shrink-0"
-                />
-              ) : (
-                <div
-                  className="hidden sm:flex w-8 h-8 rounded-full bg-slate-800 border border-slate-700 items-center justify-center text-xs font-semibold text-slate-200 shrink-0"
-                  aria-hidden="true"
+            <DropdownMenu
+              align="end"
+              widthClass="w-60"
+              trigger={({ id, isOpen, onClick, onKeyDown, ariaProps }) => (
+                <button
+                  id={id}
+                  type="button"
+                  onClick={onClick}
+                  onKeyDown={onKeyDown}
+                  aria-label={dict.header.userMenuLabel}
+                  className={`inline-flex items-center gap-2 min-h-[36px] p-1 sm:pr-2.5 rounded-full sm:rounded-xl border backdrop-blur-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 ${
+                    isOpen
+                      ? 'bg-white/[0.12] border-sky-400/45 text-white'
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-slate-200'
+                  }`}
+                  {...ariaProps}
                 >
-                  {user.username.slice(0, 2).toUpperCase()}
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.username}
+                      className="w-7 h-7 rounded-full border border-white/15 object-cover shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-full bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <UserIcon className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <span className="hidden sm:inline text-xs font-medium text-slate-200 max-w-[110px] truncate">
+                    {user.username}
+                  </span>
+                  <ChevronDown
+                    className={`hidden sm:block w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                      isOpen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              )}
+            >
+              {({ close }) => (
+                <div className="space-y-1">
+                  {/* User Identity Summary */}
+                  <div className="px-2.5 py-2">
+                    <p className="text-xs font-semibold text-slate-100 truncate">{user.username}</p>
+                    {user.email && (
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{user.email}</p>
+                    )}
+                  </div>
+
+                  <hr className="border-white/[0.08] my-1" />
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      close();
+                      onOpenHistory();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span>{dict.header.history}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      close();
+                      onOpenSettings();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span>{dict.header.settings}</span>
+                  </button>
+
+                  <hr className="border-white/[0.08] my-1" />
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      close();
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>{dict.header.logout}</span>
+                  </button>
                 </div>
               )}
-
-              <div className="hidden xl:block text-left text-xs min-w-0 max-w-[150px]">
-                <p className="font-medium text-slate-200 truncate">{user.username}</p>
-                {user.email && <p className="text-xs text-slate-400 truncate">{user.email}</p>}
-              </div>
-
-              <button
-                type="button"
-                onClick={onLogout}
-                title={dict.header.logout}
-                aria-label={dict.header.logout}
-                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
-              >
-                <LogOut className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
+            </DropdownMenu>
           )}
         </div>
       </div>

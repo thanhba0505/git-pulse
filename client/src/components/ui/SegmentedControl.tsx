@@ -88,7 +88,7 @@ export function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={ariaLabel}
       data-measured="false"
-      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#0C0E14] border border-slate-800 ${
+      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#090B10]/45 backdrop-blur-md border border-white/[0.09] ${
         fullWidth ? 'w-full' : ''
       } ${className}`}
     >
@@ -96,7 +96,7 @@ export function SegmentedControl<T extends string>({
       <span
         ref={indicatorRef}
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-slate-800 border border-slate-700/80 shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
+        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-white/[0.11] border border-white/[0.14] shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
         style={{
           transitionTimingFunction: 'var(--ease-spring)',
         }}
