@@ -93,8 +93,16 @@ export class GitHubController {
     return this.gitHubService.disconnect(req.user.id, meta, accountId);
   }
 
+  @Get('workspaces')
+  @ApiOperation({
+    summary: 'List accessible personal and organization workspaces for active GitHub account',
+  })
+  async getWorkspaces(@Req() req: Request & { user: AuthenticatedUser }) {
+    return this.gitHubService.getWorkspaces(req.user.id);
+  }
+
   @Get('activity')
-  @ApiOperation({ summary: 'Fetch Pull Requests and Commits updated today' })
+  @ApiOperation({ summary: 'Fetch Pull Requests and Direct Commits matching user preferences' })
   async getActivity(
     @Req() req: Request & { user: AuthenticatedUser },
     @Query('since') since?: string,

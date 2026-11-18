@@ -39,10 +39,11 @@ model User {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
-  gitAccounts GitAccount[]
-  settings    UserSettings?
-  reports     ReportHistory[]
-  bookmarks   GitRepoBookmark[]
+  gitAccounts   GitAccount[]
+  settings      UserSettings?
+  reports       ReportHistory[]
+  bookmarks     GitRepoBookmark[]
+  trackingTasks TrackingTask[]
 
   @@map("users")
 }
@@ -98,6 +99,7 @@ model UserSettings {
   language            String       @default("vi")
   autoCopyToClipboard Boolean      @default(true)
   customPrompt        String?      @db.Text
+  fetchPreferences    Json?        @map("fetch_preferences")
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
@@ -131,6 +133,36 @@ model GitRepoBookmark {
 
   @@unique([userId, repoFullName])
   @@map("git_repo_bookmarks")
+}
+
+model TrackingTask {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String             @db.VarChar(160)
+  color     String             @default("sky") @db.VarChar(32)
+  items     TrackingTaskItem[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("tracking_tasks")
+}
+
+model TrackingTaskItem {
+  id        String       @id @default(uuid())
+  taskId    String
+  task      TrackingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  repo      String       @db.VarChar(255)
+  prNumber  Int          @map("pr_number")
+  title     String       @db.VarChar(300)
+  prUrl     String       @db.VarChar(500)
+  state     String       @default("open") @db.VarChar(32)
+  ownerType String       @default("personal") @map("owner_type") @db.VarChar(32)
+  addedAt   DateTime     @default(now()) @map("added_at")
+
+  @@unique([taskId, repo, prNumber])
+  @@map("tracking_task_items")
 }
 
 model ServiceConnection {

@@ -2,8 +2,18 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { GitStatus, PrActivity, AiEngine } from '../types';
+import {
+  AiEngine,
+  FetchPreferences,
+  GitHubWorkspacesResponse,
+  GitStatus,
+  GroupingMode,
+  PrActivity,
+  TaskColor,
+  TrackingTask,
+} from '../types';
 import { api } from '../lib/api';
+import { toTaskItemInput } from '../lib/activity-utils';
 import { useAuth } from '../lib/auth-context';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/layout/Header';
@@ -14,6 +24,7 @@ import { ActivityScanner, getPrKey } from '../components/dashboard/ActivityScann
 import { CockpitAiConsole } from '../components/ai/CockpitAiConsole';
 import { StandupOutputDock } from '../components/standup/StandupOutputDock';
 import { AuthModal } from '../components/auth/AuthModal';
+import type { SettingsTabKey } from '../components/settings/SettingsModal';
 import { WorkspaceSkeleton } from '../components/ui/Skeleton';
 import { ShowcaseCard } from '../components/ui/ShowcaseCard';
 import { useToast } from '../components/ui/Toast';
@@ -48,6 +59,18 @@ const SettingsModal = dynamic(
 );
 
 const ACTIVITY_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const DEFAULT_FETCH_PREFERENCES: FetchPreferences = {
+  defaultGroupBy: 'owner',
+  defaultTimeRange: 'today',
+  includePersonal: true,
+  includedOrgs: [],
+  prStates: ['draft', 'open', 'merged', 'closed'],
+  fetchRole: 'author',
+  includeDirectCommits: true,
+  includePrWithoutCommitsInRange: true,
+  compactCommits: false,
+};
 
 interface CachedActivityPayload {
   timestamp: number;
@@ -134,7 +157,13 @@ export default function HomePage() {
   const [isGitModalOpen, setIsGitModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsModalTab, setSettingsModalTab] = useState<SettingsTabKey>('general');
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  const [fetchPrefs, setFetchPrefs] = useState<FetchPreferences>(DEFAULT_FETCH_PREFERENCES);
+  const [groupBy, setGroupBy] = useState<GroupingMode>('owner');
+  const [workspaces, setWorkspaces] = useState<GitHubWorkspacesResponse | null>(null);
+  const [tasks, setTasks] = useState<TrackingTask[]>([]);
 
   const [activities, setActivities] = useState<PrActivity[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -159,9 +188,11 @@ export default function HomePage() {
 
   const selectedActivities = useMemo(() => {
     const base =
-      repoFilter === 'ALL' ? activities : activities.filter((a) => a.repo === repoFilter);
+      groupBy === 'task' || repoFilter === 'ALL'
+        ? activities
+        : activities.filter((a) => a.repo === repoFilter);
     return base.filter((pr) => selectedPrKeys.has(getPrKey(pr)));
-  }, [activities, repoFilter, selectedPrKeys]);
+  }, [activities, groupBy, repoFilter, selectedPrKeys]);
 
   const applyScannedActivities = useCallback((nextActivities: PrActivity[]) => {
     setActivities(nextActivities);
@@ -183,6 +214,17 @@ export default function HomePage() {
       const empty: GitStatus = { connected: false, accounts: [] };
       setGitStatus(empty);
       return empty;
+    }
+  }, []);
+
+  const loadWorkspaces = useCallback(async () => {
+    try {
+      const ws = await api.github.getWorkspaces();
+      setWorkspaces(ws);
+      return ws;
+    } catch {
+      setWorkspaces(null);
+      return null;
     }
   }, []);
 
@@ -255,15 +297,31 @@ export default function HomePage() {
   useEffect(() => {
     if (!userId) {
       setGitStatus({ connected: false, accounts: [] });
+      setWorkspaces(null);
+      setTasks([]);
       return;
     }
 
-    loadGitStatus().then((status) => {
+    Promise.all([
+      loadGitStatus(),
+      api.settings.get().catch(() => null),
+      api.tasks.list().catch(() => [] as TrackingTask[]),
+    ]).then(([status, settingsRes, loadedTasks]) => {
+      let targetRange: 'today' | '24h' | '7d' = 'today';
+      if (settingsRes?.fetchPreferences) {
+        setFetchPrefs(settingsRes.fetchPreferences);
+        setGroupBy(settingsRes.fetchPreferences.defaultGroupBy);
+        setSinceOption(settingsRes.fetchPreferences.defaultTimeRange);
+        targetRange = settingsRes.fetchPreferences.defaultTimeRange;
+      }
+      setTasks(loadedTasks);
+
       if (status.connected) {
-        void scanRef.current(undefined, false, status);
+        void loadWorkspaces();
+        void scanRef.current(targetRange, false, status);
       }
     });
-  }, [userId, loadGitStatus]);
+  }, [userId, loadGitStatus, loadWorkspaces]);
 
   const handleAccountSelect = async (account: {
     username: string;
@@ -290,6 +348,7 @@ export default function HomePage() {
     setModelUsed('');
     setScanError(null);
     setAiError(null);
+    void loadWorkspaces();
     await handleScanActivity(undefined, false, nextStatus);
     showToast({ title: dict.toasts.gitConnected, variant: 'success' });
   };
@@ -309,6 +368,7 @@ export default function HomePage() {
       });
     }
     if (nextStatus.connected) {
+      void loadWorkspaces();
       await handleScanActivity(undefined, false, nextStatus);
     }
   };
@@ -319,11 +379,70 @@ export default function HomePage() {
     applyScannedActivities([]);
     setBullets([]);
     setModelUsed('');
+    setWorkspaces(null);
     setGitStatus(nextStatus);
     showToast({ title: dict.toasts.gitDisconnected, variant: 'info' });
     if (nextStatus.connected) {
+      void loadWorkspaces();
       await handleScanActivity(undefined, false, nextStatus);
     }
+  };
+
+  const openSettingsTab = (tab: SettingsTabKey) => {
+    setSettingsModalTab(tab);
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSaveFetchPreferences = async (nextPrefs: FetchPreferences) => {
+    const saved = await api.settings.update({ fetchPreferences: nextPrefs });
+    setFetchPrefs(saved.fetchPreferences);
+    setGroupBy(saved.fetchPreferences.defaultGroupBy);
+    setSinceOption(saved.fetchPreferences.defaultTimeRange);
+    clearAllActivityCache();
+    showToast({ title: dict.toasts.settingsSaved, variant: 'success' });
+    if (gitStatus.connected) {
+      await handleScanActivity(saved.fetchPreferences.defaultTimeRange, false);
+    }
+  };
+
+  const handleCreateTask = async (title: string, color: TaskColor, prs: PrActivity[]) => {
+    const created = await api.tasks.create({
+      title,
+      color,
+      items: prs.map(toTaskItemInput),
+    });
+    setTasks((prev) => [created, ...prev]);
+    showToast({ title: t('toasts.taskCreated', { title: created.title }), variant: 'success' });
+  };
+
+  const handleRenameTask = async (taskId: string, title: string, color: TaskColor) => {
+    const updated = await api.tasks.update(taskId, { title, color });
+    setTasks((prev) => prev.map((tk) => (tk.id === taskId ? updated : tk)));
+    showToast({ title: t('toasts.taskUpdated', { title: updated.title }), variant: 'info' });
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await api.tasks.delete(taskId);
+    setTasks((prev) => prev.filter((tk) => tk.id !== taskId));
+    showToast({ title: dict.toasts.taskDeleted, variant: 'info' });
+  };
+
+  const handleToggleTaskAssignment = async (
+    taskId: string,
+    pr: PrActivity,
+    isAssigned: boolean,
+  ) => {
+    const updated = isAssigned
+      ? await api.tasks.removeItem(taskId, pr.repo, pr.number)
+      : await api.tasks.addItems(taskId, [toTaskItemInput(pr)]);
+    setTasks((prev) => prev.map((tk) => (tk.id === taskId ? updated : tk)));
+    showToast({ title: dict.toasts.taskItemUpdated, variant: 'info' });
+  };
+
+  const handleRemoveTaskItem = async (taskId: string, repo: string, prNumber: number) => {
+    const updated = await api.tasks.removeItem(taskId, repo, prNumber);
+    setTasks((prev) => prev.map((tk) => (tk.id === taskId ? updated : tk)));
+    showToast({ title: dict.toasts.taskItemUpdated, variant: 'info' });
   };
 
   const openGitConnectModal = (mode: 'connect' | 'add' | 'manage') => {
@@ -459,6 +578,18 @@ export default function HomePage() {
     });
   };
 
+  const handleSelectKeysBatch = (keys: string[], select: boolean) => {
+    setAiError(null);
+    setSelectedPrKeys((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) {
+        if (select) next.add(k);
+        else next.delete(k);
+      }
+      return next;
+    });
+  };
+
   const handleSelectAllVisiblePrs = () => {
     setAiError(null);
     const visible =
@@ -517,13 +648,13 @@ export default function HomePage() {
         onOpenAddGitAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
         onOpenCommandPalette={() => setIsPaletteOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenSettings={() => openSettingsTab('general')}
         onLogout={handleLogout}
       />
 
       {/* Unified Scrollable Container: Main content and Footer scroll together */}
       <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <main className="flex-1 flex flex-col max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
           {!gitStatus.connected ? (
             /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
             <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
@@ -594,7 +725,7 @@ export default function HomePage() {
               <ActivitySummaryStrip activities={activities} />
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-7 min-w-0">
+                <div className="lg:col-span-7 xl:col-span-8 min-w-0">
                   <ActivityScanner
                     activities={activities}
                     isLoading={isScanning}
@@ -607,14 +738,27 @@ export default function HomePage() {
                     }}
                     repoFilter={repoFilter}
                     onRepoFilterChange={setRepoFilter}
+                    groupBy={groupBy}
+                    onGroupByChange={setGroupBy}
+                    compactCommits={fetchPrefs.compactCommits}
+                    workspaces={workspaces}
+                    includePersonalEnabled={fetchPrefs.includePersonal}
+                    onOpenFetchSettings={() => openSettingsTab('fetch')}
                     selectedPrKeys={selectedPrKeys}
                     onTogglePrSelection={handleTogglePrSelection}
+                    onSelectKeysBatch={handleSelectKeysBatch}
                     onSelectAllPrs={handleSelectAllVisiblePrs}
                     onClearPrSelection={handleClearVisiblePrSelection}
+                    tasks={tasks}
+                    onCreateTask={handleCreateTask}
+                    onRenameTask={handleRenameTask}
+                    onDeleteTask={handleDeleteTask}
+                    onToggleTaskAssignment={handleToggleTaskAssignment}
+                    onRemoveTaskItem={handleRemoveTaskItem}
                   />
                 </div>
 
-                <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-6 min-w-0">
+                <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-6 min-w-0">
                   <CockpitAiConsole
                     engine={aiEngine}
                     onEngineChange={(next) => {
@@ -664,8 +808,12 @@ export default function HomePage() {
 
       <SettingsModal
         isOpen={isSettingsModalOpen}
+        initialTab={settingsModalTab}
         onClose={() => setIsSettingsModalOpen(false)}
         accounts={gitStatus.accounts ?? []}
+        workspaces={workspaces}
+        preferences={fetchPrefs}
+        onSavePreferences={handleSaveFetchPreferences}
         onSwitchAccount={handleSelectGitAccount}
         onDisconnectAccount={handleDisconnectGit}
         onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}

@@ -20,7 +20,7 @@ export function WorkspaceSkeleton() {
     >
       {/* Skeleton Header (Pinned Top) */}
       <div className="shrink-0 w-full border-b border-white/[0.08] bg-[#090B10]/55 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Skeleton className="w-8 h-8 rounded-lg" />
             <Skeleton className="w-24 h-5" />
@@ -36,7 +36,7 @@ export function WorkspaceSkeleton() {
 
       {/* Scrollable Body + Footer */}
       <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <main className="flex-1 flex flex-col max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <Skeleton className="w-56 h-7" />
             <Skeleton className="w-72 h-4" />
@@ -51,11 +51,11 @@ export function WorkspaceSkeleton() {
 
           {/* 12-Col Workspace Skeleton */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-7 space-y-4">
+            <div className="lg:col-span-7 xl:col-span-8 space-y-4">
               <Skeleton className="h-28 rounded-xl" />
               <ActivityListSkeleton count={2} />
             </div>
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-5 xl:col-span-4">
               <Skeleton className="h-[360px] rounded-xl" />
             </div>
           </div>

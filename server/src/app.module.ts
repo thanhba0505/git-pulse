@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { GitHubModule } from './github/github.module';
 import { AiModule } from './ai/ai.module';
 import { ReportsModule } from './reports/reports.module';
+import { SettingsModule } from './settings/settings.module';
+import { TasksModule } from './tasks/tasks.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -30,6 +32,8 @@ import { HealthController } from './health/health.controller';
     GitHubModule,
     AiModule,
     ReportsModule,
+    SettingsModule,
+    TasksModule,
   ],
   controllers: [HealthController],
   providers: [

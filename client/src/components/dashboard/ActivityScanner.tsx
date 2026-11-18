@@ -1,25 +1,34 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { PrActivity } from '../../types';
+import {
+  GitHubWorkspacesResponse,
+  GroupingMode,
+  PrActivity,
+  PrState,
+  TaskColor,
+  TrackingTask,
+} from '../../types';
 import { useTranslation } from '../../i18n';
+import { getPrKey as computePrKey } from '../../lib/activity-utils';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { ActivityListSkeleton } from '../ui/Skeleton';
+import { PrActivityCard } from './PrActivityCard';
+import { TaskTrackerView } from './TaskTrackerView';
 import {
-  GitPullRequest,
-  GitMerge,
-  GitCommit,
-  ExternalLink,
-  RefreshCw,
   AlertCircle,
+  Building2,
   ChevronDown,
-  Check,
+  FolderGit2,
+  GitPullRequest,
+  Info,
+  RefreshCw,
+  SlidersHorizontal,
+  User,
 } from 'lucide-react';
 
-export function getPrKey(pr: PrActivity): string {
-  return `${pr.repo}#${pr.number}`;
-}
+export const getPrKey = computePrKey;
 
 interface ActivityScannerProps {
   activities: PrActivity[];
@@ -30,13 +39,34 @@ interface ActivityScannerProps {
   onSinceOptionChange: (opt: 'today' | '24h' | '7d') => void;
   repoFilter: string;
   onRepoFilterChange: (repo: string) => void;
+  groupBy: GroupingMode;
+  onGroupByChange: (mode: GroupingMode) => void;
+  compactCommits: boolean;
+  workspaces: GitHubWorkspacesResponse | null;
+  includePersonalEnabled: boolean;
+  onOpenFetchSettings: () => void;
   selectedPrKeys: ReadonlySet<string>;
   onTogglePrSelection: (key: string) => void;
+  onSelectKeysBatch: (keys: string[], select: boolean) => void;
   onSelectAllPrs: () => void;
   onClearPrSelection: () => void;
+  tasks: TrackingTask[];
+  onCreateTask: (title: string, color: TaskColor, prs: PrActivity[]) => Promise<void>;
+  onRenameTask: (taskId: string, title: string, color: TaskColor) => Promise<void>;
+  onDeleteTask: (taskId: string) => Promise<void>;
+  onToggleTaskAssignment: (taskId: string, pr: PrActivity, isAssigned: boolean) => Promise<void>;
+  onRemoveTaskItem: (taskId: string, repo: string, prNumber: number) => Promise<void>;
 }
 
-const COMMITS_PREVIEW_LIMIT = 3;
+type StateFilter = 'ALL' | PrState;
+
+interface OwnerGroupSection {
+  key: string;
+  ownerType: 'personal' | 'organization';
+  label: string;
+  avatarUrl?: string;
+  items: PrActivity[];
+}
 
 export function ActivityScanner({
   activities,
@@ -47,13 +77,27 @@ export function ActivityScanner({
   onSinceOptionChange,
   repoFilter,
   onRepoFilterChange,
+  groupBy,
+  onGroupByChange,
+  compactCommits,
+  workspaces,
+  includePersonalEnabled,
+  onOpenFetchSettings,
   selectedPrKeys,
   onTogglePrSelection,
+  onSelectKeysBatch,
   onSelectAllPrs,
   onClearPrSelection,
+  tasks,
+  onCreateTask,
+  onRenameTask,
+  onDeleteTask,
+  onToggleTaskAssignment,
+  onRemoveTaskItem,
 }: ActivityScannerProps) {
   const { dict, t } = useTranslation();
-  const [expandedPrKeys, setExpandedPrKeys] = useState<Set<string>>(() => new Set());
+  const [stateFilter, setStateFilter] = useState<StateFilter>('ALL');
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set());
 
   const uniqueRepos = useMemo(
     () => Array.from(new Set(activities.map((a) => a.repo))).sort(),
@@ -61,51 +105,161 @@ export function ActivityScanner({
   );
 
   const visibleActivities = useMemo(() => {
-    if (repoFilter === 'ALL') return activities;
-    return activities.filter((a) => a.repo === repoFilter);
-  }, [activities, repoFilter]);
+    return activities.filter((act) => {
+      if (repoFilter !== 'ALL' && act.repo !== repoFilter) return false;
+      if (stateFilter !== 'ALL' && act.state !== stateFilter) return false;
+      return true;
+    });
+  }, [activities, repoFilter, stateFilter]);
+
+  const ownerSections = useMemo<OwnerGroupSection[]>(() => {
+    const personalItems: PrActivity[] = [];
+    const orgMap = new Map<string, OwnerGroupSection>();
+
+    for (const act of visibleActivities) {
+      if (act.ownerType === 'personal') {
+        personalItems.push(act);
+      } else {
+        const orgKey = `org:${act.owner}`;
+        const existing = orgMap.get(orgKey);
+        if (existing) {
+          existing.items.push(act);
+        } else {
+          orgMap.set(orgKey, {
+            key: orgKey,
+            ownerType: 'organization',
+            label: act.owner,
+            avatarUrl: act.ownerAvatar,
+            items: [act],
+          });
+        }
+      }
+    }
+
+    const sections: OwnerGroupSection[] = [];
+    if (personalItems.length > 0) {
+      sections.push({
+        key: 'personal',
+        ownerType: 'personal',
+        label: workspaces?.personal.login
+          ? `${dict.scanner.personalSpace} (@${workspaces.personal.login})`
+          : dict.scanner.personalSpace,
+        avatarUrl: workspaces?.personal.avatarUrl ?? personalItems[0]?.ownerAvatar,
+        items: personalItems,
+      });
+    }
+
+    const sortedOrgs = Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+    sections.push(...sortedOrgs);
+    return sections;
+  }, [visibleActivities, workspaces, dict.scanner.personalSpace]);
+
+  const repoSections = useMemo(() => {
+    const map = new Map<string, PrActivity[]>();
+    for (const act of visibleActivities) {
+      const list = map.get(act.repo) ?? [];
+      list.push(act);
+      map.set(act.repo, list);
+    }
+    return Array.from(map.entries()).map(([repo, items]) => ({
+      key: `repo:${repo}`,
+      repo,
+      items,
+    }));
+  }, [visibleActivities]);
 
   const totalCommits = visibleActivities.reduce((sum, pr) => sum + pr.commits.length, 0);
   const selectedInVisible = visibleActivities.filter((pr) =>
-    selectedPrKeys.has(getPrKey(pr)),
+    selectedPrKeys.has(computePrKey(pr)),
   ).length;
 
-  const toggleExpandCommits = (key: string) => {
-    setExpandedPrKeys((prev) => {
+  const hasPersonalActivities = activities.some((a) => a.ownerType === 'personal');
+  const shouldShowPersonalAccessHint =
+    !isLoading &&
+    includePersonalEnabled &&
+    !hasPersonalActivities &&
+    (workspaces?.personal.accessibleRepoCount === 0 || activities.length > 0);
+
+  const toggleSectionCollapse = (key: string) => {
+    setCollapsedSections((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
-  const getPrStateBadge = (state: string) => {
-    const normalized = state.toLowerCase();
-    if (normalized === 'open') {
-      return {
-        label: dict.scanner.stateOpen,
-        badgeClass: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25',
-        iconClass: 'text-emerald-400',
-        Icon: GitPullRequest,
-      };
-    }
-    if (normalized === 'merged') {
-      return {
-        label: dict.scanner.stateMerged,
-        badgeClass: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/25',
-        iconClass: 'text-indigo-400',
-        Icon: GitMerge,
-      };
-    }
-    return {
-      label: dict.scanner.stateClosed,
-      badgeClass: 'bg-slate-800 text-slate-300 border border-slate-700',
-      iconClass: 'text-slate-400',
-      Icon: GitPullRequest,
-    };
+  const renderSectionGroup = (
+    sectionKey: string,
+    icon: React.ReactNode,
+    title: string,
+    items: PrActivity[],
+  ) => {
+    const isCollapsed = collapsedSections.has(sectionKey);
+    const keys = items.map(computePrKey);
+    const allSelected = keys.length > 0 && keys.every((k) => selectedPrKeys.has(k));
+    const sectionCommits = items.reduce((sum, item) => sum + item.commits.length, 0);
+
+    return (
+      <div key={sectionKey} className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <button
+            type="button"
+            onClick={() => toggleSectionCollapse(sectionKey)}
+            aria-expanded={!isCollapsed}
+            className="inline-flex items-center gap-2 text-left group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 rounded-lg py-0.5"
+          >
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.06] border border-white/[0.1] text-slate-300">
+              {icon}
+            </span>
+            <span className="text-sm font-semibold text-slate-100 group-hover:text-sky-300 transition-colors">
+              {title}
+            </span>
+            <span className="text-xs font-mono text-slate-400 tabular-nums">
+              ({t('scanner.groupCount', { prs: items.length, commits: sectionCommits })})
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                isCollapsed ? '-rotate-90' : ''
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectKeysBatch(keys, !allSelected)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+              allSelected
+                ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 hover:bg-sky-500/20'
+                : 'bg-white/[0.04] text-slate-300 hover:text-white border-white/[0.09]'
+            }`}
+          >
+            {allSelected ? dict.scanner.clearGroup : dict.scanner.selectGroup}
+          </button>
+        </div>
+
+        {!isCollapsed && (
+          <ul role="list" className="space-y-3">
+            {items.map((pr, idx) => (
+              <PrActivityCard
+                key={computePrKey(pr)}
+                pr={pr}
+                index={idx}
+                isSelected={selectedPrKeys.has(computePrKey(pr))}
+                compactCommits={compactCommits}
+                tasks={tasks}
+                onToggleSelect={onTogglePrSelection}
+                onToggleTaskAssignment={onToggleTaskAssignment}
+                onCreateTaskWithPr={async (taskTitle, targetPr) => {
+                  await onCreateTask(taskTitle, 'sky', [targetPr]);
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -113,32 +267,31 @@ export function ActivityScanner({
       {/* Scanner Control Panel */}
       <ShowcaseCard className="p-5 sm:p-6">
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2
-                  id="activity-scanner-heading"
-                  className="text-base font-semibold text-slate-100 tracking-tight"
-                >
-                  {dict.scanner.title}
-                </h2>
-                {visibleActivities.length > 0 && (
-                  <span className="text-xs font-mono text-sky-400 tabular-nums">
-                    {t('scanner.summaryStats', {
-                      prs: visibleActivities.length,
-                      commits: totalCommits,
-                    })}
-                  </span>
-                )}
-              </div>
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="min-w-0 flex items-center gap-2.5 flex-wrap">
+              <h2
+                id="activity-scanner-heading"
+                className="text-base font-semibold text-slate-100 tracking-tight"
+              >
+                {dict.scanner.title}
+              </h2>
+              {visibleActivities.length > 0 && (
+                <span className="text-xs font-mono text-sky-400 tabular-nums">
+                  {t('scanner.summaryStats', {
+                    prs: visibleActivities.length,
+                    commits: totalCommits,
+                  })}
+                </span>
+              )}
             </div>
 
-            {/* Timeframe Filter & Sync Trigger */}
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Timeframe Filter + Fetch Settings + Sync Trigger */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <SegmentedControl
                 value={sinceOption}
                 onChange={onSinceOptionChange}
                 ariaLabel={dict.scanner.rangeLabel}
+                size="sm"
                 options={[
                   { value: 'today', label: dict.scanner.rangeToday },
                   { value: '24h', label: dict.scanner.range24h },
@@ -148,9 +301,22 @@ export function ActivityScanner({
 
               <button
                 type="button"
+                onClick={onOpenFetchSettings}
+                title={dict.scanner.fetchSettingsBtn}
+                className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+              >
+                <SlidersHorizontal
+                  className="w-3.5 h-3.5 text-sky-400 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="hidden sm:inline">{dict.scanner.fetchSettingsBtn}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={onScan}
                 disabled={isLoading}
-                className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[36px] px-4 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[34px] px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}
@@ -161,9 +327,52 @@ export function ActivityScanner({
             </div>
           </div>
 
+          {/* Grouping Mode Switcher + State Filter Bar */}
+          <div className="pt-3 border-t border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <SegmentedControl
+              value={groupBy}
+              onChange={onGroupByChange}
+              ariaLabel={dict.scanner.groupByLabel}
+              size="sm"
+              options={[
+                { value: 'owner', label: dict.scanner.groupOwner },
+                { value: 'task', label: dict.scanner.groupTask },
+                { value: 'repo', label: dict.scanner.groupRepo },
+                { value: 'flat', label: dict.scanner.groupFlat },
+              ]}
+            />
+
+            {groupBy !== 'task' && activities.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(
+                  [
+                    { key: 'ALL', label: dict.scanner.stateFilterAll },
+                    { key: 'draft', label: dict.scanner.stateDraft },
+                    { key: 'open', label: dict.scanner.stateOpen },
+                    { key: 'merged', label: dict.scanner.stateMerged },
+                    { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
+                  ] as Array<{ key: StateFilter; label: string }>
+                ).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setStateFilter(item.key)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                      stateFilter === item.key
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
+                        : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Repo Filter Pills & Selection Toolbar */}
-          {activities.length > 0 && (
-            <div className="pt-3 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {groupBy !== 'task' && activities.length > 0 && (
+            <div className="pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               {uniqueRepos.length > 1 ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
@@ -245,172 +454,95 @@ export function ActivityScanner({
               className="flex items-start gap-2.5 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-xs text-rose-300"
             >
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
-              <span className="leading-relaxed">{error}</span>
+              <span>{error}</span>
             </div>
           )}
         </div>
       </ShowcaseCard>
 
-      {/* Content Area: Skeleton on first load | Activity Cards | Clean Empty State */}
+      {/* Diagnostic hint if personal items didn't appear */}
+      {shouldShowPersonalAccessHint && groupBy !== 'task' && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-sky-500/[0.06] border border-sky-400/20 text-xs text-slate-300">
+          <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="font-semibold text-slate-200">{dict.scanner.noPersonalNoticeTitle}</p>
+            <p className="text-slate-400 leading-relaxed">{dict.scanner.noPersonalNoticeDesc}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenFetchSettings}
+            className="shrink-0 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-sky-300 font-medium cursor-pointer"
+          >
+            {dict.scanner.fetchSettingsBtn}
+          </button>
+        </div>
+      )}
+
+      {/* Main Content Area */}
       {isLoading && activities.length === 0 ? (
         <ActivityListSkeleton count={3} />
+      ) : groupBy === 'task' ? (
+        <TaskTrackerView
+          tasks={tasks}
+          activities={activities}
+          selectedPrKeys={selectedPrKeys}
+          compactCommits={compactCommits}
+          onTogglePrSelection={onTogglePrSelection}
+          onSelectKeysBatch={onSelectKeysBatch}
+          onCreateTask={onCreateTask}
+          onRenameTask={onRenameTask}
+          onDeleteTask={onDeleteTask}
+          onToggleTaskAssignment={onToggleTaskAssignment}
+          onRemoveTaskItem={onRemoveTaskItem}
+        />
       ) : visibleActivities.length > 0 ? (
-        <ul role="list" className="space-y-3">
-          {visibleActivities.map((pr, index) => {
-            const prKey = getPrKey(pr);
-            const isSelected = selectedPrKeys.has(prKey);
-            const isExpanded = expandedPrKeys.has(prKey);
-            const hasMoreCommits = pr.commits.length > COMMITS_PREVIEW_LIMIT;
-            const previewCommits = pr.commits.slice(0, COMMITS_PREVIEW_LIMIT);
-            const hiddenCommits = pr.commits.slice(COMMITS_PREVIEW_LIMIT);
-
-            const stateInfo = getPrStateBadge(pr.state);
-            const StateIcon = stateInfo.Icon;
-
-            return (
-              <ShowcaseCard
-                key={prKey}
-                as="li"
-                staggerIndex={index}
-                className={`p-5 min-w-0 transition-opacity ${
-                  isSelected ? 'opacity-100' : 'opacity-65'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    {/* Accessible Selection Toggle */}
-                    <button
-                      type="button"
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      aria-label={t('scanner.selectPrAria', { title: pr.title })}
-                      onClick={() => onTogglePrSelection(prKey)}
-                      className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-                        isSelected
-                          ? 'bg-sky-500 border-sky-400 text-slate-950'
-                          : 'bg-white/[0.04] border-white/[0.15] hover:border-white/[0.3] text-transparent'
-                      }`}
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
-                    </button>
-
-                    <div
-                      className={`w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.09] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
-                      aria-hidden="true"
-                    >
-                      <StateIcon className="w-4 h-4" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap text-xs">
-                        <span className="font-mono font-medium text-sky-400 break-all">
-                          {pr.repo}
-                        </span>
-                        <span className="text-slate-600" aria-hidden="true">
-                          /
-                        </span>
-                        <span className="font-mono text-slate-400 tabular-nums">#{pr.number}</span>
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-xs font-medium ${stateInfo.badgeClass}`}
-                        >
-                          {stateInfo.label}
-                        </span>
-                      </div>
-
-                      <h3 className="text-sm font-semibold text-slate-100 mt-1.5 leading-snug break-words">
-                        {pr.title}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <a
-                    href={pr.prUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={dict.scanner.openPrExternal}
-                    aria-label={`${dict.scanner.openPrExternal} #${pr.number}`}
-                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
-                  >
-                    <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                  </a>
-                </div>
-
-                {/* Commits Timeline with Smooth CSS Grid Accordion */}
-                <div className="mt-4 pt-3.5 border-t border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-mono text-slate-400 flex items-center gap-2 tabular-nums">
-                      <GitCommit
-                        className="w-3.5 h-3.5 text-slate-400 shrink-0"
-                        aria-hidden="true"
-                      />
-                      <span>{t('scanner.commitsCount', { count: pr.commits.length })}</span>
-                    </p>
-
-                    {hasMoreCommits && (
-                      <button
-                        type="button"
-                        onClick={() => toggleExpandCommits(prKey)}
-                        aria-expanded={isExpanded}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 cursor-pointer transition-colors"
-                      >
-                        <span>
-                          {isExpanded
-                            ? dict.scanner.collapseCommits
-                            : t('scanner.showMoreCommits', { count: hiddenCommits.length })}
-                        </span>
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                          aria-hidden="true"
-                        />
-                      </button>
-                    )}
-                  </div>
-
-                  <ul role="list" className="space-y-1.5 pl-3.5 border-l border-slate-800">
-                    {previewCommits.map((commit, idx) => (
-                      <li
-                        key={idx}
-                        className="flex items-start gap-2.5 text-xs text-slate-300 leading-relaxed min-w-0"
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0 mt-1.5"
-                          aria-hidden="true"
-                        />
-                        <span className="break-words min-w-0">{commit}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {hasMoreCommits && (
-                    <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
-                      <div className="gp-accordion-inner">
-                        <ul
-                          role="list"
-                          className="space-y-1.5 pl-3.5 border-l border-slate-800 pt-1"
-                        >
-                          {hiddenCommits.map((commit, idx) => (
-                            <li
-                              key={idx}
-                              className="flex items-start gap-2.5 text-xs text-slate-300 leading-relaxed min-w-0"
-                            >
-                              <span
-                                className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0 mt-1.5"
-                                aria-hidden="true"
-                              />
-                              <span className="break-words min-w-0">{commit}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ShowcaseCard>
-            );
-          })}
-        </ul>
+        groupBy === 'owner' ? (
+          <div className="space-y-6">
+            {ownerSections.map((section) =>
+              renderSectionGroup(
+                section.key,
+                section.ownerType === 'organization' ? (
+                  <Building2 className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
+                ),
+                section.ownerType === 'organization'
+                  ? `${dict.scanner.orgSpace}: ${section.label}`
+                  : section.label,
+                section.items,
+              ),
+            )}
+          </div>
+        ) : groupBy === 'repo' ? (
+          <div className="space-y-6">
+            {repoSections.map((section) =>
+              renderSectionGroup(
+                section.key,
+                <FolderGit2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />,
+                section.repo,
+                section.items,
+              ),
+            )}
+          </div>
+        ) : (
+          <ul role="list" className="space-y-3">
+            {visibleActivities.map((pr, index) => (
+              <PrActivityCard
+                key={computePrKey(pr)}
+                pr={pr}
+                index={index}
+                isSelected={selectedPrKeys.has(computePrKey(pr))}
+                compactCommits={compactCommits}
+                tasks={tasks}
+                onToggleSelect={onTogglePrSelection}
+                onToggleTaskAssignment={onToggleTaskAssignment}
+                onCreateTaskWithPr={async (taskTitle, targetPr) => {
+                  await onCreateTask(taskTitle, 'sky', [targetPr]);
+                }}
+              />
+            ))}
+          </ul>
+        )
       ) : (
         <ShowcaseCard className="p-8 sm:p-12 text-center">
           <div className="flex flex-col items-center justify-center">

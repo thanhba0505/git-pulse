@@ -49,7 +49,7 @@ export function Header({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[#090B10]/60 backdrop-blur-xl"
       />
-      <div className="relative max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
+      <div className="relative max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Left: Brand + Contextual GitHub Account Selector */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div className="flex items-center gap-2.5 shrink-0">

@@ -54,8 +54,9 @@ function useAnimatedNumber(target: number): number {
 export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) {
   const { dict, t } = useTranslation();
 
-  const totalPrs = activities.length;
+  const totalPrs = activities.filter((p) => p.activityType !== 'direct_commits').length;
   const openPrs = activities.filter((p) => p.state.toLowerCase() === 'open').length;
+  const draftPrs = activities.filter((p) => p.state.toLowerCase() === 'draft').length;
   const mergedPrs = activities.filter((p) => p.state.toLowerCase() === 'merged').length;
   const totalCommits = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
   const activeRepos = new Set(activities.map((pr) => pr.repo)).size;
@@ -74,7 +75,11 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
               {animatedPrs}
             </p>
             <p className="text-xs text-slate-400 mt-1 tabular-nums">
-              {t('summaryStrip.prsBreakdown', { open: openPrs, merged: mergedPrs })}
+              {t('summaryStrip.prsBreakdown', {
+                open: openPrs,
+                draft: draftPrs,
+                merged: mergedPrs,
+              })}
             </p>
           </div>
           <div

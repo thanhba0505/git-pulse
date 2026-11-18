@@ -1,28 +1,39 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CryptoService } from '../common/crypto.service';
+import { SettingsService } from '../settings/settings.service';
+import { FetchPreferences, normalizeFetchPreferences } from '../settings/settings.types';
+import {
+  buildGitHubHeaders,
+  buildPrSearchQueryString,
+  CommitItem,
+  computeQueryDateFloor,
+  GITHUB_GRAPHQL_URL,
+  GitHubOrganizationWorkspace,
+  GitHubWorkspacesResponse,
+  GraphQlSearchPrNode,
+  GraphQlViewerWorkspacesData,
+  matchesWorkspacePreferences,
+  normalizePrNode,
+  PrActivity,
+  RepoOwnerType,
+  resolveOwnerType,
+  resolvePrState,
+} from './github-activity.helpers';
+
+export type { CommitItem, PrActivity, GitHubWorkspacesResponse, RepoOwnerType };
 
 export interface GitHubUserResponse {
   login: string;
   id: number;
   avatar_url: string;
   name: string;
-}
-
-export interface CommitItem {
-  sha: string;
-  message: string;
-  date: string;
-}
-
-export interface PrActivity {
-  repo: string;
-  number: number;
-  title: string;
-  prUrl: string;
-  state: string;
-  commits: string[];
-  commitDetails: CommitItem[];
 }
 
 export interface RequestMetadata {
@@ -65,6 +76,7 @@ export class GitHubService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crypto: CryptoService,
+    @Optional() private readonly settingsService?: SettingsService,
   ) {}
 
   /**
@@ -452,6 +464,116 @@ export class GitHubService {
     }
   }
 
+  async getWorkspaces(userId: string): Promise<GitHubWorkspacesResponse> {
+    const { token, username, accountId } = await this.getDecryptedToken(userId, 'ACTIVITY_FETCH');
+    const headers = {
+      ...buildGitHubHeaders(token),
+      'Content-Type': 'application/json',
+    };
+
+    const query = `
+      query {
+        viewer {
+          login
+          avatarUrl
+          organizations(first: 50) {
+            nodes {
+              login
+              name
+              avatarUrl
+            }
+          }
+          repositories(first: 1, ownerAffiliations: [OWNER]) {
+            totalCount
+          }
+        }
+      }
+    `;
+
+    try {
+      const gqlRes = await fetch(GITHUB_GRAPHQL_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query }),
+      });
+
+      if (gqlRes.status === 401) {
+        await this.markAccountRevoked(userId, accountId);
+        throw new BadRequestException(
+          'GitHub Token đã hết hạn hoặc bị thu hồi trên GitHub. Vui lòng kết nối lại.',
+        );
+      }
+
+      if (gqlRes.ok) {
+        const json = (await gqlRes.json()) as { data?: GraphQlViewerWorkspacesData };
+        const viewer = json.data?.viewer;
+        if (viewer) {
+          const organizations: GitHubOrganizationWorkspace[] = (viewer.organizations?.nodes ?? [])
+            .filter((o): o is { login: string; name?: string | null; avatarUrl?: string | null } =>
+              Boolean(o?.login),
+            )
+            .map((o) => ({
+              login: o.login,
+              name: o.name || o.login,
+              avatarUrl: o.avatarUrl ?? null,
+            }));
+
+          return {
+            personal: {
+              login: viewer.login || username,
+              avatarUrl: viewer.avatarUrl ?? null,
+              accessibleRepoCount: viewer.repositories?.totalCount ?? 0,
+            },
+            organizations,
+          };
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.warn(`GraphQL workspaces lookup failed: ${(err as Error).message}`);
+    }
+
+    // REST fallback
+    const [userRes, orgsRes] = await Promise.all([
+      fetch('https://api.github.com/user', { headers }),
+      fetch('https://api.github.com/user/orgs?per_page=50', { headers }),
+    ]);
+
+    if (userRes.status === 401) {
+      await this.markAccountRevoked(userId, accountId);
+      throw new BadRequestException(
+        'GitHub Token đã hết hạn hoặc bị thu hồi trên GitHub. Vui lòng kết nối lại.',
+      );
+    }
+
+    const ghUser = userRes.ok
+      ? ((await userRes.json()) as {
+          login?: string;
+          avatar_url?: string;
+          public_repos?: number;
+          total_private_repos?: number;
+        })
+      : null;
+    const ghOrgs = orgsRes.ok
+      ? ((await orgsRes.json()) as Array<{ login?: string; avatar_url?: string }>)
+      : [];
+
+    return {
+      personal: {
+        login: ghUser?.login || username,
+        avatarUrl: ghUser?.avatar_url ?? null,
+        accessibleRepoCount: (ghUser?.public_repos ?? 0) + (ghUser?.total_private_repos ?? 0),
+      },
+      organizations: ghOrgs
+        .filter((o): o is { login: string; avatar_url?: string } => Boolean(o.login))
+        .map((o) => ({
+          login: o.login,
+          name: o.login,
+          avatarUrl: o.avatar_url ?? null,
+        })),
+    };
+  }
+
   async fetchActivity(
     userId: string,
     sinceIso?: string,
@@ -463,7 +585,10 @@ export class GitHubService {
       meta,
     );
 
-    // Calculate beginning of today in UTC if not provided
+    const prefs = this.settingsService
+      ? (await this.settingsService.getSettings(userId)).fetchPreferences
+      : normalizeFetchPreferences(null);
+
     let since: Date;
     if (sinceIso) {
       since = new Date(sinceIso);
@@ -472,35 +597,195 @@ export class GitHubService {
       since.setHours(0, 0, 0, 0);
     }
 
-    const sinceDateStr = since.toISOString().slice(0, 10);
-    const searchUrl = `https://api.github.com/search/issues?q=is:pr+author:${username}+updated:>=${sinceDateStr}&sort=updated&order=desc&per_page=50`;
+    const seenPrCommitShas = new Set<string>();
+    const prActivities = await this.fetchPrActivities(
+      userId,
+      accountId,
+      token,
+      username,
+      since,
+      prefs,
+      seenPrCommitShas,
+      meta,
+    );
 
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'GitPulse-Agent/1.0',
-    };
+    const directActivities = prefs.includeDirectCommits
+      ? await this.fetchDirectCommits(token, username, since, prefs, seenPrCommitShas)
+      : [];
 
-    const searchRes = await fetch(searchUrl, { headers });
-    if (!searchRes.ok) {
-      if (searchRes.status === 401) {
-        await this.prisma.gitAccount.updateMany({
-          where: { id: accountId, userId },
-          data: { tokenStatus: 'REVOKED' },
-        });
-        await this.recordAuditLog(
-          userId,
-          'TOKEN_REVOKED',
-          'SUCCESS',
-          'GitHub API search returned 401 Bad credentials',
-          meta,
-        );
+    const combined = [...prActivities, ...directActivities].sort((a, b) => {
+      const tA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const tB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return tB - tA;
+    });
+
+    await this.prisma.gitAccount.updateMany({
+      where: { id: accountId, userId },
+      data: { lastSyncAt: new Date() },
+    });
+
+    return combined;
+  }
+
+  private async markAccountRevoked(
+    userId: string,
+    accountId: string,
+    meta?: RequestMetadata,
+  ): Promise<void> {
+    await this.prisma.gitAccount.updateMany({
+      where: { id: accountId, userId },
+      data: { tokenStatus: 'REVOKED' },
+    });
+    await this.recordAuditLog(
+      userId,
+      'TOKEN_REVOKED',
+      'SUCCESS',
+      'GitHub API returned 401 Bad credentials',
+      meta,
+    );
+  }
+
+  private async fetchPrActivities(
+    userId: string,
+    accountId: string,
+    token: string,
+    username: string,
+    since: Date,
+    prefs: FetchPreferences,
+    seenPrCommitShas: Set<string>,
+    meta?: RequestMetadata,
+  ): Promise<PrActivity[]> {
+    const sinceDateFloor = computeQueryDateFloor(since);
+    const searchQuery = buildPrSearchQueryString(username, sinceDateFloor, prefs);
+    const headers = buildGitHubHeaders(token);
+
+    const graphqlQuery = `
+      query($q: String!) {
+        search(query: $q, type: ISSUE, first: 60) {
+          nodes {
+            ... on PullRequest {
+              number
+              title
+              url
+              state
+              isDraft
+              merged
+              mergedAt
+              createdAt
+              updatedAt
+              headRefName
+              baseRefName
+              labels(first: 8) {
+                nodes {
+                  name
+                  color
+                }
+              }
+              repository {
+                nameWithOwner
+                isPrivate
+                owner {
+                  login
+                  __typename
+                  avatarUrl
+                }
+              }
+              commits(last: 100) {
+                nodes {
+                  commit {
+                    oid
+                    messageHeadline
+                    committedDate
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const gqlRes = await fetch(GITHUB_GRAPHQL_URL, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: graphqlQuery,
+          variables: { q: searchQuery },
+        }),
+      });
+
+      if (gqlRes.status === 401) {
+        await this.markAccountRevoked(userId, accountId, meta);
         throw new BadRequestException(
           'GitHub Token đã hết hạn hoặc bị thu hồi trên GitHub. Vui lòng kết nối lại.',
         );
       }
 
-      const err = await searchRes.json().catch(() => ({}));
+      if (gqlRes.ok) {
+        const body = (await gqlRes.json()) as {
+          data?: { search?: { nodes?: GraphQlSearchPrNode[] } };
+          errors?: Array<{ message?: string }>;
+        };
+
+        if (body.data?.search?.nodes && !body.errors?.length) {
+          const results: PrActivity[] = [];
+          for (const node of body.data.search.nodes) {
+            const normalized = normalizePrNode(node, since, username, prefs, seenPrCommitShas);
+            if (normalized) {
+              results.push(normalized);
+            }
+          }
+          return results;
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.warn(`GraphQL PR search fallback to REST: ${(err as Error).message}`);
+    }
+
+    return this.fetchPrActivitiesViaRest(
+      userId,
+      accountId,
+      headers,
+      username,
+      since,
+      sinceDateFloor,
+      prefs,
+      seenPrCommitShas,
+      meta,
+    );
+  }
+
+  private async fetchPrActivitiesViaRest(
+    userId: string,
+    accountId: string,
+    headers: Record<string, string>,
+    username: string,
+    since: Date,
+    sinceDateFloor: string,
+    prefs: FetchPreferences,
+    seenPrCommitShas: Set<string>,
+    meta?: RequestMetadata,
+  ): Promise<PrActivity[]> {
+    const roleQualifier =
+      prefs.fetchRole === 'involves' ? `involves:${username}` : `author:${username}`;
+    const q = encodeURIComponent(`is:pr ${roleQualifier} updated:>=${sinceDateFloor}`);
+    const searchUrl = `https://api.github.com/search/issues?q=${q}&sort=updated&order=desc&per_page=50`;
+
+    const searchRes = await fetch(searchUrl, { headers });
+    if (!searchRes.ok) {
+      if (searchRes.status === 401) {
+        await this.markAccountRevoked(userId, accountId, meta);
+        throw new BadRequestException(
+          'GitHub Token đã hết hạn hoặc bị thu hồi trên GitHub. Vui lòng kết nối lại.',
+        );
+      }
+
+      const err = (await searchRes.json().catch(() => ({}))) as { message?: string };
       throw new BadRequestException(
         `Lỗi khi truy vấn PR từ GitHub: ${err.message || searchRes.statusText}`,
       );
@@ -512,7 +797,10 @@ export class GitHubService {
         title: string;
         html_url: string;
         state: string;
+        draft?: boolean;
+        pull_request?: { merged_at?: string | null };
         repository_url: string;
+        created_at: string;
         updated_at: string;
       }>;
     };
@@ -522,7 +810,27 @@ export class GitHubService {
 
     for (const pr of items) {
       const repoFullName = pr.repository_url.replace('https://api.github.com/repos/', '');
+      const ownerLogin = repoFullName.split('/')[0] || '';
+      const ownerType: RepoOwnerType =
+        ownerLogin.toLowerCase() === username.toLowerCase() ? 'personal' : 'organization';
+
+      if (!matchesWorkspacePreferences(ownerType, ownerLogin, prefs)) {
+        continue;
+      }
+
+      const resolvedState = resolvePrState({
+        state: pr.state,
+        isDraft: pr.draft,
+        mergedAt: pr.pull_request?.merged_at,
+      });
+
+      if (!prefs.prStates.includes(resolvedState)) {
+        continue;
+      }
+
       const commitsUrl = `https://api.github.com/repos/${repoFullName}/pulls/${pr.number}/commits?per_page=100`;
+      const recentCommits: CommitItem[] = [];
+      const allCommits: CommitItem[] = [];
 
       try {
         const commitsRes = await fetch(commitsUrl, { headers });
@@ -535,47 +843,353 @@ export class GitHubService {
             };
           }>;
 
-          const recentCommits: CommitItem[] = [];
-          const commitHeadlines: string[] = [];
-
           for (const c of commitsJson) {
+            seenPrCommitShas.add(c.sha);
             const commitDate = new Date(c.commit.committer.date);
+            const headline = c.commit.message.split('\n')[0].trim();
+            const item: CommitItem = {
+              sha: c.sha.slice(0, 7),
+              message: headline,
+              date: c.commit.committer.date,
+            };
+            allCommits.push(item);
+
             if (commitDate >= since) {
-              const headline = c.commit.message.split('\n')[0].trim();
-              commitHeadlines.push(headline);
-              recentCommits.push({
-                sha: c.sha.slice(0, 7),
-                message: headline,
-                date: c.commit.committer.date,
-              });
+              recentCommits.push(item);
             }
           }
-
-          if (recentCommits.length > 0) {
-            activities.push({
-              repo: repoFullName,
-              number: pr.number,
-              title: pr.title,
-              prUrl: pr.html_url,
-              state: pr.state,
-              commits: commitHeadlines,
-              commitDetails: recentCommits,
-            });
-          }
         }
-      } catch (err) {
+      } catch (err: unknown) {
         this.logger.warn(
           `Could not fetch commits for ${repoFullName}#${pr.number}: ${(err as Error).message}`,
         );
       }
+
+      const touchedInWindow =
+        new Date(pr.updated_at) >= since ||
+        new Date(pr.created_at) >= since ||
+        Boolean(pr.pull_request?.merged_at && new Date(pr.pull_request.merged_at) >= since);
+
+      if (
+        recentCommits.length === 0 &&
+        (!prefs.includePrWithoutCommitsInRange || !touchedInWindow)
+      ) {
+        continue;
+      }
+
+      const effectiveCommits = recentCommits.length > 0 ? recentCommits : allCommits.slice(-3);
+
+      activities.push({
+        repo: repoFullName,
+        owner: ownerLogin,
+        ownerType,
+        number: pr.number,
+        title: pr.title,
+        prUrl: pr.html_url,
+        state: resolvedState,
+        activityType: 'pr',
+        updatedAt: pr.updated_at,
+        commits: effectiveCommits.map((c) => c.message),
+        commitDetails: effectiveCommits,
+      });
     }
 
-    // Update last sync on active account
-    await this.prisma.gitAccount.updateMany({
-      where: { id: accountId, userId },
-      data: { lastSyncAt: new Date() },
-    });
-
     return activities;
+  }
+
+  private async fetchDirectCommits(
+    token: string,
+    username: string,
+    since: Date,
+    prefs: FetchPreferences,
+    seenPrCommitShas: Set<string>,
+  ): Promise<PrActivity[]> {
+    const headers = buildGitHubHeaders(token);
+    const usernameLower = username.toLowerCase();
+
+    const reposQuery = `
+      query {
+        viewer {
+          repositories(
+            first: 35
+            affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]
+            orderBy: { field: PUSHED_AT, direction: DESC }
+          ) {
+            nodes {
+              nameWithOwner
+              isPrivate
+              isFork
+              pushedAt
+              defaultBranchRef { name }
+              owner {
+                login
+                __typename
+                avatarUrl
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    interface CandidateRepo {
+      repo: string;
+      owner: string;
+      ownerType: RepoOwnerType;
+      ownerAvatar?: string;
+      isPrivate: boolean;
+      defaultBranch?: string;
+      branches: Set<string>;
+      eventCommits: Array<{ branch: string; sha: string; message: string; date: string }>;
+      eventCommitShas: Set<string>;
+    }
+
+    const candidateMap = new Map<string, CandidateRepo>();
+
+    const ensureCandidate = (
+      repo: string,
+      owner: string,
+      ownerType: RepoOwnerType,
+      ownerAvatar?: string,
+      isPrivate = false,
+      defaultBranch?: string,
+    ): CandidateRepo | null => {
+      if (!matchesWorkspacePreferences(ownerType, owner, prefs)) {
+        return null;
+      }
+      const existing = candidateMap.get(repo);
+      if (existing) return existing;
+      const created: CandidateRepo = {
+        repo,
+        owner,
+        ownerType,
+        ownerAvatar,
+        isPrivate,
+        defaultBranch,
+        branches: new Set(defaultBranch ? [defaultBranch] : []),
+        eventCommits: [],
+        eventCommitShas: new Set(),
+      };
+      candidateMap.set(repo, created);
+      return created;
+    };
+
+    try {
+      const [gqlRes, eventsRes] = await Promise.all([
+        fetch(GITHUB_GRAPHQL_URL, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: reposQuery }),
+        }).catch(() => null),
+        fetch(`https://api.github.com/users/${encodeURIComponent(username)}/events?per_page=100`, {
+          headers,
+        }).catch(() => null),
+      ]);
+
+      if (gqlRes?.ok) {
+        const gqlBody = (await gqlRes.json()) as { data?: GraphQlViewerWorkspacesData };
+        const repoNodes = gqlBody.data?.viewer?.repositories?.nodes ?? [];
+        for (const r of repoNodes) {
+          if (!r?.nameWithOwner || !r.pushedAt) continue;
+          if (new Date(r.pushedAt) < since) continue;
+
+          const ownerLogin = r.owner?.login || r.nameWithOwner.split('/')[0] || '';
+          const ownerType = resolveOwnerType(r.owner?.__typename, ownerLogin, username);
+          ensureCandidate(
+            r.nameWithOwner,
+            ownerLogin,
+            ownerType,
+            r.owner?.avatarUrl ?? undefined,
+            Boolean(r.isPrivate),
+            r.defaultBranchRef?.name,
+          );
+        }
+      }
+
+      if (eventsRes?.ok) {
+        const events = (await eventsRes.json()) as Array<{
+          type?: string;
+          created_at?: string;
+          actor?: { login?: string };
+          repo?: { name?: string };
+          payload?: {
+            ref?: string;
+            commits?: Array<{ sha?: string; message?: string }>;
+          };
+        }>;
+
+        for (const ev of events) {
+          if (ev.type !== 'PushEvent' || !ev.repo?.name || !ev.created_at) continue;
+          if (new Date(ev.created_at) < since) continue;
+
+          const repoFullName = ev.repo.name;
+          const ownerLogin = repoFullName.split('/')[0] || '';
+          const existingCandidate = candidateMap.get(repoFullName);
+          const ownerType =
+            existingCandidate?.ownerType ??
+            (ownerLogin.toLowerCase() === usernameLower ? 'personal' : 'organization');
+
+          const entry = existingCandidate ?? ensureCandidate(repoFullName, ownerLogin, ownerType);
+          if (!entry) continue;
+
+          const branchName =
+            ev.payload?.ref?.replace(/^refs\/heads\//, '') || entry.defaultBranch || 'main';
+          entry.branches.add(branchName);
+
+          for (const commit of ev.payload?.commits ?? []) {
+            if (!commit.sha) continue;
+            entry.eventCommitShas.add(commit.sha);
+            entry.eventCommits.push({
+              branch: branchName,
+              sha: commit.sha,
+              message: (commit.message || '').split('\n')[0].trim(),
+              date: ev.created_at,
+            });
+          }
+        }
+      }
+    } catch (err: unknown) {
+      this.logger.warn(`Direct commit discovery error: ${(err as Error).message}`);
+    }
+
+    const candidates = Array.from(candidateMap.values()).slice(0, 15);
+    const directActivities: PrActivity[] = [];
+
+    // Fetch recent commits per candidate repo with capped concurrency
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+      const batch = candidates.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (cand) => {
+          // If no PushEvent branches were discovered for a recently pushed repo, list top branches cleanly
+          if (cand.branches.size <= 1) {
+            try {
+              const branchesRes = await fetch(
+                `https://api.github.com/repos/${cand.repo}/branches?per_page=10`,
+                { headers },
+              );
+              if (branchesRes.ok) {
+                const branchesJson = (await branchesRes.json()) as Array<{ name?: string }>;
+                for (const b of branchesJson) {
+                  if (b.name) cand.branches.add(b.name);
+                }
+              }
+            } catch {
+              // Ignore branch enumeration failures
+            }
+          }
+
+          const branchList = Array.from(cand.branches).slice(0, 4);
+          const branchCommitsMap = new Map<string, Map<string, CommitItem>>();
+
+          for (const evCommit of cand.eventCommits) {
+            if (seenPrCommitShas.has(evCommit.sha)) continue;
+            const branchMap =
+              branchCommitsMap.get(evCommit.branch) ?? new Map<string, CommitItem>();
+            branchMap.set(evCommit.sha, {
+              sha: evCommit.sha.slice(0, 7),
+              message: evCommit.message,
+              date: evCommit.date,
+            });
+            branchCommitsMap.set(evCommit.branch, branchMap);
+          }
+
+          await Promise.all(
+            branchList.map(async (branch) => {
+              try {
+                const url = `https://api.github.com/repos/${cand.repo}/commits?sha=${encodeURIComponent(
+                  branch,
+                )}&since=${encodeURIComponent(since.toISOString())}&per_page=40`;
+                const res = await fetch(url, { headers });
+                if (!res.ok) return;
+
+                const commits = (await res.json()) as Array<{
+                  sha: string;
+                  commit: {
+                    message: string;
+                    author?: { date?: string };
+                    committer?: { date?: string };
+                  };
+                  author?: { login?: string } | null;
+                  committer?: { login?: string } | null;
+                }>;
+
+                for (const c of commits) {
+                  if (seenPrCommitShas.has(c.sha)) continue;
+                  const authorMatch = c.author?.login?.toLowerCase() === usernameLower;
+                  const committerMatch = c.committer?.login?.toLowerCase() === usernameLower;
+                  const eventMatch = cand.eventCommitShas.has(c.sha);
+
+                  // On personal owned repos, if local git email isn't linked on GitHub (author === null), also accept when no external login owns it
+                  const personalFallback =
+                    cand.ownerType === 'personal' &&
+                    cand.owner.toLowerCase() === usernameLower &&
+                    !c.author?.login;
+
+                  if (!authorMatch && !committerMatch && !eventMatch && !personalFallback) {
+                    continue;
+                  }
+
+                  const commitDate =
+                    c.commit.committer?.date || c.commit.author?.date || since.toISOString();
+                  if (new Date(commitDate) < since) continue;
+
+                  const branchMap = branchCommitsMap.get(branch) ?? new Map<string, CommitItem>();
+                  branchMap.set(c.sha, {
+                    sha: c.sha.slice(0, 7),
+                    message: c.commit.message.split('\n')[0].trim(),
+                    date: commitDate,
+                  });
+                  branchCommitsMap.set(branch, branchMap);
+                }
+              } catch {
+                // Ignore individual branch lookup failures
+              }
+            }),
+          );
+
+          const repoActivities: PrActivity[] = [];
+          const dedupGlobalForRepo = new Set<string>();
+
+          for (const [branch, commitMap] of branchCommitsMap.entries()) {
+            const uniqueItems: CommitItem[] = [];
+            for (const [fullSha, item] of commitMap.entries()) {
+              if (dedupGlobalForRepo.has(fullSha)) continue;
+              dedupGlobalForRepo.add(fullSha);
+              uniqueItems.push(item);
+            }
+
+            if (uniqueItems.length === 0) continue;
+
+            uniqueItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            repoActivities.push({
+              repo: cand.repo,
+              owner: cand.owner,
+              ownerType: cand.ownerType,
+              ownerAvatar: cand.ownerAvatar,
+              repoPrivate: cand.isPrivate,
+              number: 0,
+              title: branch,
+              prUrl: `https://github.com/${cand.repo}/commits/${encodeURIComponent(branch)}`,
+              state: 'direct_commits',
+              activityType: 'direct_commits',
+              headBranch: branch,
+              updatedAt: uniqueItems[0]?.date,
+              commits: uniqueItems.map((c) => c.message),
+              commitDetails: uniqueItems,
+            });
+          }
+
+          return repoActivities;
+        }),
+      );
+
+      for (const items of batchResults) {
+        directActivities.push(...items);
+      }
+    }
+
+    return directActivities;
   }
 }

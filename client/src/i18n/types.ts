@@ -81,13 +81,27 @@ export interface ScannerDictionary {
   range7d: string;
   syncBtn: string;
   syncingBtn: string;
+  fetchSettingsBtn: string;
   revalidatingHint: string;
+  groupByLabel: string;
+  groupOwner: string;
+  groupTask: string;
+  groupRepo: string;
+  groupFlat: string;
+  personalSpace: string;
+  orgSpace: string;
+  directCommitsBadge: string;
+  directCommitsTitle: string;
+  selectGroup: string;
+  clearGroup: string;
+  groupCount: string;
   allRepos: string;
   selectAll: string;
   clearSelection: string;
   selectedSummary: string;
   selectPrAria: string;
   commitsCount: string;
+  commitsCollapsedCount: string;
   showMoreCommits: string;
   collapseCommits: string;
   openPrExternal: string;
@@ -96,9 +110,44 @@ export interface ScannerDictionary {
   emptyDesc: string;
   emptyAction: string;
   scanError: string;
+  stateFilterAll: string;
+  stateDraft: string;
   stateOpen: string;
   stateMerged: string;
   stateClosed: string;
+  assignTaskBtn: string;
+  assignToTaskHeading: string;
+  noTasksHint: string;
+  createTaskQuickPlaceholder: string;
+  createTaskQuickBtn: string;
+  noPersonalNoticeTitle: string;
+  noPersonalNoticeDesc: string;
+}
+
+export interface TasksDictionary {
+  createBtn: string;
+  createTitle: string;
+  titleLabel: string;
+  titlePlaceholder: string;
+  colorLabel: string;
+  selectPrsLabel: string;
+  selectedPrsHint: string;
+  noAvailablePrs: string;
+  saveTaskBtn: string;
+  savingBtn: string;
+  emptyTitle: string;
+  emptyDesc: string;
+  unassignedTitle: string;
+  addPrsBtn: string;
+  doneAddPrsBtn: string;
+  selectAllInTask: string;
+  outOfWindowTag: string;
+  renameTooltip: string;
+  saveRenameBtn: string;
+  deleteTooltip: string;
+  confirmDeleteBtn: string;
+  progressSummary: string;
+  removeItemAria: string;
 }
 
 export interface AiModelsDictionary {
@@ -189,6 +238,11 @@ export interface ToastsDictionary {
   gitSwitched: string;
   gitDisconnected: string;
   reportDeleted: string;
+  settingsSaved: string;
+  taskCreated: string;
+  taskUpdated: string;
+  taskDeleted: string;
+  taskItemUpdated: string;
 }
 
 export interface GithubModalDictionary {
@@ -300,6 +354,33 @@ export interface AuthDictionary {
 export interface SettingsModalDictionary {
   title: string;
   subtitle: string;
+  tablistAria: string;
+  tabFetch: string;
+  tabDisplay: string;
+  tabGeneral: string;
+  workspaceSection: string;
+  includePersonalLabel: string;
+  includePersonalDesc: string;
+  personalNoAccessWarning: string;
+  orgsLabel: string;
+  orgsAllMode: string;
+  orgsAllHint: string;
+  orgsEmpty: string;
+  prStatesSection: string;
+  fetchRoleLabel: string;
+  roleAuthor: string;
+  roleInvolves: string;
+  advancedSection: string;
+  includeDirectCommitsLabel: string;
+  includeDirectCommitsDesc: string;
+  includePrWithoutCommitsLabel: string;
+  includePrWithoutCommitsDesc: string;
+  defaultRangeLabel: string;
+  defaultGroupByLabel: string;
+  compactCommitsLabel: string;
+  compactCommitsDesc: string;
+  saveAndApplyBtn: string;
+  savingBtn: string;
   interfaceSection: string;
   languageLabel: string;
   motionLabel: string;
@@ -323,6 +404,7 @@ export interface TranslationDictionary {
   summaryStrip: SummaryStripDictionary;
   onboarding: OnboardingDictionary;
   scanner: ScannerDictionary;
+  tasks: TasksDictionary;
   aiConsole: AiConsoleDictionary;
   standupDock: StandupDockDictionary;
   commandPalette: CommandPaletteDictionary;
