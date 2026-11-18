@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTranslation } from '../i18n';
 import { Header } from '../components/layout/Header';
+import { Footer } from '../components/layout/Footer';
 import { IntroScreen } from '../components/layout/IntroScreen';
 import { ActivitySummaryStrip } from '../components/dashboard/ActivitySummaryStrip';
 import { ActivityScanner, getPrKey } from '../components/dashboard/ActivityScanner';
@@ -520,128 +521,132 @@ export default function HomePage() {
         onLogout={handleLogout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        {!gitStatus.connected ? (
-          /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
-          <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
-            <ShowcaseCard tiltStrength={0.75} className="w-full max-w-xl p-6 sm:p-8 gp-fade-in">
-              <div className="flex flex-col items-center text-center space-y-5">
-                <div
-                  className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.2)]"
-                  aria-hidden="true"
-                >
-                  <GitBranch className="w-6 h-6" />
-                </div>
+      {/* Unified Scrollable Container: Main content and Footer scroll together */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <main className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+          {!gitStatus.connected ? (
+            /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
+            <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
+              <ShowcaseCard tiltStrength={0.75} className="w-full max-w-xl p-6 sm:p-8 gp-fade-in">
+                <div className="flex flex-col items-center text-center space-y-5">
+                  <div
+                    className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.2)]"
+                    aria-hidden="true"
+                  >
+                    <GitBranch className="w-6 h-6" />
+                  </div>
 
-                <div className="space-y-2 max-w-md">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
-                    {dict.onboarding.title}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                    {dict.onboarding.description}
-                  </p>
-                </div>
-
-                <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
-                    <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
-                    <p className="text-xs text-slate-300 leading-snug">
-                      {dict.onboarding.featureSync}
+                  <div className="space-y-2 max-w-md">
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                      {dict.onboarding.title}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                      {dict.onboarding.description}
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
-                    <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-                    <p className="text-xs text-slate-300 leading-snug">
-                      {dict.onboarding.featureAi}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                    <p className="text-xs text-slate-300 leading-snug">
-                      {dict.onboarding.featureExport}
-                    </p>
-                  </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => openGitConnectModal('connect')}
-                  className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer shadow-[0_8px_24px_-6px_rgba(14,165,233,0.45)]"
-                >
-                  <GitBranch className="w-4 h-4" aria-hidden="true" />
-                  <span>{dict.onboarding.connectNow}</span>
-                </button>
-              </div>
-            </ShowcaseCard>
-          </div>
-        ) : (
-          /* Active Workspace (Rendered Only When At Least One GitHub Account Is Connected) */
-          <>
-            <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
-                {dict.workspace.title}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400 font-mono">
-                {gitStatus.gitUsername
-                  ? t('workspace.activeAccountContext', { username: gitStatus.gitUsername })
-                  : dict.workspace.subtitle}
-              </p>
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                      <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
+                      <p className="text-xs text-slate-300 leading-snug">
+                        {dict.onboarding.featureSync}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                      <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                      <p className="text-xs text-slate-300 leading-snug">
+                        {dict.onboarding.featureAi}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                      <p className="text-xs text-slate-300 leading-snug">
+                        {dict.onboarding.featureExport}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openGitConnectModal('connect')}
+                    className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer shadow-[0_8px_24px_-6px_rgba(14,165,233,0.45)]"
+                  >
+                    <GitBranch className="w-4 h-4" aria-hidden="true" />
+                    <span>{dict.onboarding.connectNow}</span>
+                  </button>
+                </div>
+              </ShowcaseCard>
             </div>
-
-            <ActivitySummaryStrip activities={activities} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-7 min-w-0">
-                <ActivityScanner
-                  activities={activities}
-                  isLoading={isScanning}
-                  error={scanError}
-                  onScan={() => handleScanActivity(undefined, true)}
-                  sinceOption={sinceOption}
-                  onSinceOptionChange={(opt) => {
-                    setScanError(null);
-                    void handleScanActivity(opt, true);
-                  }}
-                  repoFilter={repoFilter}
-                  onRepoFilterChange={setRepoFilter}
-                  selectedPrKeys={selectedPrKeys}
-                  onTogglePrSelection={handleTogglePrSelection}
-                  onSelectAllPrs={handleSelectAllVisiblePrs}
-                  onClearPrSelection={handleClearVisiblePrSelection}
-                />
+          ) : (
+            /* Active Workspace (Rendered Only When At Least One GitHub Account Is Connected) */
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                  {dict.workspace.title}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-400 font-mono">
+                  {gitStatus.gitUsername
+                    ? t('workspace.activeAccountContext', { username: gitStatus.gitUsername })
+                    : dict.workspace.subtitle}
+                </p>
               </div>
 
-              <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6 min-w-0">
-                <CockpitAiConsole
-                  engine={aiEngine}
-                  onEngineChange={(next) => {
-                    setAiEngine(next);
-                    setAiError(null);
-                  }}
-                  selectedModel={selectedModel}
-                  onModelChange={setSelectedModel}
-                  language={reportLanguage}
-                  onLanguageChange={setReportLanguage}
-                  onGenerate={handleGenerateSummary}
-                  isGenerating={isGenerating}
-                  error={aiError}
-                  webLlmProgressText={webLlmProgressText}
-                  webLlmProgressPercent={webLlmProgressPercent}
-                  selectedPrCount={selectedActivities.length}
-                />
+              <ActivitySummaryStrip activities={activities} />
 
-                <StandupOutputDock
-                  bullets={bullets}
-                  isGenerating={isGenerating}
-                  modelUsed={modelUsed}
-                  reportLanguage={generatedLanguage}
-                  onUpdateBullets={setBullets}
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-7 min-w-0">
+                  <ActivityScanner
+                    activities={activities}
+                    isLoading={isScanning}
+                    error={scanError}
+                    onScan={() => handleScanActivity(undefined, true)}
+                    sinceOption={sinceOption}
+                    onSinceOptionChange={(opt) => {
+                      setScanError(null);
+                      void handleScanActivity(opt, true);
+                    }}
+                    repoFilter={repoFilter}
+                    onRepoFilterChange={setRepoFilter}
+                    selectedPrKeys={selectedPrKeys}
+                    onTogglePrSelection={handleTogglePrSelection}
+                    onSelectAllPrs={handleSelectAllVisiblePrs}
+                    onClearPrSelection={handleClearVisiblePrSelection}
+                  />
+                </div>
+
+                <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-6 min-w-0">
+                  <CockpitAiConsole
+                    engine={aiEngine}
+                    onEngineChange={(next) => {
+                      setAiEngine(next);
+                      setAiError(null);
+                    }}
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
+                    language={reportLanguage}
+                    onLanguageChange={setReportLanguage}
+                    onGenerate={handleGenerateSummary}
+                    isGenerating={isGenerating}
+                    error={aiError}
+                    webLlmProgressText={webLlmProgressText}
+                    webLlmProgressPercent={webLlmProgressPercent}
+                    selectedPrCount={selectedActivities.length}
+                  />
+
+                  <StandupOutputDock
+                    bullets={bullets}
+                    isGenerating={isGenerating}
+                    modelUsed={modelUsed}
+                    reportLanguage={generatedLanguage}
+                    onUpdateBullets={setBullets}
+                  />
+                </div>
               </div>
-            </div>
-          </>
-        )}
-      </main>
+            </>
+          )}
+        </main>
+        <Footer />
+      </div>
 
       <GitHubConnectModal
         isOpen={isGitModalOpen}
@@ -721,46 +726,49 @@ function AuthLandingWrapper({
   const motionLabel = isMotionPaused ? dictPlayLabel : dictPauseLabel;
 
   return (
-    <main className="relative flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-dvh">
-      <button
-        type="button"
-        onClick={toggleMotion}
-        title={motionLabel}
-        aria-label={motionLabel}
-        className={`fixed top-4 right-4 z-30 inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-          isMotionPaused
-            ? 'bg-[#11141C]/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-            : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
-        }`}
-      >
-        {isMotionPaused ? (
-          <Pause className="w-3.5 h-3.5" aria-hidden="true" />
-        ) : (
-          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-        )}
-      </button>
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
+      <main className="relative flex-1 flex flex-col items-center justify-center p-4 sm:p-6">
+        <button
+          type="button"
+          onClick={toggleMotion}
+          title={motionLabel}
+          aria-label={motionLabel}
+          className={`fixed top-4 right-4 z-30 inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+            isMotionPaused
+              ? 'bg-[#11141C]/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
+          }`}
+        >
+          {isMotionPaused ? (
+            <Pause className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : (
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
+        </button>
 
-      <div className="mb-6 text-center max-w-sm">
-        <p className="text-xs font-mono uppercase tracking-wider text-sky-400 font-semibold">
-          {dictBrand}
-        </p>
-        <p className="text-xs text-slate-400 mt-1">{dictTagline}</p>
-      </div>
+        <div className="mb-6 text-center max-w-sm">
+          <p className="text-xs font-mono uppercase tracking-wider text-sky-400 font-semibold">
+            {dictBrand}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">{dictTagline}</p>
+        </div>
 
-      <AuthModal
-        isOpen={true}
-        onClose={() => {}}
-        variant="inline"
-        onOpenGoogleChooser={onOpenGoogleChooser}
-        externalError={authError}
-      />
+        <AuthModal
+          isOpen={true}
+          onClose={() => {}}
+          variant="inline"
+          onOpenGoogleChooser={onOpenGoogleChooser}
+          externalError={authError}
+        />
 
-      <GoogleAccountChooserModal
-        isOpen={isGoogleChooserOpen}
-        onClose={onCloseGoogleChooser}
-        onSelectAccount={onSelectAccount}
-        appName="Git Pulse"
-      />
-    </main>
+        <GoogleAccountChooserModal
+          isOpen={isGoogleChooserOpen}
+          onClose={onCloseGoogleChooser}
+          onSelectAccount={onSelectAccount}
+          appName="Git Pulse"
+        />
+      </main>
+      <Footer />
+    </div>
   );
 }

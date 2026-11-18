@@ -56,12 +56,14 @@ export default function RootLayout({
         {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
         <link rel="preconnect" href="https://accounts.google.com" />
       </head>
-      <body className="min-h-dvh bg-[#090B10] text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
+      <body className="h-screen h-[100dvh] overflow-hidden bg-[#090B10] text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
         <InteractiveBackdrop />
         <I18nProvider>
           <ToastProvider>
             <AuthProvider>
-              <div className="relative z-10 flex min-h-dvh flex-col">{children}</div>
+              <div className="relative z-10 flex h-full w-full flex-col overflow-hidden">
+                {children}
+              </div>
             </AuthProvider>
           </ToastProvider>
         </I18nProvider>

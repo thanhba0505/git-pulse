@@ -18,6 +18,9 @@ export const en: TranslationDictionary = {
   intro: {
     tagline: 'Git Activity Sync & Standup Intelligence',
   },
+  footer: {
+    tagline: 'Git Activity Sync & Standup Intelligence',
+  },
   header: {
     brand: 'Git Pulse',
     subtitle: 'Git Activity & AI Standup Workspace',

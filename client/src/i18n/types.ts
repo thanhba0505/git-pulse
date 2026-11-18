@@ -44,6 +44,10 @@ export interface IntroDictionary {
   tagline: string;
 }
 
+export interface FooterDictionary {
+  tagline: string;
+}
+
 export interface WorkspaceDictionary {
   title: string;
   subtitle: string;
@@ -314,6 +318,7 @@ export interface SettingsModalDictionary {
 export interface TranslationDictionary {
   common: CommonDictionary;
   intro: IntroDictionary;
+  footer: FooterDictionary;
   header: HeaderDictionary;
   workspace: WorkspaceDictionary;
   summaryStrip: SummaryStripDictionary;

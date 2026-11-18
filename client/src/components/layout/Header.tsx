@@ -44,7 +44,7 @@ export function Header({
   const hasConnectedAccounts = Boolean(gitStatus.connected && accounts.length > 0);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.28)]">
+    <header className="relative shrink-0 z-40 w-full border-b border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.28)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[#090B10]/60 backdrop-blur-xl"

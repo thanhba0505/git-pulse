@@ -220,7 +220,7 @@ export function Select<T extends string>({
           id={listboxId}
           role="listbox"
           aria-labelledby={label ? labelId : valueId}
-          className={`gp-glass-panel absolute z-50 min-w-full w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in ${
+          className={`gp-glass-panel custom-scrollbar absolute z-50 min-w-full w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in ${
             openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
           } ${align === 'right' ? 'right-0' : 'left-0'}`}
         >

@@ -18,6 +18,9 @@ export const vi: TranslationDictionary = {
   intro: {
     tagline: 'Đồng bộ hoạt động Git & Tổng hợp Standup',
   },
+  footer: {
+    tagline: 'Đồng bộ hoạt động Git & Tổng hợp Standup',
+  },
   header: {
     brand: 'Git Pulse',
     subtitle: 'Tổng hợp hoạt động Git & Báo cáo Standup',
