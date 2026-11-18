@@ -10,10 +10,10 @@ export interface GitStatus {
   connected: boolean;
   gitUsername?: string;
   gitAvatar?: string;
-  authType?: "OAUTH" | "PAT";
+  authType?: 'OAUTH' | 'PAT';
   scopes?: string[];
   hasExcessiveScopes?: boolean;
-  tokenStatus?: "ACTIVE" | "EXPIRED" | "REVOKED" | "NEEDS_REAUTH";
+  tokenStatus?: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
   expiresAt?: string | null;
   lastSyncAt?: string;
 }
@@ -39,11 +39,11 @@ export interface ReportItem {
   summaryText: string;
   prCount: number;
   commitCount: number;
-  aiEngineUsed: "GITHUB_MODELS" | "WEB_LLM";
+  aiEngineUsed: 'GITHUB_MODELS' | 'WEB_LLM';
   modelName: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   createdAt: string;
 }
 
-export type AiEngine = "GITHUB_MODELS" | "WEB_LLM";
+export type AiEngine = 'GITHUB_MODELS' | 'WEB_LLM';

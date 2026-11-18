@@ -13,11 +13,11 @@ const GITHUB_TOKEN_PATTERNS = [
  */
 export function redactTokens(input: unknown): string {
   if (input === null || input === undefined) {
-    return "";
+    return '';
   }
 
   let text: string;
-  if (typeof input === "string") {
+  if (typeof input === 'string') {
     text = input;
   } else {
     try {
@@ -29,7 +29,7 @@ export function redactTokens(input: unknown): string {
 
   let sanitized = text;
   for (const pattern of GITHUB_TOKEN_PATTERNS) {
-    sanitized = sanitized.replace(pattern, "[REDACTED_GITHUB_TOKEN]");
+    sanitized = sanitized.replace(pattern, '[REDACTED_GITHUB_TOKEN]');
   }
 
   return sanitized;

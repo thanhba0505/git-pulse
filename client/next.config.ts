@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import rootPkg from "../package.json";
+import type { NextConfig } from 'next';
+import rootPkg from '../package.json';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

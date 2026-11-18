@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from 'react';
 
 interface Star {
   x: number;
@@ -31,13 +31,11 @@ export function StarfieldCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     // Check prefers-reduced-motion
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let animationFrameId: number;
     let width = (canvas.width = window.innerWidth);
@@ -65,9 +63,9 @@ export function StarfieldCanvas() {
       height = canvas.height = window.innerHeight;
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseleave", handleMouseLeave);
-    window.addEventListener("resize", handleResize);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('resize', handleResize);
 
     // Initialize Stars
     const starCount = Math.min(140, Math.floor((width * height) / 10000));
@@ -75,14 +73,7 @@ export function StarfieldCanvas() {
       const x = Math.random() * width;
       const y = Math.random() * height;
       const hueChoice = Math.random();
-      const hue =
-        hueChoice > 0.65
-          ? 190
-          : hueChoice > 0.4
-            ? 260
-            : hueChoice > 0.25
-              ? 155
-              : 210;
+      const hue = hueChoice > 0.65 ? 190 : hueChoice > 0.4 ? 260 : hueChoice > 0.25 ? 155 : 210;
 
       return {
         x,
@@ -109,7 +100,7 @@ export function StarfieldCanvas() {
         length: Math.random() * 80 + 50,
         speed: Math.random() * 8 + 6,
         alpha: 1,
-        color: Math.random() > 0.5 ? "#22d3ee" : "#a78bfa",
+        color: Math.random() > 0.5 ? '#22d3ee' : '#a78bfa',
       });
     };
 
@@ -128,9 +119,9 @@ export function StarfieldCanvas() {
         height * 0.25,
         width * 0.45,
       );
-      gradCyan.addColorStop(0, "rgba(6, 182, 212, 0.08)");
-      gradCyan.addColorStop(0.5, "rgba(6, 182, 212, 0.03)");
-      gradCyan.addColorStop(1, "rgba(3, 7, 18, 0)");
+      gradCyan.addColorStop(0, 'rgba(6, 182, 212, 0.08)');
+      gradCyan.addColorStop(0.5, 'rgba(6, 182, 212, 0.03)');
+      gradCyan.addColorStop(1, 'rgba(3, 7, 18, 0)');
 
       ctx.fillStyle = gradCyan;
       ctx.fillRect(0, 0, width, height);
@@ -144,9 +135,9 @@ export function StarfieldCanvas() {
         height * 0.55,
         width * 0.4,
       );
-      gradViolet.addColorStop(0, "rgba(139, 92, 246, 0.07)");
-      gradViolet.addColorStop(0.5, "rgba(139, 92, 246, 0.02)");
-      gradViolet.addColorStop(1, "rgba(3, 7, 18, 0)");
+      gradViolet.addColorStop(0, 'rgba(139, 92, 246, 0.07)');
+      gradViolet.addColorStop(0.5, 'rgba(139, 92, 246, 0.02)');
+      gradViolet.addColorStop(1, 'rgba(3, 7, 18, 0)');
 
       ctx.fillStyle = gradViolet;
       ctx.fillRect(0, 0, width, height);
@@ -163,11 +154,7 @@ export function StarfieldCanvas() {
 
       // 2. Spawn Meteors occasionally (every ~4-6 seconds)
       const now = Date.now();
-      if (
-        !prefersReducedMotion &&
-        now - lastMeteorTime > 4500 &&
-        Math.random() > 0.6
-      ) {
+      if (!prefersReducedMotion && now - lastMeteorTime > 4500 && Math.random() > 0.6) {
         spawnMeteor();
         lastMeteorTime = now;
       }
@@ -194,7 +181,7 @@ export function StarfieldCanvas() {
         );
         grad.addColorStop(0, `rgba(255, 255, 255, ${m.alpha})`);
         grad.addColorStop(0.2, m.color);
-        grad.addColorStop(1, "rgba(3, 7, 18, 0)");
+        grad.addColorStop(1, 'rgba(3, 7, 18, 0)');
 
         ctx.strokeStyle = grad;
         ctx.lineWidth = 1.8;
@@ -263,8 +250,7 @@ export function StarfieldCanvas() {
 
         // Draw the glowing Star Dot
         const currentAlpha =
-          star.alpha *
-          (0.8 + 0.2 * Math.sin(tick * star.twinkleSpeed + star.twinkleOffset));
+          star.alpha * (0.8 + 0.2 * Math.sin(tick * star.twinkleSpeed + star.twinkleOffset));
 
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -284,9 +270,9 @@ export function StarfieldCanvas() {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseleave", handleMouseLeave);
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 

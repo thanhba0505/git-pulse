@@ -4,17 +4,17 @@ import {
   BadRequestException,
   Logger,
   Optional,
-} from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { Response } from "express";
-import { Role } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service";
-import { S2SService } from "../s2s/s2s.service";
-import { LoginDto } from "./dto/login.dto";
-import { RegisterDto } from "./dto/register.dto";
-import { GoogleLoginDto } from "./dto/google-login.dto";
-import { SsoCallbackDto } from "./dto/sso-callback.dto";
-import { AuthenticatedUser } from "./guards/jwt-auth.guard";
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Response } from 'express';
+import { Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { S2SService } from '../s2s/s2s.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { SsoCallbackDto } from './dto/sso-callback.dto';
+import { AuthenticatedUser } from './guards/jwt-auth.guard';
 
 interface GatewayUserPayload {
   id?: string;
@@ -35,14 +35,14 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Optional() private readonly s2sService?: S2SService,
   ) {
-    this.gatewayUrl = process.env.GATEWAY_URL || "http://localhost:5101/api/v1";
+    this.gatewayUrl = process.env.GATEWAY_URL || 'http://localhost:5101/api/v1';
   }
 
   /**
    * Xác thực thông tin đăng nhập qua Central Gateway IAM Master (BFF Proxy chuẩn Wonderlab)
    */
   async validateUser(dto: LoginDto): Promise<AuthenticatedUser> {
-    const isDev = process.env.NODE_ENV !== "production";
+    const isDev = process.env.NODE_ENV !== 'production';
     const isDevBypass = isDev && dto.devBypass === true;
 
     let gwRes: { user?: GatewayUserPayload } | null = null;
@@ -50,10 +50,10 @@ export class AuthService {
     try {
       if (this.s2sService) {
         gwRes = await this.s2sService.call<{ user?: GatewayUserPayload }>(
-          "central-gateway",
-          "/auth/login",
+          'central-gateway',
+          '/auth/login',
           {
-            method: "POST",
+            method: 'POST',
             body: JSON.stringify({
               username: dto.username,
               password: dto.password,
@@ -63,8 +63,8 @@ export class AuthService {
         );
       } else {
         const res = await fetch(`${this.gatewayUrl}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username: dto.username,
             password: dto.password,
@@ -82,7 +82,7 @@ export class AuthService {
 
     if (gwRes?.user) {
       if (gwRes.user.isActive === false) {
-        throw new UnauthorizedException("Tài khoản này đã bị khóa.");
+        throw new UnauthorizedException('Tài khoản này đã bị khóa.');
       }
       return this.syncLocalUser(gwRes.user);
     }
@@ -91,10 +91,7 @@ export class AuthService {
     if (isDev) {
       const localUser = await this.prisma.user.findFirst({
         where: {
-          OR: [
-            { username: dto.username },
-            { email: dto.username.toLowerCase() },
-          ],
+          OR: [{ username: dto.username }, { email: dto.username.toLowerCase() }],
           isActive: true,
         },
       });
@@ -111,20 +108,16 @@ export class AuthService {
 
       // If user does not exist in dev, auto-create for seamless workflow
       const autoUser = await this.syncLocalUser({
-        id: `dev_${Buffer.from(dto.username).toString("hex").slice(0, 16)}`,
+        id: `dev_${Buffer.from(dto.username).toString('hex').slice(0, 16)}`,
         username: dto.username,
-        email: dto.username.includes("@")
-          ? dto.username
-          : `${dto.username}@wonderlab.local`,
-        role: "USER",
+        email: dto.username.includes('@') ? dto.username : `${dto.username}@wonderlab.local`,
+        role: 'USER',
         isActive: true,
       });
       return autoUser;
     }
 
-    throw new UnauthorizedException(
-      "Tên đăng nhập hoặc mật khẩu không chính xác.",
-    );
+    throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không chính xác.');
   }
 
   /**
@@ -141,27 +134,27 @@ export class AuthService {
     };
 
     const token = this.jwtService.sign(payload);
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.NODE_ENV === 'production';
     const maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-    response.cookie("git_pulse_session", token, {
+    response.cookie('git_pulse_session', token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
-      path: "/",
+      sameSite: 'lax',
+      path: '/',
       maxAge: maxAgeMs,
     });
 
-    response.cookie("access_token", token, {
+    response.cookie('access_token', token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
-      path: "/",
+      sameSite: 'lax',
+      path: '/',
       maxAge: maxAgeMs,
     });
 
     return {
-      message: "Đăng nhập thành công",
+      message: 'Đăng nhập thành công',
       user,
     };
   }
@@ -178,10 +171,10 @@ export class AuthService {
     try {
       if (this.s2sService) {
         gwUser = await this.s2sService.call<GatewayUserPayload>(
-          "central-gateway",
-          "/auth/register",
+          'central-gateway',
+          '/auth/register',
           {
-            method: "POST",
+            method: 'POST',
             body: JSON.stringify({
               username: dto.username,
               email: dto.email,
@@ -191,8 +184,8 @@ export class AuthService {
         );
       } else {
         const res = await fetch(`${this.gatewayUrl}/auth/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username: dto.username,
             email: dto.email,
@@ -213,7 +206,7 @@ export class AuthService {
         id: `user_${Date.now()}`,
         username: dto.username,
         email: dto.email,
-        role: "USER",
+        role: 'USER',
         isActive: true,
       };
     }
@@ -225,9 +218,7 @@ export class AuthService {
   /**
    * Quên mật khẩu
    */
-  async forgotPassword(
-    email: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
     return {
       success: true,
       message: `Yêu cầu khôi phục đã được ghi nhận cho ${email}. Vui lòng kiểm tra email hoặc liên hệ quản trị viên.`,
@@ -244,37 +235,31 @@ export class AuthService {
     let gatewayRes: globalThis.Response;
     try {
       gatewayRes = await fetch(`${this.gatewayUrl}/auth/oauth/token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          grant_type: "authorization_code",
-          client_id: "git-pulse",
+          grant_type: 'authorization_code',
+          client_id: 'git-pulse',
           code: dto.code,
           code_verifier: dto.code_verifier,
         }),
       });
     } catch {
-      throw new UnauthorizedException(
-        "Không thể kết nối đến Central Gateway SSO Hub.",
-      );
+      throw new UnauthorizedException('Không thể kết nối đến Central Gateway SSO Hub.');
     }
 
     if (!gatewayRes.ok) {
       const errorBody = (await gatewayRes.json().catch(() => ({}))) as {
         message?: string;
       };
-      throw new UnauthorizedException(
-        errorBody.message || "Xác thực Single Sign-On thất bại.",
-      );
+      throw new UnauthorizedException(errorBody.message || 'Xác thực Single Sign-On thất bại.');
     }
 
     const data = (await gatewayRes.json()) as { user: GatewayUserPayload };
     const ssoUser = data.user;
 
     if (ssoUser.isActive === false) {
-      throw new UnauthorizedException(
-        "Tài khoản này đã bị tạm khóa trong hệ thống.",
-      );
+      throw new UnauthorizedException('Tài khoản này đã bị tạm khóa trong hệ thống.');
     }
 
     const localUser = await this.syncLocalUser({
@@ -302,27 +287,19 @@ export class AuthService {
 
     if (dto.credential && (!email || !googleId)) {
       try {
-        const decoded = this.jwtService.decode(dto.credential) as Record<
-          string,
-          unknown
-        > | null;
+        const decoded = this.jwtService.decode(dto.credential) as Record<string, unknown> | null;
         if (decoded) {
-          if (typeof decoded.email === "string")
-            email = decoded.email.toLowerCase();
-          if (typeof decoded.name === "string") name = decoded.name;
-          if (typeof decoded.sub === "string") googleId = decoded.sub;
+          if (typeof decoded.email === 'string') email = decoded.email.toLowerCase();
+          if (typeof decoded.name === 'string') name = decoded.name;
+          if (typeof decoded.sub === 'string') googleId = decoded.sub;
         }
       } catch (err) {
-        this.logger.warn(
-          `Failed to decode credential: ${(err as Error).message}`,
-        );
+        this.logger.warn(`Failed to decode credential: ${(err as Error).message}`);
       }
     }
 
     if (!email) {
-      throw new BadRequestException(
-        "Không thể trích xuất địa chỉ email từ tài khoản Google.",
-      );
+      throw new BadRequestException('Không thể trích xuất địa chỉ email từ tài khoản Google.');
     }
 
     // Call Central Gateway IAM /auth/google
@@ -330,13 +307,13 @@ export class AuthService {
     try {
       if (this.s2sService) {
         const body = await this.s2sService.call<{ user?: GatewayUserPayload }>(
-          "central-gateway",
-          "/auth/google",
+          'central-gateway',
+          '/auth/google',
           {
-            method: "POST",
+            method: 'POST',
             body: JSON.stringify({
               email,
-              name: name || email.split("@")[0],
+              name: name || email.split('@')[0],
               googleId: googleId || `google_${Date.now()}`,
               credential: dto.credential,
             }),
@@ -347,11 +324,11 @@ export class AuthService {
         }
       } else {
         const res = await fetch(`${this.gatewayUrl}/auth/google`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             email,
-            name: name || email.split("@")[0],
+            name: name || email.split('@')[0],
             googleId: googleId || `google_${Date.now()}`,
             credential: dto.credential,
           }),
@@ -370,16 +347,16 @@ export class AuthService {
 
     if (!gwUser) {
       gwUser = {
-        id: `gw_${Buffer.from(email).toString("hex").slice(0, 16)}`,
-        username: name || email.split("@")[0],
+        id: `gw_${Buffer.from(email).toString('hex').slice(0, 16)}`,
+        username: name || email.split('@')[0],
         email,
-        role: "USER",
+        role: 'USER',
         isActive: true,
       };
     }
 
     if (gwUser.isActive === false) {
-      throw new UnauthorizedException("Tài khoản này đã bị khóa.");
+      throw new UnauthorizedException('Tài khoản này đã bị khóa.');
     }
 
     const localUser = await this.syncLocalUser(gwUser);
@@ -425,7 +402,7 @@ export class AuthService {
         role: true,
         avatarUrl: true,
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: 'asc' },
     });
 
     if (localUsers.length > 0) {
@@ -434,17 +411,17 @@ export class AuthService {
 
     return [
       {
-        id: "admin-dev-id",
-        username: "admin",
-        email: "admin@wonderlab.local",
-        role: "ADMIN",
+        id: 'admin-dev-id',
+        username: 'admin',
+        email: 'admin@wonderlab.local',
+        role: 'ADMIN',
         avatarUrl: null,
       },
       {
-        id: "dev-user-id",
-        username: "developer",
-        email: "developer@wonderlab.local",
-        role: "USER",
+        id: 'dev-user-id',
+        username: 'developer',
+        email: 'developer@wonderlab.local',
+        role: 'USER',
         avatarUrl: null,
       },
     ];
@@ -454,7 +431,7 @@ export class AuthService {
    * Đồng bộ hoặc khởi tạo người dùng cục bộ từ danh tính Central Gateway Master IAM (chuẩn Wonderlab)
    */
   async syncLocalUser(gwUser: GatewayUserPayload): Promise<AuthenticatedUser> {
-    const role = gwUser.role === "ADMIN" ? Role.ADMIN : Role.USER;
+    const role = gwUser.role === 'ADMIN' ? Role.ADMIN : Role.USER;
 
     let existing = gwUser.id
       ? await this.prisma.user.findUnique({ where: { id: gwUser.id } })
@@ -495,9 +472,9 @@ export class AuthService {
           isActive: gwUser.isActive ?? true,
           settings: {
             create: {
-              defaultAiEngine: "GITHUB_MODELS",
-              githubModelName: "gpt-4o-mini",
-              language: "vi",
+              defaultAiEngine: 'GITHUB_MODELS',
+              githubModelName: 'gpt-4o-mini',
+              language: 'vi',
             },
           },
         },

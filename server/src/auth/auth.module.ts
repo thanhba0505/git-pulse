@@ -1,18 +1,16 @@
-import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
-import { S2SModule } from "../s2s/s2s.module";
-import { AuthController } from "./auth.controller";
-import { AuthService } from "./auth.service";
-import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { S2SModule } from '../s2s/s2s.module';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({
   imports: [
     S2SModule,
     JwtModule.register({
-      secret:
-        process.env.JWT_SECRET ||
-        "git_pulse_super_secret_jwt_key_2026_prism_ecosystem",
-      signOptions: { expiresIn: "30d" },
+      secret: process.env.JWT_SECRET || 'git_pulse_super_secret_jwt_key_2026_prism_ecosystem',
+      signOptions: { expiresIn: '30d' },
     }),
   ],
   controllers: [AuthController],

@@ -1,14 +1,13 @@
-import { Injectable, BadRequestException, Logger } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service";
-import { GitHubService } from "../github/github.service";
-import { SummarizeDto } from "./dto/summarize.dto";
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { GitHubService } from '../github/github.service';
+import { SummarizeDto } from './dto/summarize.dto';
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly githubModelsEndpoint =
-    "https://models.inference.ai.azure.com/chat/completions";
+  private readonly githubModelsEndpoint = 'https://models.inference.ai.azure.com/chat/completions';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -17,26 +16,21 @@ export class AiService {
 
   async summarizeWithGitHubModels(userId: string, dto: SummarizeDto) {
     if (!dto.prs || dto.prs.length === 0) {
-      throw new BadRequestException(
-        "Không có Pull Request hoặc Commit nào để tóm tắt.",
-      );
+      throw new BadRequestException('Không có Pull Request hoặc Commit nào để tóm tắt.');
     }
 
-    const { token } = await this.githubService.getDecryptedToken(
-      userId,
-      "AI_SUMMARIZE",
-    );
-    const model = dto.model || "gpt-4o-mini";
-    const lang = dto.language === "en" ? "English" : "Vietnamese";
+    const { token } = await this.githubService.getDecryptedToken(userId, 'AI_SUMMARIZE');
+    const model = dto.model || 'gpt-4o-mini';
+    const lang = dto.language === 'en' ? 'English' : 'Vietnamese';
 
     // Format input data
     const prDetails = dto.prs
       .map(
         (p) =>
           `Repository: ${p.repo}\nPR Title: ${p.title}\nCommits:\n` +
-          p.commits.map((c) => `  - ${c}`).join("\n"),
+          p.commits.map((c) => `  - ${c}`).join('\n'),
       )
-      .join("\n\n");
+      .join('\n\n');
 
     const defaultSystemPrompt =
       dto.customPrompt ||
@@ -49,16 +43,16 @@ export class AiService {
     const userPrompt = `Pull Requests and Commits worked on today:\n\n${prDetails}`;
 
     const response = await fetch(this.githubModelsEndpoint, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: defaultSystemPrompt },
-          { role: "user", content: userPrompt },
+          { role: 'system', content: defaultSystemPrompt },
+          { role: 'user', content: userPrompt },
         ],
         temperature: 0.3,
         max_tokens: 500,
@@ -69,10 +63,10 @@ export class AiService {
       if (response.status === 401) {
         await this.prisma.gitAccount.updateMany({
           where: { userId },
-          data: { tokenStatus: "REVOKED" },
+          data: { tokenStatus: 'REVOKED' },
         });
         throw new BadRequestException(
-          "GitHub Token không hợp lệ hoặc đã bị thu hồi khi gọi GitHub Models. Vui lòng kết nối lại.",
+          'GitHub Token không hợp lệ hoặc đã bị thu hồi khi gọi GitHub Models. Vui lòng kết nối lại.',
         );
       }
 
@@ -86,15 +80,14 @@ export class AiService {
       choices?: Array<{ message?: { content?: string } }>;
     };
 
-    const rawContent = data.choices?.[0]?.message?.content?.trim() || "";
+    const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
     const lines = rawContent
-      .split("\n")
+      .split('\n')
       .map((l) => l.trim())
       .filter((l) => l.length > 0)
-      .map((l) => l.replace(/^[-*•]\s*/, ""));
+      .map((l) => l.replace(/^[-*•]\s*/, ''));
 
-    const bullets =
-      lines.length > 0 ? lines : ["Cập nhật và tối ưu hóa hệ thống."];
+    const bullets = lines.length > 0 ? lines : ['Cập nhật và tối ưu hóa hệ thống.'];
 
     // Total count of commits
     const totalCommits = dto.prs.reduce((acc, p) => acc + p.commits.length, 0);
@@ -107,14 +100,12 @@ export class AiService {
     await this.prisma.reportHistory.create({
       data: {
         userId,
-        summaryText: bullets.map((b) => `• ${b}`).join("\n"),
+        summaryText: bullets.map((b) => `• ${b}`).join('\n'),
         prCount: dto.prs.length,
         commitCount: totalCommits,
-        aiEngineUsed: "GITHUB_MODELS",
+        aiEngineUsed: 'GITHUB_MODELS',
         modelName: model,
-        metadata: JSON.parse(
-          JSON.stringify({ prs: dto.prs }),
-        ) as Prisma.InputJsonValue,
+        metadata: JSON.parse(JSON.stringify({ prs: dto.prs })) as Prisma.InputJsonValue,
         dateRangeStart: startOfDay,
         dateRangeEnd: now,
       },
@@ -125,7 +116,7 @@ export class AiService {
       bullets,
       rawText: rawContent,
       modelUsed: model,
-      engine: "GITHUB_MODELS",
+      engine: 'GITHUB_MODELS',
     };
   }
 
@@ -136,7 +127,7 @@ export class AiService {
       modelName: string;
       prCount: number;
       commitCount: number;
-      engine: "WEB_LLM";
+      engine: 'WEB_LLM';
       metadata?: Record<string, unknown>;
     },
   ) {
@@ -147,9 +138,7 @@ export class AiService {
     return this.prisma.reportHistory.create({
       data: {
         userId,
-        summaryText: body.summary
-          .map((b) => `• ${b.replace(/^[-*•]\s*/, "")}`)
-          .join("\n"),
+        summaryText: body.summary.map((b) => `• ${b.replace(/^[-*•]\s*/, '')}`).join('\n'),
         prCount: body.prCount,
         commitCount: body.commitCount,
         aiEngineUsed: body.engine,

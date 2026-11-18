@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: "Target service to deploy (EMERGENCY ONLY - Prefer publishing tag vX.Y.Z)"
+        description: 'Target service to deploy (EMERGENCY ONLY - Prefer publishing tag vX.Y.Z)'
         required: true
-        default: "all"
+        default: 'all'
         type: choice
         options:
           - all

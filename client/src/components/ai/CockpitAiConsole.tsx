@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React from "react";
-import { AiEngine } from "../../types";
-import { Sparkles, Cpu, Globe, Zap, Languages } from "lucide-react";
-import { BorderBeam } from "../cosmic/BorderBeam";
+import React from 'react';
+import { AiEngine } from '../../types';
+import { Sparkles, Cpu, Globe, Zap, Languages } from 'lucide-react';
+import { BorderBeam } from '../cosmic/BorderBeam';
 
 interface CockpitAiConsoleProps {
   engine: AiEngine;
   onEngineChange: (engine: AiEngine) => void;
   selectedModel: string;
   onModelChange: (model: string) => void;
-  language: "vi" | "en";
-  onLanguageChange: (lang: "vi" | "en") => void;
+  language: 'vi' | 'en';
+  onLanguageChange: (lang: 'vi' | 'en') => void;
   onGenerate: () => void;
   isGenerating: boolean;
   webLlmProgressText?: string;
@@ -32,14 +32,14 @@ export function CockpitAiConsole({
   webLlmProgressPercent,
   hasPrs,
 }: CockpitAiConsoleProps) {
-  const isWebLLM = engine === "WEB_LLM";
+  const isWebLLM = engine === 'WEB_LLM';
 
   return (
     <div className="relative astral-card rounded-2xl p-6 sm:p-7 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.15)] space-y-5 overflow-hidden">
       {/* Kinetic Border Beam */}
       <BorderBeam
-        colorFrom={isWebLLM ? "#8b5cf6" : "#06b6d4"}
-        colorTo={isWebLLM ? "#ec4899" : "#3b82f6"}
+        colorFrom={isWebLLM ? '#8b5cf6' : '#06b6d4'}
+        colorTo={isWebLLM ? '#ec4899' : '#3b82f6'}
         duration={5}
       />
 
@@ -54,8 +54,7 @@ export function CockpitAiConsole({
               Bảng Điều Khiển AI Kép
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Chọn lõi xử lý AI để chuyển đổi các PR & commit thành bản Standup
-              ngắn gọn.
+              Chọn lõi xử lý AI để chuyển đổi các PR & commit thành bản Standup ngắn gọn.
             </p>
           </div>
         </div>
@@ -64,22 +63,18 @@ export function CockpitAiConsole({
         <div className="flex items-center gap-1.5 bg-void-subtle px-3 py-1.5 rounded-xl border border-slate-700/80 text-xs">
           <Languages className="w-3.5 h-3.5 text-slate-400" />
           <button
-            onClick={() => onLanguageChange("vi")}
+            onClick={() => onLanguageChange('vi')}
             className={`px-1.5 py-0.5 rounded font-medium ${
-              language === "vi"
-                ? "text-cyan-300 font-bold"
-                : "text-slate-400 hover:text-white"
+              language === 'vi' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
             }`}
           >
             VI
           </button>
           <span className="text-slate-600">|</span>
           <button
-            onClick={() => onLanguageChange("en")}
+            onClick={() => onLanguageChange('en')}
             className={`px-1.5 py-0.5 rounded font-medium ${
-              language === "en"
-                ? "text-cyan-300 font-bold"
-                : "text-slate-400 hover:text-white"
+              language === 'en' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
             }`}
           >
             EN
@@ -93,32 +88,30 @@ export function CockpitAiConsole({
         <button
           type="button"
           onClick={() => {
-            onEngineChange("GITHUB_MODELS");
-            onModelChange("gpt-4o-mini");
+            onEngineChange('GITHUB_MODELS');
+            onModelChange('gpt-4o-mini');
           }}
           className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
-            engine === "GITHUB_MODELS"
-              ? "bg-cyan-950/40 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/40"
-              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle"
+            engine === 'GITHUB_MODELS'
+              ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/40'
+              : 'bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle'
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <div
               className={`p-1.5 rounded-lg ${
-                engine === "GITHUB_MODELS"
-                  ? "bg-cyan-500/20 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]"
-                  : "bg-slate-800 text-slate-400"
+                engine === 'GITHUB_MODELS'
+                  ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
+                  : 'bg-slate-800 text-slate-400'
               }`}
             >
               <Globe className="w-4 h-4 animate-pulse" />
             </div>
-            <span className="text-xs font-bold text-white">
-              GitHub Models Warp-Drive
-            </span>
+            <span className="text-xs font-bold text-white">GitHub Models Warp-Drive</span>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Dùng chính token GitHub của bạn gọi endpoint Azure AI. Siêu nhanh,
-            thông minh & không tốn key.
+            Dùng chính token GitHub của bạn gọi endpoint Azure AI. Siêu nhanh, thông minh & không
+            tốn key.
           </p>
         </button>
 
@@ -126,32 +119,30 @@ export function CockpitAiConsole({
         <button
           type="button"
           onClick={() => {
-            onEngineChange("WEB_LLM");
-            onModelChange("Llama-3.2-1B-Instruct-q4f16_1-MLC");
+            onEngineChange('WEB_LLM');
+            onModelChange('Llama-3.2-1B-Instruct-q4f16_1-MLC');
           }}
           className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
-            engine === "WEB_LLM"
-              ? "bg-violet-950/40 border-violet-400 shadow-[0_0_25px_rgba(139,92,246,0.3)] ring-1 ring-violet-400/40"
-              : "bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle"
+            engine === 'WEB_LLM'
+              ? 'bg-violet-950/40 border-violet-400 shadow-[0_0_25px_rgba(139,92,246,0.3)] ring-1 ring-violet-400/40'
+              : 'bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle'
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
             <div
               className={`p-1.5 rounded-lg ${
-                engine === "WEB_LLM"
-                  ? "bg-violet-500/20 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.5)]"
-                  : "bg-slate-800 text-slate-400"
+                engine === 'WEB_LLM'
+                  ? 'bg-violet-500/20 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.5)]'
+                  : 'bg-slate-800 text-slate-400'
               }`}
             >
               <Cpu className="w-4 h-4 animate-pulse" />
             </div>
-            <span className="text-xs font-bold text-white">
-              WebGPU Sub-Light Core
-            </span>
+            <span className="text-xs font-bold text-white">WebGPU Sub-Light Core</span>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Chạy mô hình trực tiếp trong trình duyệt qua WebGPU. 100% riêng tư,
-            offline và zero token.
+            Chạy mô hình trực tiếp trong trình duyệt qua WebGPU. 100% riêng tư, offline và zero
+            token.
           </p>
         </button>
       </div>
@@ -167,21 +158,15 @@ export function CockpitAiConsole({
           >
             {isWebLLM ? (
               <>
-                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">
-                  Llama 3.2 1B (Nhẹ ~600MB)
-                </option>
+                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (Nhẹ ~600MB)</option>
                 <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">
                   Qwen 2.5 Coder 1.5B (Code Spec)
                 </option>
               </>
             ) : (
               <>
-                <option value="gpt-4o-mini">
-                  gpt-4o-mini (Cực nhanh & sắc nét)
-                </option>
-                <option value="meta-llama-3.3-70b-instruct">
-                  Llama 3.3 70B (Siêu mạnh mẽ)
-                </option>
+                <option value="gpt-4o-mini">gpt-4o-mini (Cực nhanh & sắc nét)</option>
+                <option value="meta-llama-3.3-70b-instruct">Llama 3.3 70B (Siêu mạnh mẽ)</option>
               </>
             )}
           </select>
@@ -194,12 +179,8 @@ export function CockpitAiConsole({
           className="w-full sm:w-auto relative group overflow-hidden flex items-center justify-center gap-2.5 px-7 py-3 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Zap
-            className={`w-4 h-4 ${isGenerating ? "animate-bounce" : "animate-pulse"}`}
-          />
-          <span>
-            {isGenerating ? "Đang tóm tắt..." : "Kích Hoạt Tóm Tắt Standup"}
-          </span>
+          <Zap className={`w-4 h-4 ${isGenerating ? 'animate-bounce' : 'animate-pulse'}`} />
+          <span>{isGenerating ? 'Đang tóm tắt...' : 'Kích Hoạt Tóm Tắt Standup'}</span>
         </button>
       </div>
 
@@ -207,13 +188,9 @@ export function CockpitAiConsole({
       {isGenerating && isWebLLM && (
         <div className="p-3 rounded-xl bg-violet-950/40 border border-violet-500/30 space-y-1.5">
           <div className="flex items-center justify-between text-xs text-violet-300 font-mono">
+            <span>{webLlmProgressText || 'Đang nạp mô hình vào WebGPU...'}</span>
             <span>
-              {webLlmProgressText || "Đang nạp mô hình vào WebGPU..."}
-            </span>
-            <span>
-              {webLlmProgressPercent
-                ? `${Math.round(webLlmProgressPercent * 100)}%`
-                : "100%"}
+              {webLlmProgressPercent ? `${Math.round(webLlmProgressPercent * 100)}%` : '100%'}
             </span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-void overflow-hidden">

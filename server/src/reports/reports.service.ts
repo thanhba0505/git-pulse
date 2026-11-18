@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ReportsService {
@@ -8,7 +8,7 @@ export class ReportsService {
   async listReports(userId: string) {
     return this.prisma.reportHistory.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
       take: 50,
     });
   }
@@ -18,7 +18,7 @@ export class ReportsService {
       where: { id, userId },
     });
     if (!report) {
-      throw new NotFoundException("Không tìm thấy bản báo cáo.");
+      throw new NotFoundException('Không tìm thấy bản báo cáo.');
     }
     return report;
   }

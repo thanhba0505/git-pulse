@@ -1,8 +1,8 @@
-import * as crypto from "crypto";
-import { Logger } from "@nestjs/common";
+import * as crypto from 'crypto';
+import { Logger } from '@nestjs/common';
 
-const logger = new Logger("S2SVault");
-const S2S_PREFIX = "enc:v1:";
+const logger = new Logger('S2SVault');
+const S2S_PREFIX = 'enc:v1:';
 
 /**
  * Retrieves the local S2S_ENCRYPTION_KEY from environment.
@@ -10,31 +10,26 @@ const S2S_PREFIX = "enc:v1:";
  */
 export function getS2SEncryptionKey(): Buffer {
   const isProduction =
-    process.env.NODE_ENV === "production" ||
-    process.env.APP_ENV === "production";
+    process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production';
   const rawKey = process.env.S2S_ENCRYPTION_KEY;
 
   if (isProduction && !rawKey) {
     throw new Error(
-      "CRITICAL SECURITY FATAL: S2S_ENCRYPTION_KEY is strictly required in production environment. Refusing to start.",
+      'CRITICAL SECURITY FATAL: S2S_ENCRYPTION_KEY is strictly required in production environment. Refusing to start.',
     );
   }
 
   if (!rawKey) {
     logger.warn(
-      "S2S_ENCRYPTION_KEY not configured. Using local dev key. NEVER use this in production!",
+      'S2S_ENCRYPTION_KEY not configured. Using local dev key. NEVER use this in production!',
     );
   }
 
-  const keyHex =
-    rawKey ||
-    "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
+  const keyHex = rawKey || 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
 
-  const keyBuffer = Buffer.from(keyHex, "hex");
+  const keyBuffer = Buffer.from(keyHex, 'hex');
   if (keyBuffer.length !== 32) {
-    throw new Error(
-      "S2S_ENCRYPTION_KEY must be a valid 64-character hex string (32 bytes).",
-    );
+    throw new Error('S2S_ENCRYPTION_KEY must be a valid 64-character hex string (32 bytes).');
   }
 
   return keyBuffer;
@@ -44,10 +39,7 @@ export function getS2SEncryptionKey(): Buffer {
  * Encrypts an S2S secret (apiKey or incomingSecret) for storage in PostgreSQL at rest.
  * Output format: enc:v1:<iv_hex>:<tag_hex>:<ciphertext_hex>
  */
-export function encryptS2SSecret(
-  plaintext: string,
-  customKey?: Buffer,
-): string {
+export function encryptS2SSecret(plaintext: string, customKey?: Buffer): string {
   if (!plaintext) {
     return plaintext;
   }
@@ -59,13 +51,13 @@ export function encryptS2SSecret(
 
   const key = customKey || getS2SEncryptionKey();
   const iv = crypto.randomBytes(12); // GCM recommended 12-byte IV
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
-  let ciphertext = cipher.update(plaintext, "utf8", "hex");
-  ciphertext += cipher.final("hex");
-  const tag = cipher.getAuthTag().toString("hex");
+  let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
+  ciphertext += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
 
-  return `${S2S_PREFIX}${iv.toString("hex")}:${tag}:${ciphertext}`;
+  return `${S2S_PREFIX}${iv.toString('hex')}:${tag}:${ciphertext}`;
 }
 
 /**
@@ -86,26 +78,22 @@ export function decryptS2SSecret(
   }
 
   const key = customKey || getS2SEncryptionKey();
-  const parts = storedValue.split(":");
+  const parts = storedValue.split(':');
   if (parts.length !== 5) {
-    throw new Error(
-      "Invalid S2S ciphertext format in service_connections table",
-    );
+    throw new Error('Invalid S2S ciphertext format in service_connections table');
   }
 
   const [, , ivHex, tagHex, ciphertextHex] = parts;
   if (!ivHex || !tagHex || !ciphertextHex) {
-    throw new Error(
-      "Corrupted S2S ciphertext segments in service_connections table",
-    );
+    throw new Error('Corrupted S2S ciphertext segments in service_connections table');
   }
 
-  const iv = Buffer.from(ivHex, "hex");
-  const tag = Buffer.from(tagHex, "hex");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  const iv = Buffer.from(ivHex, 'hex');
+  const tag = Buffer.from(tagHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
 
-  let decrypted = decipher.update(ciphertextHex, "hex", "utf8");
-  decrypted += decipher.final("utf8");
+  let decrypted = decipher.update(ciphertextHex, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
   return decrypted;
 }

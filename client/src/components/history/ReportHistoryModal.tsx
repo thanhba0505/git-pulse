@@ -1,20 +1,17 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { ReportItem } from "../../types";
-import { api } from "../../lib/api";
-import { History, X, Copy, Trash2, Calendar, Check } from "lucide-react";
-import { BorderBeam } from "../cosmic/BorderBeam";
+import React, { useEffect, useState } from 'react';
+import { ReportItem } from '../../types';
+import { api } from '../../lib/api';
+import { History, X, Copy, Trash2, Calendar, Check } from 'lucide-react';
+import { BorderBeam } from '../cosmic/BorderBeam';
 
 interface ReportHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function ReportHistoryModal({
-  isOpen,
-  onClose,
-}: ReportHistoryModalProps) {
+export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps) {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -38,7 +35,7 @@ export function ReportHistoryModal({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Xóa bản báo cáo này?")) return;
+    if (!confirm('Xóa bản báo cáo này?')) return;
     try {
       await api.reports.delete(id);
       setReports((prev) => prev.filter((r) => r.id !== id));
@@ -79,9 +76,7 @@ export function ReportHistoryModal({
         {/* Content list */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
           {isLoading ? (
-            <p className="text-center text-xs text-slate-400 py-8">
-              Đang tải lịch sử...
-            </p>
+            <p className="text-center text-xs text-slate-400 py-8">Đang tải lịch sử...</p>
           ) : reports.length === 0 ? (
             <p className="text-center text-xs text-slate-400 py-8">
               Chưa có bản báo cáo nào được lưu.
@@ -97,13 +92,9 @@ export function ReportHistoryModal({
                     <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                     <span>{new Date(report.createdAt).toLocaleString()}</span>
                     <span>•</span>
-                    <span className="text-cyan-300 font-semibold">
-                      {report.modelName}
-                    </span>
+                    <span className="text-cyan-300 font-semibold">{report.modelName}</span>
                     <span className="text-slate-600">|</span>
-                    <span className="text-emerald-300">
-                      {report.prCount} PRs
-                    </span>
+                    <span className="text-emerald-300">{report.prCount} PRs</span>
                   </div>
 
                   <div className="flex items-center gap-1.5">

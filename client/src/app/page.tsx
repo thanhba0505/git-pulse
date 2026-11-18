@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState, useCallback } from "react";
-import { GitStatus, PrActivity, AiEngine } from "../types";
-import { api } from "../lib/api";
-import { useAuth } from "../lib/auth-context";
-import { runWebLLMSummary, isWebGPUSupported } from "../lib/webllm";
-import { Header } from "../components/layout/Header";
-import { GitHubConnectModal } from "../components/github/GitHubConnectBanner";
-import { ActivityScanner } from "../components/dashboard/ActivityScanner";
-import { CockpitAiConsole } from "../components/ai/CockpitAiConsole";
-import { StandupOutputDock } from "../components/standup/StandupOutputDock";
-import { ReportHistoryModal } from "../components/history/ReportHistoryModal";
-import { AuthModal } from "../components/auth/AuthModal";
-import { GoogleAccountChooserModal } from "../components/auth/GoogleAccountChooserModal";
-import { Orbit, GitBranch } from "lucide-react";
+import React, { useEffect, useState, useCallback } from 'react';
+import { GitStatus, PrActivity, AiEngine } from '../types';
+import { api } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
+import { runWebLLMSummary, isWebGPUSupported } from '../lib/webllm';
+import { Header } from '../components/layout/Header';
+import { GitHubConnectModal } from '../components/github/GitHubConnectBanner';
+import { ActivityScanner } from '../components/dashboard/ActivityScanner';
+import { CockpitAiConsole } from '../components/ai/CockpitAiConsole';
+import { StandupOutputDock } from '../components/standup/StandupOutputDock';
+import { ReportHistoryModal } from '../components/history/ReportHistoryModal';
+import { AuthModal } from '../components/auth/AuthModal';
+import { GoogleAccountChooserModal } from '../components/auth/GoogleAccountChooserModal';
+import { Orbit, GitBranch } from 'lucide-react';
 
 export default function HomePage() {
   const {
@@ -32,20 +32,18 @@ export default function HomePage() {
 
   const [activities, setActivities] = useState<PrActivity[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [sinceOption, setSinceOption] = useState<"today" | "24h" | "7d">(
-    "today",
-  );
+  const [sinceOption, setSinceOption] = useState<'today' | '24h' | '7d'>('today');
 
-  const [aiEngine, setAiEngine] = useState<AiEngine>("GITHUB_MODELS");
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
-  const [language, setLanguage] = useState<"vi" | "en">("vi");
+  const [aiEngine, setAiEngine] = useState<AiEngine>('GITHUB_MODELS');
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [webLlmProgressText, setWebLlmProgressText] = useState<string>("");
+  const [webLlmProgressText, setWebLlmProgressText] = useState<string>('');
   const [webLlmProgressPercent, setWebLlmProgressPercent] = useState<number>(0);
 
   const [bullets, setBullets] = useState<string[]>([]);
-  const [modelUsed, setModelUsed] = useState<string>("");
+  const [modelUsed, setModelUsed] = useState<string>('');
 
   // 1. Fetch Git Status when user is logged in
   const loadGitStatus = useCallback(async () => {
@@ -65,14 +63,14 @@ export default function HomePage() {
     try {
       let sinceDate: string | undefined;
       const now = new Date();
-      if (sinceOption === "today") {
+      if (sinceOption === 'today') {
         const today = new Date(now);
         today.setHours(0, 0, 0, 0);
         sinceDate = today.toISOString();
-      } else if (sinceOption === "24h") {
+      } else if (sinceOption === '24h') {
         const past = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         sinceDate = past.toISOString();
-      } else if (sinceOption === "7d") {
+      } else if (sinceOption === '7d') {
         const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         sinceDate = past.toISOString();
       }
@@ -80,7 +78,7 @@ export default function HomePage() {
       const data = await api.github.getActivity(sinceDate);
       setActivities(data);
     } catch (err) {
-      alert((err as Error).message || "Không thể quét hoạt động Git.");
+      alert((err as Error).message || 'Không thể quét hoạt động Git.');
     } finally {
       setIsScanning(false);
     }
@@ -110,7 +108,7 @@ export default function HomePage() {
     });
 
     if (!result.success) {
-      alert(result.error || "Đăng nhập Google thất bại");
+      alert(result.error || 'Đăng nhập Google thất bại');
     }
   };
 
@@ -131,7 +129,7 @@ export default function HomePage() {
   // Generate Standup Summary (Dual-Engine: GitHub Models or WebLLM)
   const handleGenerateSummary = async () => {
     if (activities.length === 0) {
-      alert("Không có commit nào trong phạm vi quét.");
+      alert('Không có commit nào trong phạm vi quét.');
       return;
     }
 
@@ -139,7 +137,7 @@ export default function HomePage() {
     setBullets([]);
 
     try {
-      if (aiEngine === "GITHUB_MODELS") {
+      if (aiEngine === 'GITHUB_MODELS') {
         const res = await api.ai.summarizeWithGitHubModels({
           prs: activities.map((a) => ({
             repo: a.repo,
@@ -156,7 +154,7 @@ export default function HomePage() {
         const supported = await isWebGPUSupported();
         if (!supported) {
           alert(
-            "Trình duyệt của bạn chưa hỗ trợ WebGPU. Vui lòng chuyển sang GitHub Models hoặc bật WebGPU trong chrome://flags.",
+            'Trình duyệt của bạn chưa hỗ trợ WebGPU. Vui lòng chuyển sang GitHub Models hoặc bật WebGPU trong chrome://flags.',
           );
           setIsGenerating(false);
           return;
@@ -177,33 +175,27 @@ export default function HomePage() {
         );
 
         setBullets(lines);
-        setModelUsed(`WebGPU (${selectedModel.split("-")[0]})`);
+        setModelUsed(`WebGPU (${selectedModel.split('-')[0]})`);
 
         // Persist to history in database
-        const totalCommits = activities.reduce(
-          (sum, pr) => sum + pr.commits.length,
-          0,
-        );
+        const totalCommits = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
         await api.ai.saveClientSummary({
           summary: lines,
           modelName: selectedModel,
           prCount: activities.length,
           commitCount: totalCommits,
-          engine: "WEB_LLM",
+          engine: 'WEB_LLM',
           metadata: { prs: activities },
         });
       }
     } catch (err) {
-      alert((err as Error).message || "Tóm tắt AI thất bại.");
+      alert((err as Error).message || 'Tóm tắt AI thất bại.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const totalCommitsToday = activities.reduce(
-    (sum, pr) => sum + pr.commits.length,
-    0,
-  );
+  const totalCommitsToday = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
 
   // Loading Screen
   if (isAuthLoading) {
@@ -223,11 +215,7 @@ export default function HomePage() {
   if (!user) {
     return (
       <main className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
-        <AuthModal
-          isOpen={true}
-          onClose={() => {}}
-          onOpenGoogleChooser={openGoogleChooser}
-        />
+        <AuthModal isOpen={true} onClose={() => {}} onOpenGoogleChooser={openGoogleChooser} />
 
         {/* Google Account Chooser Modal (Popup on click Google) */}
         <GoogleAccountChooserModal
@@ -294,8 +282,8 @@ export default function HomePage() {
                   Chưa Kết Nối Quỹ Đạo GitHub
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Để quét PR và commit hôm nay, hãy kết nối tài khoản GitHub qua
-                  Personal Access Token (PAT).
+                  Để quét PR và commit hôm nay, hãy kết nối tài khoản GitHub qua Personal Access
+                  Token (PAT).
                 </p>
               </div>
             </div>
@@ -341,11 +329,7 @@ export default function HomePage() {
             />
 
             {/* Generated Standup Output */}
-            <StandupOutputDock
-              bullets={bullets}
-              modelUsed={modelUsed}
-              engineUsed={aiEngine}
-            />
+            <StandupOutputDock bullets={bullets} modelUsed={modelUsed} engineUsed={aiEngine} />
           </div>
         </div>
       </main>

@@ -1,7 +1,7 @@
-import { Module } from "@nestjs/common";
-import { PrismaModule } from "../prisma/prisma.module";
-import { S2SService } from "./s2s.service";
-import { S2SAuthGuard } from "./s2s-auth.guard";
+import { Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
+import { S2SService } from './s2s.service';
+import { S2SAuthGuard } from './s2s-auth.guard';
 
 @Module({
   imports: [PrismaModule],

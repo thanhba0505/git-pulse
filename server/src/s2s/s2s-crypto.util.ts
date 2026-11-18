@@ -1,11 +1,11 @@
-import * as crypto from "crypto";
+import * as crypto from 'crypto';
 
 /**
  * Normalizes endpoint path by stripping query parameters and ensuring leading slash
  */
 export function normalizeS2SPath(path: string): string {
-  const withoutQuery = path.split("?")[0] || path;
-  return withoutQuery.startsWith("/") ? withoutQuery : `/${withoutQuery}`;
+  const withoutQuery = path.split('?')[0] || path;
+  return withoutQuery.startsWith('/') ? withoutQuery : `/${withoutQuery}`;
 }
 
 /**
@@ -13,9 +13,9 @@ export function normalizeS2SPath(path: string): string {
  */
 export function canonicalizeS2SBody(body?: unknown): string {
   if (body === undefined || body === null) {
-    return "";
+    return '';
   }
-  if (typeof body === "string") {
+  if (typeof body === 'string') {
     return body;
   }
   return JSON.stringify(body);
@@ -35,7 +35,7 @@ export function generateS2SSignature(
   const normalizedPath = normalizeS2SPath(path);
   const bodyString = canonicalizeS2SBody(body);
   const payload = `${timestamp}.${normalizedMethod}.${normalizedPath}.${bodyString}`;
-  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  return crypto.createHmac('sha256', secret).update(payload).digest('hex');
 }
 
 /**
@@ -49,12 +49,12 @@ export function verifyS2SSignature(
   signature: string,
   body?: unknown,
 ): boolean {
-  if (!signature || typeof signature !== "string") {
+  if (!signature || typeof signature !== 'string') {
     return false;
   }
   const expected = generateS2SSignature(secret, timestamp, method, path, body);
-  const sigBuffer = Buffer.from(signature, "hex");
-  const expectedBuffer = Buffer.from(expected, "hex");
+  const sigBuffer = Buffer.from(signature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
 
   if (sigBuffer.length !== expectedBuffer.length || sigBuffer.length === 0) {
     return false;
