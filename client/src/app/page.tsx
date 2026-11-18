@@ -15,7 +15,8 @@ import { AuthModal } from '../components/auth/AuthModal';
 import { WorkspaceSkeleton } from '../components/ui/Skeleton';
 import { ShowcaseCard } from '../components/ui/ShowcaseCard';
 import { useToast } from '../components/ui/Toast';
-import { GitBranch } from 'lucide-react';
+import { useAmbientMotionPreference } from '../lib/motion-preference';
+import { GitBranch, Pause, Sparkles } from 'lucide-react';
 
 // Lazy-load secondary modal overlays to keep initial page JS lean
 const GitHubConnectModal = dynamic(
@@ -416,29 +417,17 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-dvh">
-        <div className="mb-6 text-center max-w-sm">
-          <p className="text-xs font-mono uppercase tracking-wider text-sky-400 font-semibold">
-            {dict.header.brand}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">{dict.auth.brandTagline}</p>
-        </div>
-
-        <AuthModal
-          isOpen={true}
-          onClose={() => {}}
-          variant="inline"
-          onOpenGoogleChooser={openGoogleChooser}
-          externalError={authError}
-        />
-
-        <GoogleAccountChooserModal
-          isOpen={isGoogleChooserOpen}
-          onClose={closeGoogleChooser}
-          onSelectAccount={handleAccountSelect}
-          appName="Git Pulse"
-        />
-      </main>
+      <AuthLandingWrapper
+        dictBrand={dict.header.brand}
+        dictTagline={dict.auth.brandTagline}
+        dictPauseLabel={dict.header.toggleMotionPause}
+        dictPlayLabel={dict.header.toggleMotionPlay}
+        authError={authError}
+        isGoogleChooserOpen={isGoogleChooserOpen}
+        onOpenGoogleChooser={openGoogleChooser}
+        onCloseGoogleChooser={closeGoogleChooser}
+        onSelectAccount={handleAccountSelect}
+      />
     );
   }
 
@@ -576,5 +565,81 @@ export default function HomePage() {
         onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
       />
     </>
+  );
+}
+
+interface AuthLandingWrapperProps {
+  dictBrand: string;
+  dictTagline: string;
+  dictPauseLabel: string;
+  dictPlayLabel: string;
+  authError: string | null;
+  isGoogleChooserOpen: boolean;
+  onOpenGoogleChooser: () => void;
+  onCloseGoogleChooser: () => void;
+  onSelectAccount: (account: {
+    username: string;
+    email: string;
+    name: string;
+    googleId?: string;
+  }) => Promise<void>;
+}
+
+function AuthLandingWrapper({
+  dictBrand,
+  dictTagline,
+  dictPauseLabel,
+  dictPlayLabel,
+  authError,
+  isGoogleChooserOpen,
+  onOpenGoogleChooser,
+  onCloseGoogleChooser,
+  onSelectAccount,
+}: AuthLandingWrapperProps) {
+  const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
+  const motionLabel = isMotionPaused ? dictPlayLabel : dictPauseLabel;
+
+  return (
+    <main className="relative flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-dvh">
+      <button
+        type="button"
+        onClick={toggleMotion}
+        title={motionLabel}
+        aria-label={motionLabel}
+        className={`fixed top-4 right-4 z-30 inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+          isMotionPaused
+            ? 'bg-[#11141C]/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
+        }`}
+      >
+        {isMotionPaused ? (
+          <Pause className="w-3.5 h-3.5" aria-hidden="true" />
+        ) : (
+          <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+        )}
+      </button>
+
+      <div className="mb-6 text-center max-w-sm">
+        <p className="text-xs font-mono uppercase tracking-wider text-sky-400 font-semibold">
+          {dictBrand}
+        </p>
+        <p className="text-xs text-slate-400 mt-1">{dictTagline}</p>
+      </div>
+
+      <AuthModal
+        isOpen={true}
+        onClose={() => {}}
+        variant="inline"
+        onOpenGoogleChooser={onOpenGoogleChooser}
+        externalError={authError}
+      />
+
+      <GoogleAccountChooserModal
+        isOpen={isGoogleChooserOpen}
+        onClose={onCloseGoogleChooser}
+        onSelectAccount={onSelectAccount}
+        appName="Git Pulse"
+      />
+    </main>
   );
 }

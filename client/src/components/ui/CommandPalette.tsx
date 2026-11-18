@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ModalDialog } from './ModalDialog';
 import { useTranslation } from '../../i18n';
+import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import {
   Search,
   RefreshCw,
@@ -13,6 +14,8 @@ import {
   GitBranch,
   Languages,
   CornerDownLeft,
+  Pause,
+  Play,
 } from 'lucide-react';
 
 export interface CommandItem {
@@ -49,6 +52,7 @@ export function CommandPalette({
   onToggleLanguage,
 }: CommandPaletteProps) {
   const { dict } = useTranslation();
+  const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -126,16 +130,27 @@ export function CommandPalette({
         icon: Languages,
         onSelect: onToggleLanguage,
       },
+      {
+        id: 'toggle-motion',
+        label: isMotionPaused
+          ? dict.commandPalette.actions.toggleMotionPlay
+          : dict.commandPalette.actions.toggleMotionPause,
+        group: dict.commandPalette.groups.navigation,
+        icon: isMotionPaused ? Play : Pause,
+        onSelect: toggleMotion,
+      },
     ],
     [
       dict,
       canGenerate,
+      isMotionPaused,
       onSyncRange,
       onGenerate,
       onSwitchEngine,
       onOpenHistory,
       onOpenGitModal,
       onToggleLanguage,
+      toggleMotion,
     ],
   );
 

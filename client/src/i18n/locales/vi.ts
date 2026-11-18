@@ -20,6 +20,8 @@ export const vi: TranslationDictionary = {
     subtitle: 'Tổng hợp hoạt động Git & Báo cáo Standup',
     commandPaletteBtn: 'Bảng lệnh',
     commandPaletteTooltip: 'Mở bảng lệnh nhanh (⌘K)',
+    toggleMotionPause: 'Tạm dừng hiệu ứng chuyển động nền',
+    toggleMotionPlay: 'Bật hiệu ứng chuyển động nền',
     history: 'Lịch sử',
     historyTitle: 'Xem lịch sử báo cáo Standup',
     connectGit: 'Kết nối GitHub',
@@ -153,6 +155,8 @@ export const vi: TranslationDictionary = {
       openHistory: 'Mở lịch sử báo cáo Standup',
       openGitModal: 'Quản lý kết nối GitHub',
       toggleLanguage: 'Chuyển ngôn ngữ giao diện sang English',
+      toggleMotionPause: 'Tạm dừng hiệu ứng trôi nổi trên nền',
+      toggleMotionPlay: 'Bật lại hiệu ứng trôi nổi trên nền',
     },
   },
   toasts: {

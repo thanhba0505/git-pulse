@@ -141,10 +141,10 @@ export function CockpitAiConsole({
               onEngineChange('GITHUB_MODELS');
               onModelChange('gpt-4o-mini');
             }}
-            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               engine === 'GITHUB_MODELS'
-                ? 'bg-sky-500/10 border-sky-500/60 text-slate-100'
-                : 'bg-[#161A24] border-slate-800 hover:border-slate-700 text-slate-300'
+                ? 'bg-sky-500/10 border-sky-500/60 text-slate-100 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
+                : 'bg-[#161A24] border-slate-800 hover:border-sky-500/40 hover:bg-[#191E2A] text-slate-300'
             }`}
           >
             <div className="flex items-center justify-between gap-2 mb-2 w-full">
@@ -185,10 +185,10 @@ export function CockpitAiConsole({
               onEngineChange('WEB_LLM');
               onModelChange('Llama-3.2-1B-Instruct-q4f16_1-MLC');
             }}
-            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               engine === 'WEB_LLM'
-                ? 'bg-sky-500/10 border-sky-500/60 text-slate-100'
-                : 'bg-[#161A24] border-slate-800 hover:border-slate-700 text-slate-300'
+                ? 'bg-sky-500/10 border-sky-500/60 text-slate-100 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
+                : 'bg-[#161A24] border-slate-800 hover:border-sky-500/40 hover:bg-[#191E2A] text-slate-300'
             }`}
           >
             <div className="flex items-center justify-between gap-2 mb-2 w-full">

@@ -8,6 +8,12 @@
   initial-value: 0px;
 }
 
+@property --spot-opacity {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
 @layer base {
   :root {
     --background: #090b10;
@@ -71,16 +77,16 @@
    ======================================================== */
 
 .gp-grid-base {
-  background-image: radial-gradient(rgba(148, 163, 184, 0.085) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(148, 163, 184, 0.095) 1px, transparent 1px);
   background-size: 28px 28px;
   background-position: center top;
 }
 
 .gp-grid-illuminated {
   background-image:
-    linear-gradient(to right, rgba(56, 189, 248, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.09) 1px, transparent 1px),
-    radial-gradient(rgba(56, 189, 248, 0.35) 1.25px, transparent 1.25px);
+    linear-gradient(to right, rgba(56, 189, 248, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.2) 1px, transparent 1px),
+    radial-gradient(rgba(125, 211, 252, 0.62) 1.35px, transparent 1.35px);
   background-size:
     28px 28px,
     28px 28px,
@@ -91,19 +97,72 @@
     center top;
   transition: --spot-radius 240ms var(--ease-smooth-out);
   -webkit-mask-image: radial-gradient(
-    var(--spot-radius, 0px) circle at var(--px, -500px) var(--py, -500px),
+    var(--spot-radius, 0px) circle at var(--px, -600px) var(--py, -600px),
     black 0%,
-    rgba(0, 0, 0, 0.45) 45%,
-    transparent 75%
+    rgba(0, 0, 0, 0.55) 45%,
+    transparent 76%
   );
   mask-image: radial-gradient(
-    var(--spot-radius, 0px) circle at var(--px, -500px) var(--py, -500px),
+    var(--spot-radius, 0px) circle at var(--px, -600px) var(--py, -600px),
     black 0%,
-    rgba(0, 0, 0, 0.45) 45%,
-    transparent 75%
+    rgba(0, 0, 0, 0.55) 45%,
+    transparent 76%
   );
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
+}
+
+.gp-cursor-halo {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 560px;
+  height: 560px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(56, 189, 248, 0.145) 0%,
+    rgba(99, 102, 241, 0.07) 42%,
+    transparent 72%
+  );
+  transform: translate3d(calc(var(--px, -600px) - 50%), calc(var(--py, -600px) - 50%), 0);
+  opacity: var(--spot-opacity, 0);
+  transition: opacity 280ms var(--ease-smooth-out);
+  will-change: transform, opacity;
+}
+
+.gp-float-spotlight-mask {
+  transition: --spot-radius 240ms var(--ease-smooth-out);
+  -webkit-mask-image: radial-gradient(
+    var(--spot-radius, 0px) circle at var(--px, -600px) var(--py, -600px),
+    black 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    var(--spot-radius, 0px) circle at var(--px, -600px) var(--py, -600px),
+    black 0%,
+    rgba(0, 0, 0, 0.5) 50%,
+    transparent 78%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.gp-parallax-layer {
+  translate: 0px 0px;
+  rotate: 0deg;
+  scale: 1;
+}
+
+@supports (translate: 0px) {
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .gp-parallax-layer {
+      translate: calc(var(--nx, 0) * var(--depth-x, 20px)) calc(var(--ny, 0) * var(--depth-y, 20px));
+      transition: translate 340ms var(--ease-smooth-out);
+      will-change: translate;
+    }
+  }
 }
 
 @keyframes gp-aura-drift-a {
@@ -111,31 +170,128 @@
     transform: translate3d(-4%, -2%, 0) scale(1);
   }
   to {
-    transform: translate3d(6%, 4%, 0) scale(1.06);
+    transform: translate3d(6%, 4%, 0) scale(1.07);
   }
 }
 
 @keyframes gp-aura-drift-b {
   from {
-    transform: translate3d(4%, 2%, 0) scale(1.04);
+    transform: translate3d(4%, 2%, 0) scale(1.05);
   }
   to {
-    transform: translate3d(-5%, -3%, 0) scale(0.96);
+    transform: translate3d(-5%, -3%, 0) scale(0.95);
+  }
+}
+
+@keyframes gp-aura-drift-c {
+  from {
+    transform: translate3d(-3%, 2%, 0) scale(0.96);
+  }
+  to {
+    transform: translate3d(4%, -4%, 0) scale(1.06);
+  }
+}
+
+@keyframes gp-float-tile-a {
+  0% {
+    transform: translate3d(0px, 0px, 0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translate3d(8px, -18px, 0) rotate(2deg);
+  }
+  100% {
+    transform: translate3d(-6px, 12px, 0) rotate(-1deg);
+  }
+}
+
+@keyframes gp-float-tile-b {
+  0% {
+    transform: translate3d(0px, 0px, 0) rotate(2deg);
+  }
+  50% {
+    transform: translate3d(-10px, 16px, 0) rotate(-2deg);
+  }
+  100% {
+    transform: translate3d(7px, -12px, 0) rotate(1.5deg);
+  }
+}
+
+@keyframes gp-float-tile-c {
+  0% {
+    transform: translate3d(0px, 0px, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(12px, -12px, 0) rotate(-2.5deg);
+  }
+  100% {
+    transform: translate3d(-8px, -22px, 0) rotate(1.5deg);
+  }
+}
+
+@keyframes gp-mote-drift {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(0.9);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(8px, -20px, 0) scale(1.18);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(-6px, 12px, 0) scale(0.95);
+    opacity: 0.45;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .gp-aura-orb-a {
-    animation: gp-aura-drift-a 22s ease-in-out infinite alternate;
+    animation: gp-aura-drift-a 20s ease-in-out infinite alternate;
   }
 
   .gp-aura-orb-b {
-    animation: gp-aura-drift-b 26s ease-in-out infinite alternate;
+    animation: gp-aura-drift-b 24s ease-in-out infinite alternate;
+  }
+
+  .gp-aura-orb-c {
+    animation: gp-aura-drift-c 28s ease-in-out infinite alternate;
+  }
+
+  .gp-float-anim-a {
+    animation: gp-float-tile-a 14s ease-in-out infinite alternate;
+  }
+
+  .gp-float-anim-b {
+    animation: gp-float-tile-b 17s ease-in-out infinite alternate;
+  }
+
+  .gp-float-anim-c {
+    animation: gp-float-tile-c 19s ease-in-out infinite alternate;
+  }
+
+  .gp-mote-anim {
+    animation: gp-mote-drift var(--mote-dur, 12s) ease-in-out var(--mote-delay, 0s) infinite
+      alternate;
   }
 }
 
+html[data-gp-motion='paused'] .gp-aura-orb-a,
+html[data-gp-motion='paused'] .gp-aura-orb-b,
+html[data-gp-motion='paused'] .gp-aura-orb-c,
+html[data-gp-motion='paused'] .gp-float-anim-a,
+html[data-gp-motion='paused'] .gp-float-anim-b,
+html[data-gp-motion='paused'] .gp-float-anim-c,
+html[data-gp-motion='paused'] .gp-mote-anim {
+  animation-play-state: paused !important;
+}
+
+html[data-gp-motion='paused'] .gp-parallax-layer {
+  translate: 0px 0px !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .gp-grid-illuminated {
+  .gp-grid-illuminated,
+  .gp-float-spotlight-mask,
+  .gp-cursor-halo {
     transition: none !important;
   }
 }
@@ -154,20 +310,26 @@
 }
 
 .gp-showcase-surface {
-  background: radial-gradient(
-    420px circle at var(--card-x, -500px) var(--card-y, -500px),
-    rgba(56, 189, 248, 0.055),
-    transparent 70%
-  );
+  background:
+    radial-gradient(
+      260px circle at var(--card-x, -500px) var(--card-y, -500px),
+      rgba(56, 189, 248, 0.115),
+      transparent 70%
+    ),
+    radial-gradient(
+      460px circle at var(--card-x, -500px) var(--card-y, -500px),
+      rgba(99, 102, 241, 0.055),
+      transparent 76%
+    );
 }
 
 .gp-showcase-border-glow {
   padding: 1px;
   background: radial-gradient(
-    300px circle at var(--card-x, -500px) var(--card-y, -500px),
-    rgba(56, 189, 248, 0.55),
-    rgba(99, 102, 241, 0.3) 45%,
-    transparent 75%
+    340px circle at var(--card-x, -500px) var(--card-y, -500px),
+    rgba(56, 189, 248, 0.8),
+    rgba(129, 140, 248, 0.42) 45%,
+    transparent 76%
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -177,6 +339,24 @@
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
+}
+
+.gp-showcase-tilt {
+  transform: perspective(1100px) rotateX(0deg) rotateY(0deg) translateZ(0);
+  transition:
+    transform 240ms var(--ease-smooth-out),
+    border-color 200ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .gp-showcase-tilt:hover {
+    transform: perspective(1100px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+      translate3d(0, -1px, 0);
+  }
+}
+
+html[data-gp-motion='paused'] .gp-showcase-tilt:hover {
+  transform: none;
 }
 
 .gp-modal-surface {

@@ -20,6 +20,8 @@ export const en: TranslationDictionary = {
     subtitle: 'Git Activity & AI Standup Workspace',
     commandPaletteBtn: 'Search',
     commandPaletteTooltip: 'Open quick command palette (⌘K)',
+    toggleMotionPause: 'Pause ambient background motion',
+    toggleMotionPlay: 'Enable ambient background motion',
     history: 'History',
     historyTitle: 'View standup report history',
     connectGit: 'Connect GitHub',
@@ -153,6 +155,8 @@ export const en: TranslationDictionary = {
       openHistory: 'Open Standup Report History',
       openGitModal: 'Manage GitHub Connection',
       toggleLanguage: 'Chuyển ngôn ngữ giao diện sang Tiếng Việt',
+      toggleMotionPause: 'Pause ambient floating background motion',
+      toggleMotionPlay: 'Resume ambient floating background motion',
     },
   },
   toasts: {

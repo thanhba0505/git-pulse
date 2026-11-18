@@ -23,6 +23,8 @@ export interface HeaderDictionary {
   subtitle: string;
   commandPaletteBtn: string;
   commandPaletteTooltip: string;
+  toggleMotionPause: string;
+  toggleMotionPlay: string;
   history: string;
   historyTitle: string;
   connectGit: string;
@@ -157,6 +159,8 @@ export interface CommandPaletteDictionary {
     openHistory: string;
     openGitModal: string;
     toggleLanguage: string;
+    toggleMotionPause: string;
+    toggleMotionPlay: string;
   };
 }
 

@@ -3,8 +3,9 @@
 import React from 'react';
 import { User, GitStatus } from '../../types';
 import { useTranslation } from '../../i18n';
+import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import { SegmentedControl } from '../ui/SegmentedControl';
-import { Activity, GitBranch, History, LogOut, Search } from 'lucide-react';
+import { Activity, GitBranch, History, LogOut, Pause, Search, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   user: User | null;
@@ -24,12 +25,15 @@ export function Header({
   onLogout,
 }: HeaderProps) {
   const { locale, setLocale, dict } = useTranslation();
+  const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
+
+  const motionLabel = isMotionPaused ? dict.header.toggleMotionPlay : dict.header.toggleMotionPause;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/90 bg-[#090B10]/85 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Brand Identity */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 overflow-hidden">
           <div
             className="flex items-center justify-center w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
             aria-hidden="true"
@@ -37,7 +41,7 @@ export function Header({
             <Activity className="w-4 h-4" />
           </div>
           <div className="flex items-center gap-3 min-w-0">
-            <span className="font-bold text-base sm:text-lg tracking-tight text-slate-100 whitespace-nowrap">
+            <span className="hidden sm:inline font-bold text-base sm:text-lg tracking-tight text-slate-100 whitespace-nowrap">
               {dict.header.brand}
             </span>
             <span className="hidden lg:inline-block border-l border-slate-800 pl-3 text-xs text-slate-400 truncate">
@@ -47,7 +51,7 @@ export function Header({
         </div>
 
         {/* Right Toolbar */}
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           {/* Quick Command Palette Trigger (⌘K) */}
           <button
             type="button"
@@ -61,6 +65,25 @@ export function Header({
             <kbd className="px-1.5 py-0.5 rounded bg-[#161A24] border border-slate-700/80 text-xs font-mono text-slate-400">
               ⌘K
             </kbd>
+          </button>
+
+          {/* Ambient Background Motion Toggle (WCAG 2.2.2) */}
+          <button
+            type="button"
+            onClick={toggleMotion}
+            title={motionLabel}
+            aria-label={motionLabel}
+            className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+              isMotionPaused
+                ? 'bg-[#0C0E14] border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
+            }`}
+          >
+            {isMotionPaused ? (
+              <Pause className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
           </button>
 
           {/* UI Language Switcher */}
@@ -97,7 +120,7 @@ export function Header({
               className="inline-flex items-center gap-2 min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 hover:border-emerald-500/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
-              <span className="truncate max-w-[90px] sm:max-w-[140px]">
+              <span className="truncate max-w-[72px] sm:max-w-[140px]">
                 @{gitStatus.gitUsername}
               </span>
             </button>
@@ -116,16 +139,16 @@ export function Header({
 
           {/* User Profile & Logout */}
           {user && (
-            <div className="flex items-center gap-2 pl-2 sm:pl-2.5 border-l border-slate-800">
+            <div className="flex items-center gap-2 pl-1.5 sm:pl-2.5 border-l border-slate-800">
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
                   alt={user.username}
-                  className="w-8 h-8 rounded-full border border-slate-700 object-cover shrink-0"
+                  className="hidden sm:block w-8 h-8 rounded-full border border-slate-700 object-cover shrink-0"
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0"
+                  className="hidden sm:flex w-8 h-8 rounded-full bg-slate-800 border border-slate-700 items-center justify-center text-xs font-semibold text-slate-200 shrink-0"
                   aria-hidden="true"
                 >
                   {user.username.slice(0, 2).toUpperCase()}

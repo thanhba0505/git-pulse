@@ -20,6 +20,7 @@ import { useTranslation } from '../../i18n';
 import { ModalDialog } from '../ui/ModalDialog';
 import { Input } from '../ui/Input';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 export type AuthMode = 'login' | 'register' | 'forgot';
@@ -511,9 +512,12 @@ export function AuthModal({
 
   if (variant === 'inline') {
     return (
-      <div className="w-full max-w-[440px] gp-modal-surface rounded-xl overflow-hidden gp-dialog-in">
+      <ShowcaseCard
+        tiltStrength={0.75}
+        className="w-full max-w-[440px] gp-modal-surface gp-dialog-in"
+      >
         {cardContent}
-      </div>
+      </ShowcaseCard>
     );
   }
 

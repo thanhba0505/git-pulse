@@ -66,7 +66,7 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 gp-fade-in">
-      <ShowcaseCard className="p-4 sm:p-5">
+      <ShowcaseCard tiltStrength={2.2} className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-400">{dict.summaryStrip.prsLabel}</p>
@@ -86,7 +86,7 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
         </div>
       </ShowcaseCard>
 
-      <ShowcaseCard className="p-4 sm:p-5">
+      <ShowcaseCard tiltStrength={2.2} className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-400">{dict.summaryStrip.commitsLabel}</p>
@@ -104,7 +104,7 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
         </div>
       </ShowcaseCard>
 
-      <ShowcaseCard className="p-4 sm:p-5">
+      <ShowcaseCard tiltStrength={2.2} className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-400">{dict.summaryStrip.reposLabel}</p>

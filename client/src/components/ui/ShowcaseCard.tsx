@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { readMotionPausedPreference } from '../../lib/motion-preference';
 
 type ShowcaseElement = 'div' | 'li' | 'section' | 'article';
 
 interface ShowcaseCardProps extends React.HTMLAttributes<HTMLElement> {
   as?: ShowcaseElement;
   staggerIndex?: number;
+  tiltStrength?: number;
   className?: string;
   children: React.ReactNode;
 }
@@ -14,6 +16,7 @@ interface ShowcaseCardProps extends React.HTMLAttributes<HTMLElement> {
 export function ShowcaseCard({
   as = 'div',
   staggerIndex,
+  tiltStrength = 0,
   className = '',
   style,
   children,
@@ -27,6 +30,7 @@ export function ShowcaseCard({
     if (!el) return;
 
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     if (!finePointer.matches) return;
 
     const updateRect = () => {
@@ -39,11 +43,17 @@ export function ShowcaseCard({
     let rafId = 0;
     let nextX = -500;
     let nextY = -500;
+    let tiltX = 0;
+    let tiltY = 0;
 
     const flushCoords = () => {
       rafId = 0;
       el.style.setProperty('--card-x', `${nextX}px`);
       el.style.setProperty('--card-y', `${nextY}px`);
+      if (tiltStrength > 0) {
+        el.style.setProperty('--tilt-x', `${tiltX.toFixed(2)}deg`);
+        el.style.setProperty('--tilt-y', `${tiltY.toFixed(2)}deg`);
+      }
     };
 
     const handlePointerEnter = () => {
@@ -55,6 +65,17 @@ export function ShowcaseCard({
       rectRef.current = rect;
       nextX = e.clientX - rect.left;
       nextY = e.clientY - rect.top;
+
+      if (tiltStrength > 0 && !reducedMotion.matches && !readMotionPausedPreference()) {
+        const ratioX = rect.width > 0 ? nextX / rect.width - 0.5 : 0;
+        const ratioY = rect.height > 0 ? nextY / rect.height - 0.5 : 0;
+        tiltX = ratioY * -2 * tiltStrength;
+        tiltY = ratioX * 2 * tiltStrength;
+      } else {
+        tiltX = 0;
+        tiltY = 0;
+      }
+
       if (!rafId) {
         rafId = window.requestAnimationFrame(flushCoords);
       }
@@ -63,6 +84,8 @@ export function ShowcaseCard({
     const handlePointerLeave = () => {
       nextX = -500;
       nextY = -500;
+      tiltX = 0;
+      tiltY = 0;
       if (!rafId) {
         rafId = window.requestAnimationFrame(flushCoords);
       }
@@ -79,7 +102,7 @@ export function ShowcaseCard({
       el.removeEventListener('pointermove', handlePointerMove);
       el.removeEventListener('pointerleave', handlePointerLeave);
     };
-  }, []);
+  }, [tiltStrength]);
 
   const mergedStyle: React.CSSProperties = {
     ...(staggerIndex !== undefined
@@ -95,8 +118,8 @@ export function ShowcaseCard({
       ref={cardRef}
       style={mergedStyle}
       className={`group relative overflow-hidden rounded-xl gp-card transition-colors duration-200 hover:border-slate-700/90 ${
-        staggerIndex !== undefined ? 'gp-stagger-item' : ''
-      } ${className}`}
+        tiltStrength > 0 ? 'gp-showcase-tilt' : ''
+      } ${staggerIndex !== undefined ? 'gp-stagger-item' : ''} ${className}`}
       {...rest}
     >
       {/* Inner Surface Pointer Sheen */}
