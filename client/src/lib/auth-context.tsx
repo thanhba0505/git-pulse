@@ -84,28 +84,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = async (username: string, password?: string) => {
-    setIsLoading(true);
     try {
       const res = await api.auth.login(username, password);
       setUser(res.user);
       return { success: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (username: string, email: string, password: string) => {
-    setIsLoading(true);
     try {
       const res = await api.auth.register(username, email, password);
       setUser(res.user);
       return { success: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -124,7 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     googleId?: string;
     credential?: string;
   }) => {
-    setIsLoading(true);
     try {
       const res = await api.auth.googleLogin(payload);
       setUser(res.user);
@@ -132,21 +125,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const loginWithSso = async (code: string, codeVerifier: string) => {
-    setIsLoading(true);
     try {
       const res = await api.auth.ssoCallback(code, codeVerifier);
       setUser(res.user);
       return { success: true };
     } catch (err) {
       return { success: false, error: (err as Error).message };
-    } finally {
-      setIsLoading(false);
     }
   };
 
