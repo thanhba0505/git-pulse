@@ -285,6 +285,8 @@ export class AuthService {
     let name = dto.name;
     let googleId = dto.googleId;
 
+    let avatarUrl: string | null = null;
+
     if (dto.credential && (!email || !googleId)) {
       try {
         const decoded = this.jwtService.decode(dto.credential) as Record<string, unknown> | null;
@@ -292,6 +294,7 @@ export class AuthService {
           if (typeof decoded.email === 'string') email = decoded.email.toLowerCase();
           if (typeof decoded.name === 'string') name = decoded.name;
           if (typeof decoded.sub === 'string') googleId = decoded.sub;
+          if (typeof decoded.picture === 'string') avatarUrl = decoded.picture;
         }
       } catch (err) {
         this.logger.warn(`Failed to decode credential: ${(err as Error).message}`);
@@ -316,6 +319,7 @@ export class AuthService {
               name: name || email.split('@')[0],
               googleId: googleId || `google_${Date.now()}`,
               credential: dto.credential,
+              avatarUrl,
             }),
           },
         );
@@ -331,6 +335,7 @@ export class AuthService {
             name: name || email.split('@')[0],
             googleId: googleId || `google_${Date.now()}`,
             credential: dto.credential,
+            avatarUrl,
           }),
         });
 
@@ -351,6 +356,7 @@ export class AuthService {
         username: name || email.split('@')[0],
         email,
         role: 'USER',
+        avatarUrl,
         isActive: true,
       };
     }

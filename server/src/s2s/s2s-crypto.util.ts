@@ -18,6 +18,9 @@ export function canonicalizeS2SBody(body?: unknown): string {
   if (typeof body === 'string') {
     return body;
   }
+  if (typeof body === 'object' && Object.keys(body).length === 0) {
+    return '';
+  }
   return JSON.stringify(body);
 }
 

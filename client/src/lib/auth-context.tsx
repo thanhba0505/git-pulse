@@ -170,8 +170,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await api.auth.logout();
-    setUser(null);
+    try {
+      await api.auth.logout();
+    } finally {
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
   };
 
   return (

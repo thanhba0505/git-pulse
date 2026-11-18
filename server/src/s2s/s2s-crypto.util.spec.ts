@@ -48,6 +48,13 @@ describe('Git Pulse S2SCryptoUtil', () => {
     expect(normalizeS2SPath('/api/v1/test?query=abc')).toBe('/api/v1/test');
     expect(canonicalizeS2SBody(null)).toBe('');
     expect(canonicalizeS2SBody(undefined)).toBe('');
+    expect(canonicalizeS2SBody({})).toBe('');
     expect(canonicalizeS2SBody('raw_string')).toBe('raw_string');
+  });
+
+  it('should verify signature generated with undefined body against parsed empty object {}', () => {
+    const sig = generateS2SSignature(secret, timestamp, 'GET', '/api/v1/users/123', undefined);
+    const isValid = verifyS2SSignature(secret, timestamp, 'GET', '/api/v1/users/123', sig, {});
+    expect(isValid).toBe(true);
   });
 });
