@@ -30,9 +30,9 @@ flowchart TD
 
 - **Platform**: Vercel (`git-pulse-client`)
 - **Framework**: Next.js 15 (App Router), React 19
-- **Production URL**: `https://git-pulse-app.vercel.app`
-- **Aliases**: `https://git-pulse-web.vercel.app`, `https://git-pulse-client-eta.vercel.app`
-- **Health Check**: `https://git-pulse-app.vercel.app/health`
+- **Production URL**: [git-pulse-app.vercel.app](https://git-pulse-app.vercel.app)
+- **Aliases**: [git-pulse-web.vercel.app](https://git-pulse-web.vercel.app), [git-pulse-client-eta.vercel.app](https://git-pulse-client-eta.vercel.app)
+- **Health Check**: `/health` ([git-pulse-app.vercel.app/health](https://git-pulse-app.vercel.app/health))
 - **Environment Variables**:
   - `NEXT_PUBLIC_API_URL`: `https://git-pulse-server.vercel.app/api/v1`
   - `NEXT_PUBLIC_GATEWAY_CLIENT_URL`: `https://central-gateway-client.vercel.app`
@@ -43,9 +43,9 @@ flowchart TD
 - **Platform**: Vercel Serverless Functions (`git-pulse-server`)
 - **Framework**: NestJS 10 REST API via Express Serverless Adapter (`server/api/index.ts`)
 - **Region**: `iad1` (Washington, D.C.)
-- **Production URL**: `https://git-pulse-server.vercel.app/api/v1`
-- **OpenAPI Swagger**: `https://git-pulse-server.vercel.app/api/docs`
-- **Health Check**: `https://git-pulse-server.vercel.app/api/v1/health`
+- **Production URL**: [git-pulse-server.vercel.app/api/v1](https://git-pulse-server.vercel.app/api/v1)
+- **OpenAPI Swagger**: [git-pulse-server.vercel.app/api/docs](https://git-pulse-server.vercel.app/api/docs)
+- **Health Check**: `/api/v1/health` ([git-pulse-server.vercel.app/api/v1/health](https://git-pulse-server.vercel.app/api/v1/health))
 - **Environment Variables**:
   - `DATABASE_URL`: Neon Lakebase PostgreSQL connection pooler
   - `JWT_SECRET`: High-entropy 256-bit token signing secret

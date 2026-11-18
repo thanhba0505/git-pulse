@@ -10,9 +10,9 @@
 [![Client Web App](https://img.shields.io/badge/Client-Live%20on%20Vercel-10b981?style=flat-square&logo=vercel)](https://git-pulse-app.vercel.app)
 [![Server API](https://img.shields.io/badge/Server-API%20v1-0284c7?style=flat-square&logo=nestjs)](https://git-pulse-server.vercel.app/api/v1)
 [![Swagger OpenAPI](https://img.shields.io/badge/Docs-Swagger%20OpenAPI-85ea2d?style=flat-square&logo=swagger)](https://git-pulse-server.vercel.app/api/docs)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-6366f1?style=flat-square)](LICENSE)
 
-[🌐 Web App](https://git-pulse-app.vercel.app) • [📖 Architecture](docs/architecture.md) • [🚀 Deployment](docs/deployment.md) • [📑 API Docs](docs/api-reference.md) • [🔒 Security Guide](docs/security.md)
+[🌐 Developer Workspace](https://git-pulse-app.vercel.app) • [📑 Swagger OpenAPI](https://git-pulse-server.vercel.app/api/docs) • [📖 Architecture Guide](docs/architecture.md) • [🚀 Deployment Guide](docs/deployment.md) • [📋 Contributing Guide](CONTRIBUTING.md)
 
 </div>
 
@@ -22,7 +22,7 @@
 
 **Git Pulse** aggregates daily GitHub pull requests, commits, and issue activities to synthesize high-precision standup reports using an innovative **Dual-Core AI** engine. It visualizes developer momentum through cosmic radar HUDs and real-time pulsar waveforms, keeping engineering teams aligned with zero cognitive friction.
 
-### Key Capabilities:
+### Core Capabilities:
 
 - **Dual-Core AI Synthesis (Zero Server Cost)**:
   - **Warp-Drive Core (Cloud AI)**: Dispatches inference calls to GitHub Models (Azure Inference) directly using the user's decrypted GitHub token (`gpt-4o-mini`, `meta-llama-3.3-70b-instruct`).
@@ -35,6 +35,20 @@
 
 ---
 
+## 🌌 Prism Hub Ecosystem
+
+Git Pulse is a developer intelligence layer within the **Prism Hub** engineering ecosystem alongside its sister applications:
+
+| Application         | Role & Mission                                        | Standard Local Port | Live Production                                            | Interactive Docs                                                      |
+| :------------------ | :---------------------------------------------------- | :-----------------: | :--------------------------------------------------------- | :-------------------------------------------------------------------- |
+| **Git Pulse**       | Developer Intelligence, Dual-Core AI & Activity Radar |   `6100` / `6101`   | [Developer Workspace](https://git-pulse-app.vercel.app)    | [Swagger OpenAPI](https://git-pulse-server.vercel.app/api/docs)       |
+| **Wonderlab**       | Interactive Science, Probability & Paradox Laboratory |   `4100` / `4101`   | [Live Experience](https://wonderlab.io.vn)                 | [Swagger OpenAPI](https://wonderlab-server.vercel.app/api/docs)       |
+| **Central Gateway** | Centralized IAM Master, OAuth2 SSO & Notification Hub |   `5100` / `5101`   | [Control Plane](https://central-gateway-client.vercel.app) | [Swagger OpenAPI](https://central-gateway-server.vercel.app/api/docs) |
+
+> All services share PostgreSQL 16 on local port `5432` during development and connect to serverless Neon Lakebase PostgreSQL in production.
+
+---
+
 ## 🏗️ System Architecture
 
 ```mermaid
@@ -42,116 +56,90 @@ graph TD
     Developer["Developer Browser"] -->|HTTPS| VercelEdge["Vercel Edge Network"]
     VercelEdge --> ClientApp["git-pulse-client (Next.js 15 App Router)"]
     VercelEdge --> ServerAPI["git-pulse-server (NestJS 10 Serverless)"]
-    ServerAPI -->|DATABASE_URL (Pooler)| NeonDB[("Neon Lakebase PostgreSQL 16 (AWS Oregon)")]
-    ServerAPI -->|HMAC-SHA256 S2S| Gateway["Central Gateway (IAM Master)"]
-    ClientApp -->|WebGPU In-Browser| WebLLM["WebLLM Core (Llama-3.2-1B)"]
-    ServerAPI -->|Decrypted PAT| GitHubAPI["GitHub REST & Models API"]
+    ServerAPI -->|Pooled Connection| NeonDB["Neon Lakebase PostgreSQL 16 (AWS Oregon)"]
+    ServerAPI -->|HMAC-SHA256 S2S| Gateway["Central Gateway (IAM Master & SSO)"]
+    ClientApp -->|In-Browser WebGPU| WebLLM["Local WebLLM Core (Llama-3.2-1B)"]
+    ServerAPI -->|Decrypted Token| GitHubAPI["GitHub REST & Models API"]
 ```
 
 ---
 
-## 🧭 Monorepo Structure & Ecosystem Ports
+## 📦 Monorepo Structure
 
-Git Pulse is part of the **Prism Hub** ecosystem and strictly adheres to standard workspace port assignments:
-
-| Project                    | Role                  |    Standard Port     | Production Endpoint                                                                                  |
-| :------------------------- | :-------------------- | :------------------: | :--------------------------------------------------------------------------------------------------- |
-| **Git Pulse Client**       | Frontend Workspace    |        `6100`        | [https://git-pulse-app.vercel.app](https://git-pulse-app.vercel.app)                                 |
-| **Git Pulse Server**       | REST API & AI Engine  |  `6101` (`/api/v1`)  | [https://git-pulse-server.vercel.app/api/v1](https://git-pulse-server.vercel.app/api/v1)             |
-| **Central Gateway Client** | Ecosystem IAM & Admin |        `5100`        | [https://central-gateway-client.vercel.app](https://central-gateway-client.vercel.app)               |
-| **Central Gateway Server** | SSO & Notifications   |  `5101` (`/api/v1`)  | [https://central-gateway-server.vercel.app/api/v1](https://central-gateway-server.vercel.app/api/v1) |
-| **Wonderlab Client**       | Science Simulations   |        `4100`        | [https://wonderlab.io.vn](https://wonderlab.io.vn)                                                   |
-| **Wonderlab Server**       | Simulation API        |  `4101` (`/api/v1`)  | [https://wonderlab-server.vercel.app/api/v1](https://wonderlab-server.vercel.app/api/v1)             |
-| **Local Database**         | PostgreSQL 16 Docker  | `5432` (`git_pulse`) | `127.0.0.1:5432`                                                                                     |
-
-```
+```text
 git-pulse/
 ├── client/          # Next.js 15 App Router, React 19, Tailwind CSS v4, WebLLM
 ├── server/          # NestJS 10 REST API, Prisma ORM, AES-256-GCM Token Vault
-├── docs/            # Technical specifications (architecture, deployment, api-reference, security)
-└── scripts/         # Production release sync and deployment verification utilities
+├── docs/            # Architecture specifications, deployment, and security guides
+├── .github/         # Parallel CI/CD workflows, release automation, PR & issue templates
+└── scripts/         # Automated release version synchronization and verification scripts
 ```
 
----
-
-## 🔒 Security & Token Cryptography
-
-- **AES-256-GCM + Per-User HKDF Key Derivation**:
-  $$\text{DEK}_{\text{user}} = \text{HKDF-SHA256}(\text{MasterKey}, \text{Salt}=\text{userId}, \text{Info}=\text{"git-pulse-token-v1"}, 32)$$
-- **Zero-Leak Logger**: Automatic redaction of GitHub PATs (`ghp_*`, `github_pat_*`, `gho_*`) across all server logs.
-- **S2S Vault**: Central Gateway pre-shared keys are encrypted at rest with envelope prefix `enc:v1:`.
-- **Production Database Safety**: Manual migrations against remote Neon databases from local terminal are strictly forbidden. All schema updates run automatically through the official release CI/CD pipeline.
+| Workspace    | Technology Stack                                      | Local Port | Role & Responsibility                                                      |
+| :----------- | :---------------------------------------------------- | :--------: | :------------------------------------------------------------------------- |
+| **`client`** | Next.js 15 App Router, React 19, WebLLM, Tailwind CSS |   `6100`   | Radar HUD cockpit, WebGPU local AI synthesizer, and standup export dock.   |
+| **`server`** | NestJS 10, Prisma ORM, AES-256-GCM Vault              |   `6101`   | REST API (`/api/v1`), token encryption, GitHub Models proxy, and S2S auth. |
 
 ---
 
-## 🚀 Quickstart & Local Development
+## 🚀 Getting Started
 
-### 1. Prerequisites
+### Prerequisites
 
-- **Node.js**: `v24.x` (see `.nvmrc`)
-- **Package Manager**: `pnpm@12.11.2`
-- **Docker**: For local PostgreSQL 16 container
+- **Node.js**: `v24.x` (enforced via `.nvmrc`)
+- **Package Manager**: `pnpm` `12.11.2` (`npm i -g pnpm@12.11.2`)
+- **Docker**: For local PostgreSQL 16 container (`127.0.0.1:5432`)
 
-### 2. Setup Environment
+### 1. Clone & Install Dependencies
 
 ```bash
-# Clone the repository
-git clone git@github.com:thanhba0505/git-pulse.git
+git clone https://github.com/thanhba0505/git-pulse.git
 cd git-pulse
-
-# Copy root environment template
-cp .env.example .env
-
-# Install dependencies across all monorepo workspaces
+cp .env.example .env.local
 pnpm install
-
-# Start local PostgreSQL container
-docker compose up -d
-
-# Generate Prisma Client and push local database schema
-pnpm --filter git-pulse-server prisma:generate
-pnpm --filter git-pulse-server db:push
 ```
 
-### 3. Launch Development Servers
+### 2. Start Local PostgreSQL Database
 
 ```bash
-# Start both Client (port 6100) and Server (port 6101) concurrently
+docker compose up -d postgres
+```
+
+_(PostgreSQL securely binds to loopback `127.0.0.1:5432` with database `git_pulse`)_
+
+### 3. Run Development Servers
+
+```bash
+# Start both Client and Server concurrently:
 pnpm dev
 
-# Or run individual workspaces:
-pnpm dev:client  # Next.js on http://localhost:6100
-pnpm dev:server  # NestJS on http://localhost:6101/api/v1
+# Or run services individually:
+pnpm dev:client   # Next.js Client on port 6100
+pnpm dev:server   # NestJS Server on port 6101
 ```
 
-### 4. Code Quality & Unified Verification
-
-Before pushing to `origin/develop`, run the complete verification suite:
+### 4. Verification & Testing
 
 ```bash
-pnpm check
-# Executes: format:check + lint + typecheck + unit tests + Next.js build + NestJS build
+pnpm check          # Full pipeline: Format -> Lint -> Typecheck -> Unit Tests -> Build
+pnpm test           # Run Jest unit test suites
+pnpm lint           # ESLint validation with 0 warnings policy
+pnpm format:check   # Prettier code formatting check
 ```
 
 ---
 
-## 🚢 Automated Production Deployment
+## 📑 Technical Documentation Index
 
-Deployments to **Vercel** and **Neon PostgreSQL** are 100% automated via GitHub Actions:
+Explore in-depth technical guides in `docs/`:
 
-1. Merge approved features into `develop`.
-2. Draft release notes are automatically compiled by `.github/workflows/release-drafter.yml`.
-3. Publishing an official release (`v*.*.*`) triggers `.github/workflows/deploy.yml`:
-   - Fast-forwards `develop` into `main`.
-   - Synchronizes version numbers across `package.json` and `README.md`.
-   - Triggers Vercel Deploy Hooks for server and client.
-   - Automatically executes `prisma migrate deploy` on Neon PostgreSQL.
-   - Polls `/health` endpoints with fail-fast health assertion.
-   - Updates GitHub Deployments (`main - git-pulse-server` & `main - git-pulse-client`) to `success` 🟢.
-   - Sends real-time notifications to Slack `#deployments`.
+- [System Architecture](docs/architecture.md)
+- [Deployment & Vercel Serverless Operations](docs/deployment.md)
+- [API Reference & REST Contracts](docs/api-reference.md)
+- [Security & Token Encryption Architecture](docs/security.md)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the terms of the [MIT License](LICENSE). Copyright © 2026 Bá Lê Thanh.
+Licensed under the [MIT License](LICENSE) © 2026 **Bá Lê Thanh** (thanhba0505).

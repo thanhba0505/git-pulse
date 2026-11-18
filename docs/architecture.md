@@ -4,14 +4,14 @@ This document outlines the architectural blueprint, security protocols, AI execu
 
 ```mermaid
 graph TD
-    User["Developer Browser (Next.js 15 Client)"] -->|HTTPS / WSS| Edge["Vercel Edge & DNS (https://git-pulse-app.vercel.app)"]
+    User["Developer Browser (Next.js 15 Client)"] -->|HTTPS / WSS| Edge["Vercel Edge Network"]
     Edge --> ClientApp["git-pulse-client (Next.js 15 App Router on Vercel)"]
     Edge --> ServerAPI["git-pulse-server (NestJS 10 on Vercel Serverless)"]
-    ServerAPI -->|DATABASE_URL (Pooler)| NeonDB[("Neon Lakebase PostgreSQL 16 (AWS Oregon us-west-2)")]
-    ServerAPI -->|HMAC-SHA256 S2S Vault| Gateway["Central Gateway (IAM Master & SSO)"]
+    ServerAPI -->|Pooled Connection| NeonDB["Neon Lakebase PostgreSQL 16 (AWS Oregon)"]
+    ServerAPI -->|HMAC-SHA256 S2S| Gateway["Central Gateway (IAM Master & SSO)"]
     ClientApp -->|In-Browser WebGPU| WebLLM["Local WebLLM Core (Llama-3.2-1B / Qwen2.5)"]
-    ServerAPI -->|Decrypted User PAT| GitHubAPI["GitHub REST & GraphQL API"]
-    ServerAPI -->|Decrypted User PAT| GitHubModels["GitHub Models Frontier AI (Azure Inference)"]
+    ServerAPI -->|Decrypted Token| GitHubAPI["GitHub REST & GraphQL API"]
+    ServerAPI -->|Decrypted Token| GitHubModels["GitHub Models Frontier AI (Azure Inference)"]
 ```
 
 ---
@@ -20,10 +20,10 @@ graph TD
 
 Git Pulse is a core intelligence layer within the **Prism Hub** ecosystem, delivering developer productivity analytics and automated standup report synthesis:
 
-- **Git Pulse Client**: `https://git-pulse-app.vercel.app` (Local: `http://localhost:6100`)
-- **Git Pulse Server**: `https://git-pulse-server.vercel.app/api/v1` (Local: `http://localhost:6101`)
-- **Central Gateway (SSO & IAM)**: `https://central-gateway-client.vercel.app` (Local: `http://localhost:5100` / `5101`)
-- **Wonderlab**: `https://wonderlab.io.vn` (Local: `http://localhost:4100` / `4101`)
+- **Git Pulse Client**: [git-pulse-app.vercel.app](https://git-pulse-app.vercel.app) (Local: `http://localhost:6100`)
+- **Git Pulse Server**: [git-pulse-server.vercel.app/api/v1](https://git-pulse-server.vercel.app/api/v1) (Local: `http://localhost:6101`)
+- **Central Gateway (SSO & IAM)**: [central-gateway-client.vercel.app](https://central-gateway-client.vercel.app) (Local: `http://localhost:5100` / `5101`)
+- **Wonderlab**: [wonderlab.io.vn](https://wonderlab.io.vn) (Local: `http://localhost:4100` / `4101`)
 - **Production Database**: Neon Lakebase PostgreSQL 16 (`us-west-2` AWS Oregon) with connection pooling.
 - **Local Database**: PostgreSQL 16 Docker container on `127.0.0.1:5432` (`git_pulse`).
 
