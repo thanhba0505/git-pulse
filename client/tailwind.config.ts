@@ -10,35 +10,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        void: {
-          DEFAULT: '#040714',
-          subtle: '#070D1E',
-          surface: '#0B132B',
-        },
-        pulsar: {
-          cyan: '#06B6D4',
-          'cyan-glow': '#22D3EE',
-          emerald: '#10B981',
-          'emerald-glow': '#34D399',
-          violet: '#8B5CF6',
-          'violet-glow': '#A78BFA',
-          amber: '#F59E0B',
-          'amber-glow': '#FBBF24',
-        },
-        astral: {
-          card: 'rgba(11, 19, 43, 0.7)',
-          border: 'rgba(6, 182, 212, 0.2)',
-          'border-hover': 'rgba(6, 182, 212, 0.45)',
-          glow: 'rgba(6, 182, 212, 0.15)',
+        canvas: '#090B10',
+        surface: {
+          DEFAULT: '#11141C',
+          elevated: '#161A24',
+          hover: '#191E2A',
+          recessed: '#0C0E14',
+          overlay: '#141821',
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Inter', 'sans-serif'],
-        mono: ['var(--font-mono)', 'monospace'],
-      },
-      animation: {
-        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'orbit-spin': 'spin 20s linear infinite',
+        sans: ['var(--font-sans)', 'Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
     },
   },

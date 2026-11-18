@@ -30,7 +30,7 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 
 ## 1. Project Overview & Architecture
 
-- **Mission**: Developer Intelligence & Git Workspace. Aggregates daily pull requests and commits, generates high-precision standup reports using Dual-Core AI (GitHub Models & WebLLM WebGPU), and provides developer activity radar.
+- **Mission**: Developer Intelligence & Git Workspace. Aggregates daily pull requests and commits, generates concise standup reports using Dual-Engine AI (GitHub Models & WebLLM WebGPU), and provides clean Git activity visibility.
 - **Brand Naming**: The platform is strictly named **`Git Pulse`** (spaced, never hyphenated as `Git-Pulse`).
 - **Monorepo**: Unified `pnpm` monorepo (`client/`, `server/`, `docs/`, `scripts/`).
 - **Client (`client/`)**: Next.js 15 App Router, React 19, Tailwind CSS. Deployed to Vercel at `https://git-pulse-app.vercel.app`.
@@ -64,25 +64,27 @@ Primary rules and engineering standards for AI coding assistants working in Git 
 
 ---
 
-## 3. UI/UX Standard ("Cosmic Void Glass & Kinetic Pulse")
+## 3. UI/UX Standard ("Precision Developer Dark")
 
-- **Aesthetic**: Deep void space (`#040714`), glowing nebula dust (`#081026` -> `#0d1b3e`), astral glass cards with hairline cyan borders (`border-cyan-500/25`), and animated celestial waveforms.
+- **Aesthetic**: Elevated layered Carbon-Slate surfaces (`#090B10` canvas -> `#11141C` cards -> `#161A24` elevated items -> `#0C0E14` recessed inputs/controls -> `#141821` floating overlays), clean hairline slate borders (`border-slate-800/90`), and a crisp monochromatic primary accent (`Sky-500` `#0EA5E9`). Static CSS dot-grid/radial canvas backdrop only — strictly forbid continuous `requestAnimationFrame` starfields, scanline overlays, spinning ambient logos, radar HUDs, border beams, or decorative `animate-ping`/`animate-pulse` dots.
 - **Typography & Font Rules**:
-  - Headings: `Plus Jakarta Sans`
-  - Body: `Inter`
-  - Telemetry & Git Hash: `JetBrains Mono` / `Geist Mono` with `tabular-nums`
+  - Sans / Headings / Body: `Plus Jakarta Sans` & `Inter` (`subsets: ['latin', 'vietnamese']`)
+  - Code / Git Identifiers / Counters: `JetBrains Mono` with `tabular-nums`
   - **Min Font Size ($\ge 12\text{px}$)**: Strictly forbid text below `12px` (`text-xs`). Never use `text-[10px]` or `text-[11px]`.
-- **Zero Redundant Tags / Badge Clutter**:
-  - Forbid vanity decorative tags (e.g. `v0.1`, `Dual-Core`, `Cloud AI`, `In-Browser`, `PAT`, `Gateway SSO`).
-  - Maintain spacious, clean, and breathable layouts (`p-6` to `p-8` on cards and modals).
-- **Auth Modal Specification**:
-  - Modal must strictly replicate Wonderlab's exact component hierarchy (User/Email input with user icon, Password input with lock icon + eye toggle + "Quên mật khẩu?", submit button `→ Đăng nhập`, divider `HOẶC TIẾP TỤC VỚI`, Google button with 4-color SVG, footer `Chưa có tài khoản Git Pulse? Đăng ký ngay`).
-  - Styled with Cosmic Void Glass (`bg-[#070b1a]/95 backdrop-blur-2xl border-cyan-500/25`).
-- **Signature Elements**:
-  - Live Pulsar Waveform (Audio/Gamma wave oscillating by commit frequency)
-  - Git Orbit Constellation (Nodes connected by energy rays)
-  - Cockpit Dual-Engine AI Console (Switch between WebGPU and GitHub Models)
-  - Multi-Format Export Dock (1-click copy for Parabol, Slack, Markdown, Jira)
+- **Zero Redundant Tags / Sci-Fi Jargon**:
+  - Strictly forbid decorative status badges (`RADAR ONLINE`, `AI CORE READY`, `0 PULSES`), sci-fi terminology (_"quỹ đạo"_, _"chòm sao"_, _"radar"_, _"Warp-Drive"_, _"Sub-Light"_), or internal tech boasting (`HKDF`, `AES-256-GCM`, `Gateway SSO`, `PAT`, `v0.1`).
+  - Animations are reserved strictly for functional progress states (`Loader2` / `RefreshCw` spinning only while an async task is actively running).
+- **UI Primitives & Accessible Forms (`client/src/components/ui/`)**:
+  - Standardize controls across the app via `Select` (WAI-ARIA combobox + top-layer listbox option rows), `Input` (recessed field, `<label htmlFor>`, hint/error linking, password visibility toggle), `SegmentedControl`, and native `<dialog>`-backed `ModalDialog` (`showModal()`, scroll containment, light-dismiss).
+  - Strictly forbid native browser `window.alert()` / `window.confirm()`; render inline errors and inline 2-step destructive confirmations.
+- **Full Internationalization (`client/src/i18n/`)**:
+  - Complete Vietnamese (`vi`) and English (`en`) dictionary coverage with UI language switching (`VI | EN`) separated cleanly from AI standup report output language.
+- **Auth Form Hierarchy**:
+  - Replicate Wonderlab's clean form field hierarchy (Username/Email input, Password input + eye toggle + "Quên mật khẩu?" link, solid primary submit CTA, "Hoặc tiếp tục với" divider, Google Sign-In button, register/login switch link) styled with the Carbon-Slate overlay surface (`#141821`).
+- **Workspace Modules**:
+  - Git Activity Scanner (`ActivityScanner`): Timeframe switcher + Pull Request & Commit timeline cards.
+  - Standup AI Console (`CockpitAiConsole`): Dual-engine switcher (GitHub Models & WebLLM WebGPU) with custom `Select` for model and report language.
+  - Standup Output Dock (`StandupOutputDock`): 1-click formatted clipboard export (Bullet list, Parabol, Slack).
 
 ---
 

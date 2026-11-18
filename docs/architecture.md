@@ -76,9 +76,9 @@ Cross-service communication between Git Pulse, Central Gateway, and Wonderlab en
 
 Git Pulse introduces a Dual-Engine AI system that incurs **Zero Server Compute Costs**:
 
-1. **Warp-Drive Core (GitHub Models API)**:
+1. **GitHub Models (Cloud)**:
    - Dispatches inference requests directly to `https://models.inference.ai.azure.com/chat/completions` using the developer's decrypted GitHub token.
    - Supported models: `gpt-4o-mini`, `meta-llama-3.3-70b-instruct`.
-2. **Sub-Light Core (WebLLM In-Browser WebGPU)**:
+2. **WebLLM (In-Browser WebGPU)**:
    - Executes quantized models (`Llama-3.2-1B-Instruct-q4f16_1-MLC`, `Qwen2.5-Coder-1.5B`) directly inside the user's browser via WebGPU using `@mlc-ai/web-llm`.
    - 100% private, client-side, zero token usage, functional offline.

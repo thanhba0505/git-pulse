@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, X, Loader2, ArrowRight, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Plus, X, Loader2, ArrowRight } from 'lucide-react';
 import { api } from '../../lib/api';
-import { BorderBeam } from '../cosmic/BorderBeam';
+import { useTranslation } from '../../i18n';
+import { ModalDialog } from '../ui/ModalDialog';
+import { Input } from '../ui/Input';
 
 export interface DevDbUser {
   id: string;
@@ -31,6 +33,7 @@ export function GoogleAccountChooserModal({
   onSelectAccount,
   appName = 'Git Pulse',
 }: GoogleAccountChooserModalProps) {
+  const { dict, t } = useTranslation();
   const [users, setUsers] = useState<DevDbUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [customUsername, setCustomUsername] = useState('');
@@ -42,6 +45,8 @@ export function GoogleAccountChooserModal({
 
     let isMounted = true;
     setIsLoading(true);
+    setShowCustomInput(false);
+    setCustomUsername('');
 
     api.auth
       .getDevUsers()
@@ -71,8 +76,6 @@ export function GoogleAccountChooserModal({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const handleSelect = async (account: {
     username: string;
     email: string;
@@ -94,62 +97,68 @@ export function GoogleAccountChooserModal({
     const uname = customUsername.trim();
     await handleSelect({
       username: uname,
-      email: `${uname}@wonderlab.local`,
+      email: uname.includes('@') ? uname : `${uname}@wonderlab.local`,
       name: uname,
       googleId: `google_${Date.now()}`,
     });
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={onClose}
+    <ModalDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="google-chooser-title"
+      maxWidthClass="max-w-md"
     >
-      <div
-        className="relative w-full max-w-md cosmic-modal-card rounded-3xl p-7 animate-in zoom-in-95 duration-200 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Kinetic Border Beam */}
-        <BorderBeam colorFrom="#06b6d4" colorTo="#10b981" duration={5} />
-
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-white/[0.08] pb-4 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 text-cyan-300">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-                Tài khoản Google
-              </h3>
-              <p className="text-xs text-slate-400">Đăng nhập vào {appName} qua Central Gateway</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-800/80">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
+            aria-hidden="true"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h2
+              id="google-chooser-title"
+              className="text-base font-semibold text-slate-100 tracking-tight"
+            >
+              {dict.auth.chooser.title}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {t('auth.chooser.subtitle', { appName })}
+            </p>
+          </div>
         </div>
 
-        {/* Account List */}
-        <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={dict.common.close}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="p-6 space-y-5">
+        <div className="max-h-64 overflow-y-auto gp-scroll-area space-y-2 pr-1">
           {isLoading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-slate-400 gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
-              <span>Đang tải danh sách tài khoản...</span>
+            <div className="flex items-center justify-center py-8 text-xs text-slate-400 gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-sky-400" aria-hidden="true" />
+              <span>{dict.auth.chooser.loading}</span>
             </div>
           ) : users.length === 0 ? (
-            <p className="text-center text-xs text-slate-400 py-8">
-              Không có tài khoản nào có sẵn.
-            </p>
+            <p className="text-center text-xs text-slate-400 py-8">{dict.auth.chooser.empty}</p>
           ) : (
             users.map((u) => {
               const isSelected = selectingUsername === u.username;
               return (
                 <button
                   key={u.id}
+                  type="button"
                   onClick={() =>
                     handleSelect({
                       username: u.username,
@@ -159,26 +168,35 @@ export function GoogleAccountChooserModal({
                     })
                   }
                   disabled={Boolean(selectingUsername)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-cyan-500/30 text-left transition-all group disabled:opacity-50 cursor-pointer"
+                  className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl bg-[#0C0E14] hover:bg-[#161A24] border border-slate-800 hover:border-slate-700 text-left transition-colors group disabled:opacity-50 cursor-pointer"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-950 to-indigo-950 border border-cyan-400/30 flex items-center justify-center text-xs font-bold text-cyan-200">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0"
+                      aria-hidden="true"
+                    >
                       {u.username.slice(0, 2).toUpperCase()}
                     </div>
-                    <div>
-                      <span className="text-sm font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-slate-100 group-hover:text-sky-300 transition-colors block truncate">
                         {u.username}
                       </span>
-                      <p className="text-xs text-slate-400 font-mono mt-0.5">
+                      <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">
                         {u.email || `${u.username}@wonderlab.local`}
                       </p>
                     </div>
                   </div>
 
                   {isSelected ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                    <Loader2
+                      className="w-4 h-4 animate-spin text-sky-400 shrink-0"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition-all" />
+                    <ArrowRight
+                      className="w-4 h-4 text-slate-400 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all shrink-0"
+                      aria-hidden="true"
+                    />
                   )}
                 </button>
               );
@@ -186,45 +204,44 @@ export function GoogleAccountChooserModal({
           )}
         </div>
 
-        {/* Custom Username Input Toggle */}
-        <div className="mt-5 pt-4 border-t border-white/[0.08]">
+        {/* Custom Username Entry */}
+        <div className="pt-4 border-t border-slate-800/80">
           {!showCustomInput ? (
             <button
+              type="button"
               onClick={() => setShowCustomInput(true)}
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-slate-400 hover:text-cyan-300 transition cursor-pointer"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-slate-400 hover:text-sky-400 transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Đăng nhập bằng tài khoản Google khác</span>
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{dict.auth.chooser.otherAccountBtn}</span>
             </button>
           ) : (
-            <form
-              onSubmit={handleCustomSubmit}
-              className="space-y-2 animate-in fade-in duration-150"
-            >
-              <label className="text-xs text-slate-300 font-medium">
-                Tên đăng nhập hoặc email Google:
-              </label>
-              <div className="flex items-center gap-2">
-                <input
+            <form onSubmit={handleCustomSubmit} className="space-y-3 gp-fade-in">
+              <div className="flex items-end gap-2">
+                <Input
+                  label={dict.auth.chooser.customLabel}
                   type="text"
                   value={customUsername}
                   onChange={(e) => setCustomUsername(e.target.value)}
-                  placeholder="ví dụ: johndoe hoặc johndoe@gmail.com"
+                  placeholder={dict.auth.chooser.customPlaceholder}
                   autoFocus
-                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white focus:border-cyan-400 focus:outline-none font-mono"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="font-mono"
                 />
                 <button
                   type="submit"
                   disabled={!customUsername.trim() || Boolean(selectingUsername)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#030712] bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 transition-all disabled:opacity-40 cursor-pointer"
+                  className="min-h-[42px] px-4 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 transition-colors disabled:opacity-45 cursor-pointer shrink-0"
                 >
-                  Vào
+                  {dict.auth.chooser.continueBtn}
                 </button>
               </div>
             </form>
           )}
         </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 }

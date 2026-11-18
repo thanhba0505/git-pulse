@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GitStatus } from '../../types';
+import { useTranslation } from '../../i18n';
+import { ModalDialog } from '../ui/ModalDialog';
+import { Input } from '../ui/Input';
 import {
   GitBranch,
   Key,
@@ -10,8 +13,9 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import { BorderBeam } from '../cosmic/BorderBeam';
 
 interface GitHubConnectModalProps {
   isOpen: boolean;
@@ -28,18 +32,28 @@ export function GitHubConnectModal({
   onSavePat,
   onDisconnect,
 }: GitHubConnectModalProps) {
+  const { locale, dict } = useTranslation();
   const [patInput, setPatInput] = useState('');
+  const [showPat, setShowPat] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setConfirmingDisconnect(false);
+      setShowPat(false);
+    }
+  }, [isOpen]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patInput.trim()) {
-      setError('Vui lòng nhập GitHub Personal Access Token.');
+      setError(dict.githubModal.patRequired);
       return;
     }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -47,188 +61,250 @@ export function GitHubConnectModal({
       setPatInput('');
       onClose();
     } catch (err) {
-      setError((err as Error).message || 'Không thể lưu token GitHub.');
+      setError((err as Error).message || dict.githubModal.patSaveError);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!confirm('Bạn có chắc chắn muốn ngắt kết nối tài khoản GitHub này?')) return;
+  const handleConfirmDisconnect = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       await onDisconnect();
+      setConfirmingDisconnect(false);
       onClose();
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message || dict.githubModal.patSaveError);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const dateLocale = locale === 'en' ? 'en-US' : 'vi-VN';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/85 backdrop-blur-md">
-      <div className="relative w-full max-w-lg cosmic-modal-card rounded-2xl p-7 sm:p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-        {/* Kinetic Border Beam */}
-        <BorderBeam colorFrom="#06b6d4" colorTo="#10b981" duration={5} />
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3.5 mb-6">
-          <div className="p-3 rounded-xl bg-gradient-to-tr from-cyan-600/30 to-indigo-600/30 border border-cyan-500/30 text-cyan-300">
-            <GitBranch className="w-6 h-6" />
+    <ModalDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="github-connect-title"
+      maxWidthClass="max-w-lg"
+    >
+      {/* Modal Header */}
+      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-800/80">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div
+            className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400 shrink-0"
+            aria-hidden="true"
+          >
+            <GitBranch className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">
-              {status.connected ? 'Quản lý Kết nối GitHub' : 'Cổng Kết Nối Quỹ Đạo GitHub'}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Cho phép Git Pulse quét commit, PR trong ngày để tổng hợp Standup.
+          <div className="min-w-0">
+            <h2
+              id="github-connect-title"
+              className="text-base font-semibold text-slate-100 tracking-tight"
+            >
+              {status.connected ? dict.githubModal.titleManage : dict.githubModal.titleConnect}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+              {dict.githubModal.subtitle}
             </p>
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={dict.common.close}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Modal Body */}
+      <div className="p-6 space-y-5">
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div
+            role="alert"
+            className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-start gap-2.5"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
+            <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
         {status.connected ? (
-          /* Connected State */
-          <div className="space-y-5">
-            <div className="p-4 sm:p-5 rounded-xl bg-void-subtle/80 border border-emerald-500/30 flex items-center justify-between">
-              <div className="flex items-center gap-3.5">
+          <div className="space-y-4">
+            {/* Connected Profile Card */}
+            <div className="p-4 rounded-xl bg-[#0C0E14] border border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5 min-w-0">
                 {status.gitAvatar && (
                   <img
                     src={status.gitAvatar}
-                    alt={status.gitUsername}
-                    className="w-12 h-12 rounded-full border border-emerald-400/40"
+                    alt={status.gitUsername || 'GitHub'}
+                    className="w-11 h-11 rounded-full border border-slate-700 object-cover shrink-0"
                   />
                 )}
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-sm">@{status.gitUsername}</span>
+                    <span className="font-semibold text-slate-100 text-sm truncate">
+                      @{status.gitUsername}
+                    </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Đồng bộ lần cuối:{' '}
+                  <p className="text-xs text-slate-400 mt-1 tabular-nums">
+                    {dict.githubModal.lastSync}:{' '}
                     {status.lastSyncAt
-                      ? new Date(status.lastSyncAt).toLocaleTimeString()
-                      : 'Chưa có'}
+                      ? new Date(status.lastSyncAt).toLocaleTimeString(dateLocale)
+                      : dict.githubModal.neverSynced}
                   </p>
                   {status.expiresAt && (
-                    <p className="text-xs text-amber-300/90 mt-0.5">
-                      Hết hạn: {new Date(status.expiresAt).toLocaleDateString()}
+                    <p className="text-xs text-amber-300 mt-0.5 tabular-nums">
+                      {dict.githubModal.expiresAt}:{' '}
+                      {new Date(status.expiresAt).toLocaleDateString(dateLocale)}
                     </p>
                   )}
                 </div>
               </div>
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" aria-hidden="true" />
             </div>
 
-            {/* Excessive Scopes Warning */}
+            {/* Over-privileged Scope Alert */}
             {status.hasExcessiveScopes && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-start gap-2.5">
+                <AlertCircle
+                  className="w-4 h-4 shrink-0 mt-0.5 text-amber-400"
+                  aria-hidden="true"
+                />
                 <div className="leading-relaxed">
                   <p className="font-semibold text-amber-200">
-                    Phạm vi quyền hạn cao (Over-Privileged)
+                    {dict.githubModal.excessiveScopesTitle}
                   </p>
-                  <p className="text-amber-300/80 mt-0.5">
-                    Token có quyền quản trị hoặc xóa repo. Khuyến nghị tạo{' '}
-                    <strong>Fine-Grained Token</strong> chỉ đọc Pull Requests & Contents để đảm bảo
-                    an toàn tuyệt đối.
-                  </p>
+                  <p className="text-amber-200/85 mt-0.5">{dict.githubModal.excessiveScopesDesc}</p>
                 </div>
               </div>
             )}
 
-            {/* Token Revoked / Expired Notice */}
+            {/* Token Revoked / Expired Alert */}
             {(status.tokenStatus === 'REVOKED' || status.tokenStatus === 'EXPIRED') && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-200 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" aria-hidden="true" />
                 <div className="leading-relaxed">
-                  <p className="font-semibold text-rose-200">Token đã bị thu hồi hoặc hết hạn</p>
-                  <p className="text-rose-300/80 mt-0.5">
-                    GitHub trả về 401 Bad credentials. Vui lòng ngắt kết nối và cập nhật token mới.
+                  <p className="font-semibold text-rose-200">
+                    {dict.githubModal.tokenRevokedTitle}
                   </p>
+                  <p className="text-rose-200/85 mt-0.5">{dict.githubModal.tokenRevokedDesc}</p>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-2">
+            {/* Footer & Inline 2-Step Disconnect Confirmation */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
               <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                Mã hóa phân lập HKDF + AES-256-GCM.
+                <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
+                <span>{dict.githubModal.securityNote}</span>
               </p>
-              <button
-                onClick={handleDisconnect}
-                disabled={isLoading}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-rose-300 hover:text-white bg-rose-950/30 hover:bg-rose-900/60 border border-rose-500/30 transition-all"
-              >
-                {isLoading ? 'Đang xử lý...' : 'Ngắt kết nối'}
-              </button>
+
+              {!confirmingDisconnect ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDisconnect(true)}
+                  disabled={isLoading}
+                  className="inline-flex items-center justify-center min-h-[36px] px-4 py-1.5 rounded-lg text-xs font-semibold text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {dict.githubModal.disconnectBtn}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleConfirmDisconnect}
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {isLoading
+                      ? dict.githubModal.disconnectingBtn
+                      : dict.githubModal.disconnectConfirmBtn}
+                  </button>
+                  <button
+                    type="button"
+                    autoFocus
+                    onClick={() => setConfirmingDisconnect(false)}
+                    disabled={isLoading}
+                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    {dict.common.cancel}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
-          /* Not Connected: Form to enter PAT */
-          <form onSubmit={handleSave} className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-cyan-400" />
-                  GitHub Personal Access Token (PAT)
-                </label>
+          <form onSubmit={handleSave} className="space-y-5">
+            <Input
+              type={showPat ? 'text' : 'password'}
+              label={dict.githubModal.patLabel}
+              requiredMark
+              labelAction={
                 <a
                   href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=GitPulse+Standup+Scanner"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+                  className="text-xs text-sky-400 hover:text-sky-300 inline-flex items-center gap-1 transition-colors"
                 >
-                  Tạo Token mới trên GitHub
-                  <ExternalLink className="w-3 h-3" />
+                  <span>{dict.githubModal.createTokenLink}</span>
+                  <ExternalLink className="w-3 h-3" aria-hidden="true" />
                 </a>
-              </div>
-              <input
-                type="password"
-                value={patInput}
-                onChange={(e) => setPatInput(e.target.value)}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx hoặc github_pat_..."
-                className="w-full px-4 py-3 rounded-xl bg-void-subtle/90 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-sm text-white placeholder-slate-500 outline-none transition-all font-mono"
-              />
-              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                Chỉ cần quyền <code className="text-cyan-300">repo</code> (với repo private) hoặc
-                quyền đọc công khai. Token được mã hóa AES-256 trước khi lưu vào DB.
-              </p>
-            </div>
+              }
+              leftIcon={<Key className="w-4 h-4" />}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPat((prev) => !prev)}
+                  aria-pressed={showPat}
+                  aria-label={showPat ? dict.auth.hidePassword : dict.auth.showPassword}
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  {showPat ? (
+                    <EyeOff className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="w-4 h-4" aria-hidden="true" />
+                  )}
+                </button>
+              }
+              value={patInput}
+              onChange={(e) => {
+                setPatInput(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.githubModal.patPlaceholder}
+              hint={dict.githubModal.patHint}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              className="font-mono"
+            />
 
-            <div className="flex items-center justify-end gap-3 pt-3">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800/80">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700 transition-colors"
+                className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-[#161A24] hover:bg-slate-800 border border-slate-700/80 transition-colors cursor-pointer"
               >
-                Đóng
+                {dict.common.close}
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] disabled:opacity-50"
+                className="inline-flex items-center justify-center min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
-                {isLoading ? 'Đang xác thực...' : 'Lưu & Kích hoạt Git'}
+                {isLoading ? dict.githubModal.savingBtn : dict.githubModal.saveBtn}
               </button>
             </div>
           </form>
         )}
       </div>
-    </div>
+    </ModalDialog>
   );
 }

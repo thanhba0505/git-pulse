@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { GitStatus, PrActivity, AiEngine } from '../types';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
+import { useTranslation } from '../i18n';
 import { runWebLLMSummary, isWebGPUSupported } from '../lib/webllm';
 import { Header } from '../components/layout/Header';
 import { GitHubConnectModal } from '../components/github/GitHubConnectBanner';
@@ -13,9 +14,10 @@ import { StandupOutputDock } from '../components/standup/StandupOutputDock';
 import { ReportHistoryModal } from '../components/history/ReportHistoryModal';
 import { AuthModal } from '../components/auth/AuthModal';
 import { GoogleAccountChooserModal } from '../components/auth/GoogleAccountChooserModal';
-import { Orbit, GitBranch } from 'lucide-react';
+import { GitBranch, Loader2 } from 'lucide-react';
 
 export default function HomePage() {
+  const { dict } = useTranslation();
   const {
     user,
     isLoading: isAuthLoading,
@@ -32,20 +34,23 @@ export default function HomePage() {
 
   const [activities, setActivities] = useState<PrActivity[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [sinceOption, setSinceOption] = useState<'today' | '24h' | '7d'>('today');
 
   const [aiEngine, setAiEngine] = useState<AiEngine>('GITHUB_MODELS');
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
-  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
+  const [reportLanguage, setReportLanguage] = useState<'vi' | 'en'>('vi');
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [webLlmProgressText, setWebLlmProgressText] = useState<string>('');
   const [webLlmProgressPercent, setWebLlmProgressPercent] = useState<number>(0);
 
   const [bullets, setBullets] = useState<string[]>([]);
   const [modelUsed, setModelUsed] = useState<string>('');
+  const [generatedLanguage, setGeneratedLanguage] = useState<'vi' | 'en'>('vi');
 
-  // 1. Fetch Git Status when user is logged in
   const loadGitStatus = useCallback(async () => {
     try {
       const status = await api.github.getStatus();
@@ -57,9 +62,9 @@ export default function HomePage() {
     }
   }, []);
 
-  // 2. Scan Git PRs & Commits
   const handleScanActivity = useCallback(async () => {
     setIsScanning(true);
+    setScanError(null);
     try {
       let sinceDate: string | undefined;
       const now = new Date();
@@ -78,11 +83,11 @@ export default function HomePage() {
       const data = await api.github.getActivity(sinceDate);
       setActivities(data);
     } catch (err) {
-      alert((err as Error).message || 'Không thể quét hoạt động Git.');
+      setScanError((err as Error).message || dict.scanner.scanError);
     } finally {
       setIsScanning(false);
     }
-  }, [sinceOption]);
+  }, [sinceOption, dict.scanner.scanError]);
 
   useEffect(() => {
     if (user) {
@@ -94,13 +99,13 @@ export default function HomePage() {
     }
   }, [user, loadGitStatus, handleScanActivity]);
 
-  // Google Account Chooser Selection Handler
   const handleAccountSelect = async (account: {
     username: string;
     email: string;
     name: string;
     googleId?: string;
   }) => {
+    setAuthError(null);
     const result = await loginWithGoogle({
       email: account.email,
       name: account.name,
@@ -108,31 +113,29 @@ export default function HomePage() {
     });
 
     if (!result.success) {
-      alert(result.error || 'Đăng nhập Google thất bại');
+      setAuthError(result.error || dict.auth.googleAuthFailed);
     }
   };
 
-  // Save PAT
   const handleSavePat = async (token: string) => {
     await api.github.savePat(token);
     await loadGitStatus();
     await handleScanActivity();
   };
 
-  // Disconnect GitHub
   const handleDisconnectGit = async () => {
     await api.github.disconnect();
     setGitStatus({ connected: false });
     setActivities([]);
   };
 
-  // Generate Standup Summary (Dual-Engine: GitHub Models or WebLLM)
   const handleGenerateSummary = async () => {
     if (activities.length === 0) {
-      alert('Không có commit nào trong phạm vi quét.');
+      setAiError(dict.aiConsole.noActivitiesError);
       return;
     }
 
+    setAiError(null);
     setIsGenerating(true);
     setBullets([]);
 
@@ -145,17 +148,15 @@ export default function HomePage() {
             commits: a.commits,
           })),
           model: selectedModel,
-          language,
+          language: reportLanguage,
         });
         setBullets(res.bullets);
         setModelUsed(`GitHub Models (${res.modelUsed})`);
+        setGeneratedLanguage(reportLanguage);
       } else {
-        // WebLLM Engine (In-Browser WebGPU)
         const supported = await isWebGPUSupported();
         if (!supported) {
-          alert(
-            'Trình duyệt của bạn chưa hỗ trợ WebGPU. Vui lòng chuyển sang GitHub Models hoặc bật WebGPU trong chrome://flags.',
-          );
+          setAiError(dict.aiConsole.webgpuUnsupported);
           setIsGenerating(false);
           return;
         }
@@ -167,7 +168,7 @@ export default function HomePage() {
             title: a.title,
             commits: a.commits,
           })),
-          language,
+          reportLanguage,
           (prog) => {
             setWebLlmProgressText(prog.text);
             setWebLlmProgressPercent(prog.progress);
@@ -176,8 +177,8 @@ export default function HomePage() {
 
         setBullets(lines);
         setModelUsed(`WebGPU (${selectedModel.split('-')[0]})`);
+        setGeneratedLanguage(reportLanguage);
 
-        // Persist to history in database
         const totalCommits = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
         await api.ai.saveClientSummary({
           summary: lines,
@@ -189,35 +190,41 @@ export default function HomePage() {
         });
       }
     } catch (err) {
-      alert((err as Error).message || 'Tóm tắt AI thất bại.');
+      setAiError((err as Error).message || dict.aiConsole.generateFailed);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const totalCommitsToday = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
-
-  // Loading Screen
   if (isAuthLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-screen">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center animate-spin">
-          <Orbit className="w-6 h-6 text-white" />
+      <main className="flex-1 flex flex-col items-center justify-center min-h-dvh p-4">
+        <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400">
+          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         </div>
-        <p className="text-xs font-mono text-cyan-300 mt-4 tracking-wider animate-pulse">
-          KHỞI ĐỘNG CỔNG KHÔNG GIAN GIT PULSE...
-        </p>
-      </div>
+        <p className="text-xs font-mono text-slate-400 mt-3">{dict.auth.workspaceLoading}</p>
+      </main>
     );
   }
 
-  // 1. Unauthenticated State -> Render the exact Auth Modal
   if (!user) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
-        <AuthModal isOpen={true} onClose={() => {}} onOpenGoogleChooser={openGoogleChooser} />
+      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 min-h-dvh">
+        <div className="mb-6 text-center max-w-sm">
+          <p className="text-xs font-mono uppercase tracking-wider text-sky-400 font-semibold">
+            {dict.header.brand}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">{dict.auth.brandTagline}</p>
+        </div>
 
-        {/* Google Account Chooser Modal (Popup on click Google) */}
+        <AuthModal
+          isOpen={true}
+          onClose={() => {}}
+          variant="inline"
+          onOpenGoogleChooser={openGoogleChooser}
+          externalError={authError}
+        />
+
         <GoogleAccountChooserModal
           isOpen={isGoogleChooserOpen}
           onClose={closeGoogleChooser}
@@ -228,113 +235,97 @@ export default function HomePage() {
     );
   }
 
-  // 2. Authenticated State -> Mission Control Dashboard
   return (
     <>
       <Header
         user={user}
         gitStatus={gitStatus}
-        commitCount={totalCommitsToday}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         onOpenGitModal={() => setIsGitModalOpen(true)}
         onLogout={logout}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Mission Control Telemetry HUD */}
-        <div className="relative overflow-hidden rounded-2xl astral-card p-5 sm:p-6 border border-cyan-500/20 shadow-[0_0_30px_rgba(6,182,212,0.1)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-              <span className="absolute w-2 h-2 rounded-full bg-cyan-300" />
-            </div>
-            <div>
-              <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase">
-                Trạm Quỹ Đạo Git Pulse • Không Gian Làm Việc
-              </span>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-0.5">
-                Giám Sát Quỹ Đạo Git & Điều Khiển Standup AI
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap font-mono text-xs text-slate-300">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-subtle/80 border border-slate-700/60">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-              <span>RADAR ONLINE</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-void-subtle/80 border border-slate-700/60">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-              <span>AI CORE READY</span>
-            </div>
-          </div>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        {/* Clean Workspace Title */}
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+            {dict.workspace.title}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400">{dict.workspace.subtitle}</p>
         </div>
 
-        {/* Onboarding Callout if GitHub is NOT connected */}
+        {/* GitHub Onboarding Callout */}
         {!gitStatus.connected && (
-          <div className="astral-card rounded-2xl p-6 sm:p-7 border border-amber-500/40 bg-amber-950/20 flex flex-col sm:flex-row items-center justify-between gap-5 animate-in fade-in duration-300">
-            <div className="flex items-center gap-3.5">
-              <div className="p-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300">
-                <GitBranch className="w-5 h-5 animate-pulse" />
+          <div className="rounded-xl bg-amber-500/[0.06] border border-amber-500/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 gp-fade-in">
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div
+                className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0"
+                aria-hidden="true"
+              >
+                <GitBranch className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-                  Chưa Kết Nối Quỹ Đạo GitHub
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Để quét PR và commit hôm nay, hãy kết nối tài khoản GitHub qua Personal Access
-                  Token (PAT).
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-slate-100">{dict.onboarding.title}</h2>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                  {dict.onboarding.description}
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={() => setIsGitModalOpen(true)}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-amber-400 to-amber-300 hover:brightness-110 transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)] shrink-0"
+              className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
             >
-              Kết Nối Ngay
+              {dict.onboarding.connectNow}
             </button>
           </div>
         )}
 
-        {/* Dashboard Grid: Scanner on Left/Top, AI Console & Output on Right */}
+        {/* Main 12-Column Responsive Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Git Activity Radar (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 min-w-0">
             <ActivityScanner
               activities={activities}
               isLoading={isScanning}
+              error={scanError}
               onScan={handleScanActivity}
               sinceOption={sinceOption}
               onSinceOptionChange={(opt) => {
                 setSinceOption(opt);
+                setScanError(null);
               }}
             />
           </div>
 
-          {/* Right Column: AI Console & Generated Standup Dock (5 cols) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6 min-w-0">
             <CockpitAiConsole
               engine={aiEngine}
-              onEngineChange={setAiEngine}
+              onEngineChange={(next) => {
+                setAiEngine(next);
+                setAiError(null);
+              }}
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
-              language={language}
-              onLanguageChange={setLanguage}
+              language={reportLanguage}
+              onLanguageChange={setReportLanguage}
               onGenerate={handleGenerateSummary}
               isGenerating={isGenerating}
+              error={aiError}
               webLlmProgressText={webLlmProgressText}
               webLlmProgressPercent={webLlmProgressPercent}
               hasPrs={activities.length > 0}
             />
 
-            {/* Generated Standup Output */}
-            <StandupOutputDock bullets={bullets} modelUsed={modelUsed} engineUsed={aiEngine} />
+            <StandupOutputDock
+              bullets={bullets}
+              modelUsed={modelUsed}
+              reportLanguage={generatedLanguage}
+            />
           </div>
         </div>
       </main>
 
-      {/* GitHub Connect Modal */}
       <GitHubConnectModal
         isOpen={isGitModalOpen}
         onClose={() => setIsGitModalOpen(false)}
@@ -343,7 +334,6 @@ export default function HomePage() {
         onDisconnect={handleDisconnectGit}
       />
 
-      {/* History Modal */}
       <ReportHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
