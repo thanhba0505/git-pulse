@@ -61,7 +61,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
     <div
       role="status"
       aria-label={dict.auth.workspaceLoading}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#090B10]/92 backdrop-blur-2xl transition-opacity duration-300 ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0F172A]/95 backdrop-blur-2xl transition-opacity duration-300 ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >

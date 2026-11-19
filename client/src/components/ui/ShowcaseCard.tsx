@@ -136,7 +136,7 @@ export function ShowcaseCard({
     <Tag
       ref={cardRef}
       style={mergedStyle}
-      className={`group relative rounded-xl gp-card transition-colors duration-200 hover:border-slate-700/90 ${
+      className={`group relative rounded-xl gp-card transition-colors duration-200 hover:border-slate-400/50 ${
         tiltStrength > 0 ? 'gp-showcase-tilt' : ''
       } ${staggerIndex !== undefined ? 'gp-stagger-item' : ''} ${className}`}
       {...rest}

@@ -360,7 +360,7 @@ export function TaskTrackerView({
             className={`inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
               showCompleted
                 ? 'bg-emerald-500/15 text-emerald-200 border-emerald-400/35 hover:bg-emerald-500/20'
-                : 'bg-white/[0.04] text-slate-300 hover:text-white border-white/[0.1] hover:border-white/[0.2]'
+                : 'bg-white/[0.07] text-slate-200 hover:text-white border-white/[0.14] hover:border-white/[0.24]'
             }`}
           >
             {showCompleted ? (
@@ -373,7 +373,7 @@ export function TaskTrackerView({
               className={`px-1.5 py-0.5 rounded font-mono text-xs tabular-nums ${
                 showCompleted
                   ? 'bg-emerald-500/20 text-emerald-200'
-                  : 'bg-white/[0.06] text-slate-400'
+                  : 'bg-white/[0.1] text-slate-300'
               }`}
             >
               {completedTasks.length}
@@ -426,7 +426,7 @@ export function TaskTrackerView({
                     placeholder={dict.tasks.titlePlaceholder}
                     maxLength={160}
                     autoFocus
-                    className="w-full min-h-[38px] px-3 py-2 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
+                    className="w-full min-h-[38px] px-3 py-2 rounded-lg bg-[#152033] border border-slate-600 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-400"
                   />
                 </div>
 
@@ -466,9 +466,9 @@ export function TaskTrackerView({
                 </div>
 
                 {prOnlyActivities.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-2">{dict.tasks.noAvailablePrs}</p>
+                  <p className="text-xs text-slate-400 py-2">{dict.tasks.noAvailablePrs}</p>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#0C0E14]/80 border border-white/[0.08] p-2.5">
+                  <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#152033] border border-slate-700/80 p-2.5">
                     {prOnlyActivities.map((pr) => {
                       const key = getPrKey(pr);
                       const checked = pickedKeysForNew.has(key);
@@ -481,8 +481,8 @@ export function TaskTrackerView({
                           key={key}
                           className={`flex items-start gap-2.5 p-2 rounded-lg text-xs cursor-pointer transition-colors ${
                             checked
-                              ? 'bg-sky-500/10 border border-sky-400/25'
-                              : 'hover:bg-white/[0.04] border border-transparent'
+                              ? 'bg-sky-500/15 border border-sky-400/30'
+                              : 'hover:bg-white/[0.08] border border-transparent'
                           }`}
                         >
                           <input
@@ -521,7 +521,7 @@ export function TaskTrackerView({
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] cursor-pointer"
+                  className="min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.14] cursor-pointer"
                 >
                   {dict.common.cancel}
                 </button>
@@ -644,7 +644,7 @@ export function TaskTrackerView({
                               type="text"
                               value={editingTitle}
                               onChange={(e) => setEditingTitle(e.target.value)}
-                              className="flex-1 min-w-[200px] px-3 py-1.5 rounded-lg bg-[#0C0E14] border border-white/[0.15] text-xs text-slate-100 focus:outline-none focus:border-sky-400/50"
+                              className="flex-1 min-w-[200px] px-3 py-1.5 rounded-lg bg-[#152033] border border-slate-600 text-xs text-slate-100 focus:outline-none focus:border-sky-400"
                             />
                             <div className="flex items-center gap-1">
                               {TASK_COLORS.map((color) => (
@@ -684,7 +684,7 @@ export function TaskTrackerView({
                             <button
                               type="button"
                               onClick={() => setEditingTaskId(null)}
-                              className="min-h-[30px] px-2.5 py-1 rounded-lg text-xs text-slate-300 bg-white/[0.05] cursor-pointer"
+                              className="min-h-[30px] px-2.5 py-1 rounded-lg text-xs text-slate-200 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.14] cursor-pointer"
                             >
                               {dict.common.cancel}
                             </button>
@@ -739,7 +739,7 @@ export function TaskTrackerView({
                           className={`inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
                             task.isCompleted
                               ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/35 hover:bg-emerald-500/20'
-                              : 'bg-white/[0.05] text-slate-300 hover:text-emerald-200 hover:border-emerald-400/30 border-white/[0.1]'
+                              : 'bg-white/[0.07] text-slate-200 hover:text-emerald-200 hover:border-emerald-400/35 border-white/[0.14]'
                           }`}
                         >
                           {task.isCompleted ? (
@@ -816,7 +816,7 @@ export function TaskTrackerView({
                             <button
                               type="button"
                               onClick={() => setConfirmDeleteId(null)}
-                              className="min-h-[30px] px-2 py-1 rounded-lg text-xs text-slate-300 bg-white/[0.05] cursor-pointer"
+                              className="min-h-[30px] px-2 py-1 rounded-lg text-xs text-slate-200 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.14] cursor-pointer"
                             >
                               {dict.common.cancel}
                             </button>
@@ -827,12 +827,12 @@ export function TaskTrackerView({
 
                     {/* Picker to Assign / Unassign Fetched PRs to This Task */}
                     {isAssigning && (
-                      <div className="rounded-xl bg-[#0C0E14]/90 border border-white/[0.09] p-3 space-y-2">
+                      <div className="rounded-xl bg-[#152033] border border-slate-700/80 p-3 space-y-2">
                         <p className="text-xs font-medium text-slate-300">
                           {dict.tasks.selectPrsLabel}
                         </p>
                         {prOnlyActivities.length === 0 ? (
-                          <p className="text-xs text-slate-500">{dict.tasks.noAvailablePrs}</p>
+                          <p className="text-xs text-slate-400">{dict.tasks.noAvailablePrs}</p>
                         ) : (
                           <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1">
                             {prOnlyActivities.map((pr) => {
@@ -848,8 +848,8 @@ export function TaskTrackerView({
                                   key={getPrKey(pr)}
                                   className={`flex items-center justify-between gap-2 p-2 rounded-lg text-xs cursor-pointer transition-colors ${
                                     assigned
-                                      ? 'bg-sky-500/10 border border-sky-400/25'
-                                      : 'hover:bg-white/[0.04] border border-transparent'
+                                      ? 'bg-sky-500/15 border border-sky-400/30'
+                                      : 'hover:bg-white/[0.08] border border-transparent'
                                   }`}
                                 >
                                   <span className="flex items-center gap-2 min-w-0">
@@ -886,7 +886,7 @@ export function TaskTrackerView({
 
                     {/* Full-detail PR Cards inside Task */}
                     {resolvedItems.length > 0 && (
-                      <ul role="list" className="space-y-2.5 pt-2 border-t border-white/[0.06]">
+                      <ul role="list" className="space-y-2.5 pt-2 border-t border-slate-700/80">
                         {resolvedItems.map(({ item, live, state, title }) => {
                           const targetPr = live ?? buildFallbackActivity(item, title, state);
                           return (

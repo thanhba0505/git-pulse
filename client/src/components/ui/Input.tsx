@@ -70,12 +70,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
           id={inputId}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`w-full min-h-[42px] py-2.5 rounded-lg bg-[#090B10]/50 backdrop-blur-md border text-sm text-slate-100 placeholder:text-slate-400/65 outline-none transition-colors ${
+          className={`w-full min-h-[42px] py-2.5 rounded-lg bg-[#152033] border text-sm text-slate-50 placeholder:text-slate-400 outline-none transition-colors ${
             leftIcon ? 'pl-10' : 'pl-3.5'
           } ${rightElement ? 'pr-11' : 'pr-3.5'} ${
             error
               ? 'border-rose-500/80 focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20'
-              : 'border-white/[0.1] hover:border-white/[0.18] focus:border-sky-400/80 focus:bg-[#090B10]/70 focus:ring-2 focus:ring-sky-500/20'
+              : 'border-slate-600/90 hover:border-slate-500 focus:border-sky-400 focus:bg-[#19253B] focus:ring-2 focus:ring-sky-500/25'
           } ${className}`}
           {...rest}
         />

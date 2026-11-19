@@ -168,7 +168,7 @@ export function AuthModal({
   const cardContent = (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 px-6 py-5">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 px-6 py-5">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
@@ -201,7 +201,7 @@ export function AuthModal({
               type="button"
               onClick={onClose}
               aria-label={dict.common.close}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-700/80 hover:text-white transition-colors cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -304,13 +304,12 @@ export function AuthModal({
               <span>{isSubmitting ? dict.auth.signingInBtn : dict.auth.signInBtn}</span>
             </button>
 
-            <div className="relative my-5 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <span className="relative bg-[#141821] px-3 text-xs font-mono uppercase tracking-wider text-slate-400">
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+              <span className="text-xs font-mono uppercase tracking-wider text-slate-400 shrink-0">
                 {dict.auth.orSeparator}
               </span>
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
             </div>
 
             <GoogleSignInButton
@@ -430,13 +429,12 @@ export function AuthModal({
               <span>{isSubmitting ? dict.auth.registeringBtn : dict.auth.registerBtn}</span>
             </button>
 
-            <div className="relative my-5 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <span className="relative bg-[#141821] px-3 text-xs font-mono uppercase tracking-wider text-slate-400">
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+              <span className="text-xs font-mono uppercase tracking-wider text-slate-400 shrink-0">
                 {dict.auth.orSeparator}
               </span>
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
             </div>
 
             <GoogleSignInButton

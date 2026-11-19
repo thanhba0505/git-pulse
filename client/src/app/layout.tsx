@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const viewport: Viewport = {
   colorScheme: 'dark',
-  themeColor: '#090B10',
+  themeColor: '#0F172A',
 };
 
 export const metadata: Metadata = {
@@ -56,7 +56,7 @@ export default function RootLayout({
         {apiOrigin && <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />}
         <link rel="preconnect" href="https://accounts.google.com" />
       </head>
-      <body className="h-screen h-[100dvh] overflow-hidden bg-[#090B10] text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-100">
+      <body className="h-screen h-[100dvh] overflow-hidden bg-[#0F172A] text-slate-50 antialiased selection:bg-sky-500/30 selection:text-sky-100">
         <InteractiveBackdrop />
         <I18nProvider>
           <ToastProvider>

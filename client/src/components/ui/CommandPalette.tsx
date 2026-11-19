@@ -198,7 +198,7 @@ export function CommandPalette({
       </h2>
 
       {/* Search Input Bar */}
-      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-800/80">
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-700/80">
         <Search className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
         <input
           type="text"
@@ -214,9 +214,9 @@ export function CommandPalette({
           autoCapitalize="none"
           spellCheck={false}
           aria-label={dict.commandPalette.placeholder}
-          className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-400/70 outline-none"
+          className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-400 outline-none"
         />
-        <kbd className="px-2 py-0.5 rounded-md bg-[#0C0E14] border border-slate-800 text-xs font-mono text-slate-400">
+        <kbd className="px-2 py-0.5 rounded-md bg-[#152033] border border-slate-600/80 text-xs font-mono text-slate-300">
           Esc
         </kbd>
       </div>
@@ -238,15 +238,15 @@ export function CommandPalette({
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => executeItem(item)}
                 className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
-                  isActive ? 'bg-sky-500/10 text-slate-100' : 'text-slate-300 hover:bg-[#191E2A]'
+                  isActive ? 'bg-sky-500/15 text-slate-50' : 'text-slate-200 hover:bg-slate-700/60'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className={`w-7 h-7 rounded-md border flex items-center justify-center shrink-0 ${
                       isActive
-                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
-                        : 'bg-[#0C0E14] border-slate-800 text-slate-400'
+                        ? 'bg-sky-500/20 border-sky-400/40 text-sky-300'
+                        : 'bg-[#152033] border-slate-600/80 text-slate-300'
                     }`}
                     aria-hidden="true"
                   >
@@ -259,7 +259,7 @@ export function CommandPalette({
                 </div>
 
                 {item.shortcut ? (
-                  <kbd className="px-2 py-0.5 rounded-md bg-[#0C0E14] border border-slate-800 text-xs font-mono text-slate-400 shrink-0">
+                  <kbd className="px-2 py-0.5 rounded-md bg-[#152033] border border-slate-600/80 text-xs font-mono text-slate-300 shrink-0">
                     {item.shortcut}
                   </kbd>
                 ) : isActive && !item.disabled ? (
@@ -275,7 +275,7 @@ export function CommandPalette({
       </div>
 
       {/* Footer Hint */}
-      <div className="px-4 py-2.5 border-t border-slate-800/80 bg-[#0C0E14]/60 text-xs text-slate-400 flex items-center justify-between">
+      <div className="px-4 py-2.5 border-t border-slate-700/80 bg-[#152033]/85 text-xs text-slate-400 flex items-center justify-between">
         <span>{dict.commandPalette.shortcutHint}</span>
       </div>
     </ModalDialog>

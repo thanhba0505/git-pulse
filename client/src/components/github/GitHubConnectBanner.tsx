@@ -100,7 +100,7 @@ export function GitHubConnectModal({
       maxWidthClass="max-w-lg"
     >
       {/* Modal Header */}
-      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-white/[0.08]">
+      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-700/80">
         <div className="flex items-center gap-3.5 min-w-0">
           <div
             className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
@@ -125,7 +125,7 @@ export function GitHubConnectModal({
           type="button"
           onClick={onClose}
           aria-label={dict.common.close}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700/80 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
         >
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
@@ -146,7 +146,7 @@ export function GitHubConnectModal({
         {showManageView ? (
           <div className="space-y-4">
             {/* Connected Profile Card */}
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3">
+            <div className="p-4 rounded-xl bg-[#253349]/65 border border-slate-600/80 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3.5 min-w-0">
                 {status.gitAvatar && (
                   <img
@@ -208,7 +208,7 @@ export function GitHubConnectModal({
             )}
 
             {/* Footer & Inline 2-Step Disconnect Confirmation */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-700/80">
               <p className="text-xs text-slate-400 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
                 <span>{dict.githubModal.securityNote}</span>
@@ -240,7 +240,7 @@ export function GitHubConnectModal({
                     autoFocus
                     onClick={() => setConfirmingDisconnect(false)}
                     disabled={isLoading}
-                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-100 bg-slate-700 hover:bg-slate-600 border border-slate-600 transition-colors cursor-pointer"
                   >
                     {dict.common.cancel}
                   </button>
@@ -295,11 +295,11 @@ export function GitHubConnectModal({
               className="font-mono"
             />
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/[0.08]">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-700/80">
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
               >
                 {dict.common.close}
               </button>

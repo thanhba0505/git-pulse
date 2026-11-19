@@ -92,7 +92,7 @@ export function GoogleSignInButton({
             type="button"
             onClick={onDevChooserClick}
             disabled={disabled || isProcessing}
-            className="flex w-full min-h-[42px] items-center justify-center gap-2.5 rounded-lg border border-slate-700/80 bg-[#161A24] px-4 py-2.5 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 hover:border-slate-600 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            className="flex w-full min-h-[42px] items-center justify-center gap-2.5 rounded-lg border border-slate-600/80 bg-[#253349] px-4 py-2.5 text-xs font-medium text-slate-100 transition-colors hover:bg-[#2E3E58] hover:border-slate-500 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             <span>{dict.auth.googleDevBtn}</span>
           </button>
@@ -113,7 +113,7 @@ export function GoogleSignInButton({
 
       <div className="relative flex flex-col items-center justify-center w-full min-h-[44px]">
         {(!isScriptLoaded || isProcessing) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#141821]/85 backdrop-blur-sm rounded-lg z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#1E293B]/90 backdrop-blur-sm rounded-lg z-10">
             <Loader2 className="h-5 w-5 animate-spin text-sky-400" aria-hidden="true" />
           </div>
         )}

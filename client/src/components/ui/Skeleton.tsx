@@ -19,7 +19,7 @@ export function WorkspaceSkeleton() {
       className="flex-1 min-h-0 flex flex-col overflow-hidden"
     >
       {/* Skeleton Header (Pinned Top) */}
-      <div className="shrink-0 w-full border-b border-white/[0.08] bg-[#090B10]/55 backdrop-blur-xl">
+      <div className="shrink-0 w-full border-b border-white/[0.12] bg-[#0F172A]/82 backdrop-blur-xl">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Skeleton className="w-8 h-8 rounded-lg" />
@@ -84,9 +84,9 @@ export function ActivityListSkeleton({ count = 3 }: { count?: number }) {
             </div>
             <Skeleton className="w-8 h-8 rounded-lg shrink-0" />
           </div>
-          <div className="pt-3 border-t border-slate-800/80 space-y-2">
+          <div className="pt-3 border-t border-slate-700/80 space-y-2">
             <Skeleton className="w-36 h-3" />
-            <div className="pl-3.5 border-l border-slate-800 space-y-1.5">
+            <div className="pl-3.5 border-l border-slate-700/80 space-y-1.5">
               <Skeleton className="w-11/12 h-3.5" />
               <Skeleton className="w-3/4 h-3.5" />
             </div>
@@ -106,7 +106,7 @@ export function StandupOutputSkeleton() {
       aria-label={dict.standupDock.generatingTitle}
       className="gp-card rounded-xl p-5 sm:p-6 space-y-4 gp-fade-in"
     >
-      <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
+      <div className="flex items-center gap-3 border-b border-slate-700/80 pb-4">
         <div
           className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400 shrink-0"
           aria-hidden="true"
@@ -121,7 +121,7 @@ export function StandupOutputSkeleton() {
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 rounded-lg bg-[#0C0E14] border border-slate-800 space-y-3">
+      <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-3">
         <div className="flex items-center gap-3">
           <Skeleton className="w-2 h-2 rounded-full shrink-0" />
           <Skeleton className="w-11/12 h-3.5" />
@@ -147,7 +147,7 @@ export function HistoryListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div aria-busy="true" className="space-y-3">
       {Array.from({ length: count }).map((_, idx) => (
-        <div key={idx} className="p-4 rounded-xl bg-[#0C0E14] border border-slate-800 space-y-3">
+        <div key={idx} className="p-4 rounded-xl bg-[#152033] border border-slate-700/80 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Skeleton className="w-36 h-3.5" />

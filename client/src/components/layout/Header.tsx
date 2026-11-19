@@ -44,10 +44,10 @@ export function Header({
   const hasConnectedAccounts = Boolean(gitStatus.connected && accounts.length > 0);
 
   return (
-    <header className="relative shrink-0 z-40 w-full border-b border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.28)]">
+    <header className="relative shrink-0 z-40 w-full border-b border-white/[0.12] shadow-[0_8px_32px_rgba(2,6,23,0.32)]">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-[#090B10]/60 backdrop-blur-xl"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[#0F172A]/85 backdrop-blur-xl"
       />
       <div className="relative max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-3">
         {/* Left: Brand + Contextual GitHub Account Selector */}
@@ -64,7 +64,7 @@ export function Header({
             </span>
           </div>
 
-          <span className="text-slate-600/80 font-light select-none shrink-0" aria-hidden="true">
+          <span className="text-slate-400/70 font-light select-none shrink-0" aria-hidden="true">
             /
           </span>
 
@@ -94,8 +94,8 @@ export function Header({
                   aria-label={dict.header.gitSwitcherLabel}
                   className={`inline-flex items-center gap-2 min-h-[34px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors cursor-pointer max-w-[175px] sm:max-w-[240px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 ${
                     isOpen
-                      ? 'bg-white/[0.1] border-sky-400/45 text-white'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-slate-200'
+                      ? 'bg-white/[0.14] border-sky-400/50 text-white'
+                      : 'bg-white/[0.07] hover:bg-white/[0.11] border-white/[0.14] text-slate-100'
                   }`}
                   {...ariaProps}
                 >
@@ -166,7 +166,7 @@ export function Header({
                     </button>
                   ))}
 
-                  <hr className="border-white/[0.08] my-1" />
+                  <hr className="border-white/[0.12] my-1" />
 
                   <button
                     type="button"
@@ -194,11 +194,11 @@ export function Header({
               onClick={onOpenCommandPalette}
               title={dict.header.commandPaletteTooltip}
               aria-label={dict.header.commandPaletteTooltip}
-              className="hidden md:inline-flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg text-xs text-slate-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.09] hover:border-white/[0.16] backdrop-blur-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
+              className="hidden md:inline-flex items-center gap-2 min-h-[36px] px-3 py-1.5 rounded-lg text-xs text-slate-200 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.14] hover:border-white/[0.22] backdrop-blur-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60"
             >
               <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
               <span>{dict.header.commandPaletteBtn}</span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.1] text-xs font-mono text-slate-300">
+              <kbd className="px-1.5 py-0.5 rounded bg-white/[0.08] border border-white/[0.14] text-xs font-mono text-slate-200">
                 ⌘K
               </kbd>
             </button>
@@ -217,8 +217,8 @@ export function Header({
                   aria-label={dict.header.userMenuLabel}
                   className={`inline-flex items-center gap-2 min-h-[36px] p-1 sm:pr-2.5 rounded-full sm:rounded-xl border backdrop-blur-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 ${
                     isOpen
-                      ? 'bg-white/[0.12] border-sky-400/45 text-white'
-                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-slate-200'
+                      ? 'bg-white/[0.14] border-sky-400/50 text-white'
+                      : 'bg-white/[0.07] hover:bg-white/[0.11] border-white/[0.14] text-slate-100'
                   }`}
                   {...ariaProps}
                 >
@@ -258,7 +258,7 @@ export function Header({
                     )}
                   </div>
 
-                  <hr className="border-white/[0.08] my-1" />
+                  <hr className="border-white/[0.12] my-1" />
 
                   <button
                     type="button"
@@ -286,7 +286,7 @@ export function Header({
                     <span>{dict.header.settings}</span>
                   </button>
 
-                  <hr className="border-white/[0.08] my-1" />
+                  <hr className="border-white/[0.12] my-1" />
 
                   <button
                     type="button"

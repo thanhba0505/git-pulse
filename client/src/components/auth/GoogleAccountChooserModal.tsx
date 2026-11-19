@@ -111,7 +111,7 @@ export function GoogleAccountChooserModal({
       maxWidthClass="max-w-md"
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-800/80">
+      <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-700/80">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
@@ -136,7 +136,7 @@ export function GoogleAccountChooserModal({
           type="button"
           onClick={onClose}
           aria-label={dict.common.close}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700/80 transition-colors cursor-pointer shrink-0"
         >
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
@@ -168,11 +168,11 @@ export function GoogleAccountChooserModal({
                     })
                   }
                   disabled={Boolean(selectingUsername)}
-                  className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl bg-[#0C0E14] hover:bg-[#161A24] border border-slate-800 hover:border-slate-700 text-left transition-colors group disabled:opacity-50 cursor-pointer"
+                  className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl bg-[#152033] hover:bg-[#253349] border border-slate-600/80 hover:border-slate-500 text-left transition-colors group disabled:opacity-50 cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0"
+                      className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-semibold text-slate-100 shrink-0"
                       aria-hidden="true"
                     >
                       {u.username.slice(0, 2).toUpperCase()}
@@ -205,7 +205,7 @@ export function GoogleAccountChooserModal({
         </div>
 
         {/* Custom Username Entry */}
-        <div className="pt-4 border-t border-slate-800/80">
+        <div className="pt-4 border-t border-slate-700/80">
           {!showCustomInput ? (
             <button
               type="button"

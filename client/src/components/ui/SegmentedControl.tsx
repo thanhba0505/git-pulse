@@ -91,7 +91,7 @@ export function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       aria-disabled={disabled || undefined}
       data-measured="false"
-      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#090B10]/45 backdrop-blur-md border border-white/[0.09] transition-opacity ${
+      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#152033] border border-slate-600/80 transition-opacity ${
         disabled ? 'opacity-55 pointer-events-none select-none' : ''
       } ${fullWidth ? 'w-full' : ''} ${className}`}
     >
@@ -99,7 +99,7 @@ export function SegmentedControl<T extends string>({
       <span
         ref={indicatorRef}
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-white/[0.11] border border-white/[0.14] shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
+        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-white/[0.14] border border-white/[0.2] shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
         style={{
           transitionTimingFunction: 'var(--ease-spring)',
         }}
@@ -131,8 +131,8 @@ export function SegmentedControl<T extends string>({
               disabled ? 'cursor-not-allowed' : 'cursor-pointer'
             } whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               isActive
-                ? 'text-slate-100 font-semibold group-data-[measured=false]/seg:bg-slate-800'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-white font-semibold group-data-[measured=false]/seg:bg-slate-700/80'
+                : 'text-slate-300 hover:text-white'
             }`}
           >
             {option.label}

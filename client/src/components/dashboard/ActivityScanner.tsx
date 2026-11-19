@@ -211,7 +211,7 @@ export function ActivityScanner({
             aria-expanded={!isCollapsed}
             className="inline-flex items-center gap-2 text-left group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 rounded-lg py-0.5"
           >
-            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.06] border border-white/[0.1] text-slate-300">
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.08] border border-white/[0.15] text-slate-200">
               {icon}
             </span>
             <span className="text-sm font-semibold text-slate-100 group-hover:text-sky-300 transition-colors">
@@ -234,7 +234,7 @@ export function ActivityScanner({
             className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
               allSelected
                 ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 hover:bg-sky-500/20'
-                : 'bg-white/[0.04] text-slate-300 hover:text-white border-white/[0.09]'
+                : 'bg-white/[0.07] text-slate-200 hover:text-white border-white/[0.14] hover:border-white/[0.24]'
             }`}
           >
             {allSelected ? dict.scanner.clearGroup : dict.scanner.selectGroup}
@@ -306,7 +306,7 @@ export function ActivityScanner({
                 type="button"
                 onClick={onOpenFetchSettings}
                 title={dict.scanner.fetchSettingsBtn}
-                className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+                className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] hover:border-white/[0.24] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
               >
                 <SlidersHorizontal
                   className="w-3.5 h-3.5 text-sky-400 shrink-0"
@@ -331,7 +331,7 @@ export function ActivityScanner({
           </div>
 
           {/* Grouping Mode Switcher + State Filter Bar */}
-          <div className="pt-3 border-t border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="pt-3 border-t border-white/[0.12] flex flex-col md:flex-row md:items-center justify-between gap-3">
             <SegmentedControl
               value={groupBy}
               onChange={onGroupByChange}
@@ -369,7 +369,7 @@ export function ActivityScanner({
                           ? stateStyle
                             ? stateStyle.badgeClass
                             : 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                          : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
+                          : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
                       }`}
                     >
                       {stateStyle && (
@@ -388,7 +388,7 @@ export function ActivityScanner({
 
           {/* Repo Filter Pills & Selection Toolbar */}
           {groupBy !== 'task' && activities.length > 0 && (
-            <div className="pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="pt-3 border-t border-white/[0.1] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               {uniqueRepos.length > 1 ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
@@ -397,7 +397,7 @@ export function ActivityScanner({
                     className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                       repoFilter === 'ALL'
                         ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                        : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
+                        : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
                     }`}
                   >
                     {dict.scanner.allRepos}
@@ -414,7 +414,7 @@ export function ActivityScanner({
                         className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors cursor-pointer max-w-[180px] truncate ${
                           active
                             ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                            : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
+                            : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
                         }`}
                       >
                         {shortName}
@@ -433,7 +433,7 @@ export function ActivityScanner({
                     total: visibleActivities.length,
                   })}
                 </span>
-                <div className="flex items-center gap-2 sm:border-l sm:border-slate-800 sm:pl-3 shrink-0">
+                <div className="flex items-center gap-2 sm:border-l sm:border-slate-700 sm:pl-3 shrink-0">
                   <button
                     type="button"
                     onClick={onSelectAllPrs}
@@ -441,13 +441,13 @@ export function ActivityScanner({
                   >
                     {dict.scanner.selectAll}
                   </button>
-                  <span className="text-slate-700" aria-hidden="true">
+                  <span className="text-slate-400/70" aria-hidden="true">
                     /
                   </span>
                   <button
                     type="button"
                     onClick={onClearPrSelection}
-                    className="text-slate-400 hover:text-slate-200 font-medium cursor-pointer transition-colors whitespace-nowrap"
+                    className="text-slate-300 hover:text-white font-medium cursor-pointer transition-colors whitespace-nowrap"
                   >
                     {dict.scanner.clearSelection}
                   </button>
@@ -555,10 +555,10 @@ export function ActivityScanner({
         <ShowcaseCard className="p-8 sm:p-12 text-center">
           <div className="flex flex-col items-center justify-center">
             <div
-              className="w-12 h-12 rounded-xl bg-[#161A24] border border-slate-800 flex items-center justify-center text-slate-400 mb-4"
+              className="w-12 h-12 rounded-xl bg-[#253349] border border-slate-600/80 flex items-center justify-center text-slate-300 mb-4"
               aria-hidden="true"
             >
-              <GitPullRequest className="w-5 h-5 text-slate-400" />
+              <GitPullRequest className="w-5 h-5 text-slate-300" />
             </div>
 
             <h3 className="text-sm font-semibold text-slate-100 mb-1.5">

@@ -69,10 +69,10 @@ function ToggleSwitchRow({ id, label, description, checked, onChange }: ToggleRo
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#11141C] ${
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1E293B] ${
           checked
             ? 'bg-sky-500 border-sky-400'
-            : 'bg-slate-800 border-white/[0.18] hover:border-white/[0.3]'
+            : 'bg-slate-700 border-slate-500 hover:border-slate-400'
         }`}
       >
         <span
@@ -223,7 +223,7 @@ export function SettingsModal({
       maxWidthClass="max-w-2xl"
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-white/[0.08]">
+      <div className="flex items-start justify-between gap-3 px-6 pt-5 pb-4 border-b border-slate-700/80">
         <div className="flex items-center gap-3.5 min-w-0">
           <div
             className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
@@ -248,7 +248,7 @@ export function SettingsModal({
           type="button"
           onClick={onClose}
           aria-label={dict.common.close}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/[0.08] transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700/80 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
         >
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
@@ -258,7 +258,7 @@ export function SettingsModal({
       <div
         role="tablist"
         aria-label={dict.settingsModal.tablistAria}
-        className="flex items-center gap-1 px-6 border-b border-white/[0.08] overflow-x-auto custom-scrollbar"
+        className="flex items-center gap-1 px-6 border-b border-slate-700/80 overflow-x-auto custom-scrollbar"
       >
         {tabItems.map((tab, idx) => {
           const isSelected = activeTab === tab.key;
@@ -319,7 +319,7 @@ export function SettingsModal({
               {dict.settingsModal.workspaceSection}
             </h3>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.06]">
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 divide-y divide-slate-700/80">
               <ToggleSwitchRow
                 id="pref-include-personal"
                 label={
@@ -355,7 +355,7 @@ export function SettingsModal({
                 </div>
 
                 {orgs.length === 0 ? (
-                  <p className="text-xs text-slate-500">{dict.settingsModal.orgsEmpty}</p>
+                  <p className="text-xs text-slate-400">{dict.settingsModal.orgsEmpty}</p>
                 ) : (
                   <>
                     <div className="flex flex-wrap gap-2">
@@ -370,7 +370,7 @@ export function SettingsModal({
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                               checked
                                 ? 'bg-indigo-500/20 text-indigo-200 border-indigo-400/40'
-                                : 'bg-white/[0.04] text-slate-300 hover:text-white border-white/[0.09]'
+                                : 'bg-white/[0.07] text-slate-200 hover:text-white border-white/[0.15]'
                             }`}
                           >
                             {checked && (
@@ -396,7 +396,7 @@ export function SettingsModal({
               {dict.settingsModal.prStatesSection}
             </h3>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] p-4 space-y-4">
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 p-4 space-y-4">
               <div className="flex flex-wrap gap-2">
                 {PR_STATE_OPTIONS.map((state) => {
                   const active = draftPrefs.prStates.includes(state);
@@ -410,12 +410,12 @@ export function SettingsModal({
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                         active
                           ? style.badgeClass
-                          : 'bg-white/[0.04] text-slate-400 hover:text-slate-200 border-white/[0.08]'
+                          : 'bg-white/[0.07] text-slate-300 hover:text-white border-white/[0.15]'
                       }`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          active ? style.dotClass : 'bg-slate-600'
+                          active ? style.dotClass : 'bg-slate-400'
                         }`}
                         aria-hidden="true"
                       />
@@ -431,7 +431,7 @@ export function SettingsModal({
                 })}
               </div>
 
-              <div className="pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="text-xs font-medium text-slate-200">
                   {dict.settingsModal.fetchRoleLabel}
                 </span>
@@ -447,7 +447,7 @@ export function SettingsModal({
                 />
               </div>
 
-              <div className="pt-3 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="text-xs font-medium text-slate-200">
                   {dict.settingsModal.defaultRangeLabel}
                 </span>
@@ -472,7 +472,7 @@ export function SettingsModal({
               {dict.settingsModal.advancedSection}
             </h3>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.06]">
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 divide-y divide-slate-700/80">
               <ToggleSwitchRow
                 id="pref-include-direct-commits"
                 label={dict.settingsModal.includeDirectCommitsLabel}
@@ -511,7 +511,7 @@ export function SettingsModal({
               {dict.settingsModal.tabDisplay}
             </h3>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.06]">
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 divide-y divide-slate-700/80">
               <div className="p-4 space-y-2.5">
                 <span className="block text-xs font-medium text-slate-200">
                   {dict.settingsModal.defaultGroupByLabel}
@@ -556,7 +556,7 @@ export function SettingsModal({
               {dict.settingsModal.interfaceSection}
             </h3>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.06]">
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 divide-y divide-slate-700/80">
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Languages className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
@@ -621,8 +621,8 @@ export function SettingsModal({
             </div>
 
             {accounts.length === 0 ? (
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] text-center">
-                <GitBranch className="w-5 h-5 text-slate-500 mx-auto mb-2" aria-hidden="true" />
+              <div className="p-4 rounded-xl bg-[#253349]/55 border border-slate-600/75 text-center">
+                <GitBranch className="w-5 h-5 text-slate-400 mx-auto mb-2" aria-hidden="true" />
                 <p className="text-xs text-slate-400">{dict.settingsModal.noAccounts}</p>
               </div>
             ) : (
@@ -636,8 +636,8 @@ export function SettingsModal({
                       key={acc.id}
                       className={`p-3.5 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         acc.isActive
-                          ? 'bg-sky-500/[0.08] border-sky-400/35'
-                          : 'bg-white/[0.03] border-white/[0.08]'
+                          ? 'bg-sky-500/[0.1] border-sky-400/40'
+                          : 'bg-[#253349]/55 border-slate-600/75'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -648,7 +648,7 @@ export function SettingsModal({
                             className="w-9 h-9 rounded-full border border-white/15 object-cover shrink-0"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/15 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-white/[0.1] border border-white/20 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0">
                             {acc.gitUsername.slice(0, 2).toUpperCase()}
                           </div>
                         )}
@@ -677,7 +677,7 @@ export function SettingsModal({
                             type="button"
                             onClick={() => void handleSwitch(acc.id)}
                             disabled={isBusy}
-                            className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] transition-colors cursor-pointer disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
                           >
                             {isBusy ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
@@ -715,7 +715,7 @@ export function SettingsModal({
                               type="button"
                               onClick={() => setConfirmingId(null)}
                               disabled={isBusy}
-                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-200 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] transition-colors cursor-pointer"
+                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
                             >
                               {dict.common.cancel}
                             </button>
@@ -733,11 +733,11 @@ export function SettingsModal({
 
       {/* Footer Save Bar for Fetch / Display settings */}
       {activeTab !== 'general' && (
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-white/[0.08] bg-[#0B0D14]/60">
+        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-700/80 bg-[#0F172A]/65">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[36px] px-4 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] cursor-pointer"
+            className="min-h-[36px] px-4 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] cursor-pointer"
           >
             {dict.common.cancel}
           </button>

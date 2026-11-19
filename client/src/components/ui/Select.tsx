@@ -204,10 +204,10 @@ export function Select<T extends string>({
         disabled={disabled}
         onClick={() => (isOpen ? closeMenu() : openMenu())}
         onKeyDown={handleKeyDown}
-        className={`flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-lg bg-[#090B10]/45 backdrop-blur-md border text-left text-xs sm:text-sm transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-lg bg-[#152033] border text-left text-xs sm:text-sm transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen
-            ? 'border-sky-400/70 ring-2 ring-sky-500/20 text-slate-100'
-            : 'border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.06] text-slate-200 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/20'
+            ? 'border-sky-400 ring-2 ring-sky-500/25 text-slate-50'
+            : 'border-slate-600/90 hover:border-slate-500 hover:bg-[#19253B] text-slate-100 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25'
         }`}
       >
         <span id={valueId} className="truncate font-medium">
@@ -254,10 +254,10 @@ export function Select<T extends string>({
                     option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
                   } ${
                     isSelected
-                      ? 'bg-sky-500/10 text-slate-100'
+                      ? 'bg-sky-500/15 text-slate-50'
                       : isHighlighted
-                        ? 'bg-slate-800/90 text-slate-100'
-                        : 'text-slate-300 hover:bg-slate-800/70'
+                        ? 'bg-slate-700/80 text-slate-50'
+                        : 'text-slate-200 hover:bg-slate-700/60'
                   }`}
                 >
                   <div className="min-w-0 flex-1">

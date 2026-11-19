@@ -737,21 +737,21 @@ export default function HomePage() {
                   </div>
 
                   <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
                       <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-300 leading-snug">
+                      <p className="text-xs text-slate-200 leading-snug">
                         {dict.onboarding.featureSync}
                       </p>
                     </div>
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
                       <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-300 leading-snug">
+                      <p className="text-xs text-slate-200 leading-snug">
                         {dict.onboarding.featureAi}
                       </p>
                     </div>
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] space-y-1.5">
+                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-300 leading-snug">
+                      <p className="text-xs text-slate-200 leading-snug">
                         {dict.onboarding.featureExport}
                       </p>
                     </div>
@@ -944,7 +944,7 @@ function AuthLandingWrapper({
           aria-label={motionLabel}
           className={`fixed top-4 right-4 z-30 inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
             isMotionPaused
-              ? 'bg-[#11141C]/90 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              ? 'bg-[#1E293B]/90 border-slate-600/80 text-slate-300 hover:text-white hover:border-slate-500'
               : 'bg-sky-500/10 border-sky-500/25 text-sky-400 hover:bg-sky-500/15 hover:border-sky-500/40'
           }`}
         >

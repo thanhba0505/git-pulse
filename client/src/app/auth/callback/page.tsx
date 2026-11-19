@@ -101,7 +101,7 @@ function SsoCallbackHandler() {
                 <button
                   type="button"
                   onClick={() => router.push('/')}
-                  className="min-h-[38px] px-5 py-2 rounded-lg text-xs font-medium text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+                  className="min-h-[38px] px-5 py-2 rounded-lg text-xs font-medium text-slate-100 bg-[#253349] hover:bg-[#2E3E58] border border-slate-600 transition-colors cursor-pointer"
                 >
                   {dict.common.backHome}
                 </button>

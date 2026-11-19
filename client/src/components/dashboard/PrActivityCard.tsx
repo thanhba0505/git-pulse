@@ -72,7 +72,7 @@ function CommitTimelineList({
   extraClass?: string;
 }) {
   return (
-    <ul role="list" className={`space-y-1.5 pl-3 border-l border-slate-800 ${extraClass}`}>
+    <ul role="list" className={`space-y-1.5 pl-3 border-l border-slate-600/80 ${extraClass}`}>
       {commits.map((commit, idx) => {
         const commitUrl = commit.sha
           ? `https://github.com/${repo}/commit/${encodeURIComponent(commit.sha)}`
@@ -83,15 +83,15 @@ function CommitTimelineList({
               href={commitUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group/commit flex items-start gap-2 text-xs text-slate-300 hover:text-sky-200 leading-relaxed min-w-0 transition-colors"
+              className="group/commit flex items-start gap-2 text-xs text-slate-200 hover:text-sky-200 leading-relaxed min-w-0 transition-colors"
             >
               {commit.sha ? (
-                <span className="font-mono text-xs text-slate-400 group-hover/commit:text-sky-300 bg-white/[0.04] group-hover/commit:bg-sky-500/15 border border-transparent group-hover/commit:border-sky-400/30 px-1.5 py-0.5 rounded shrink-0 transition-colors">
+                <span className="font-mono text-xs text-slate-300 group-hover/commit:text-sky-200 bg-white/[0.08] group-hover/commit:bg-sky-500/15 border border-white/[0.1] group-hover/commit:border-sky-400/35 px-1.5 py-0.5 rounded shrink-0 transition-colors">
                   {commit.sha}
                 </span>
               ) : (
                 <span
-                  className="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover/commit:bg-sky-400 shrink-0 mt-2 transition-colors"
+                  className="w-1.5 h-1.5 rounded-full bg-slate-400 group-hover/commit:bg-sky-400 shrink-0 mt-2 transition-colors"
                   aria-hidden="true"
                 />
               )}
@@ -243,7 +243,7 @@ export function PrActivityCard({
               className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
                 isSelected
                   ? 'bg-sky-500 border-sky-400 text-slate-950'
-                  : 'bg-white/[0.04] border-white/[0.15] hover:border-white/[0.3] text-transparent'
+                  : 'bg-[#152033] border-slate-500/80 hover:border-sky-400/70 text-transparent'
               }`}
             >
               <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
@@ -251,7 +251,7 @@ export function PrActivityCard({
           )}
 
           <div
-            className={`w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.09] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
+            className={`w-9 h-9 rounded-lg bg-white/[0.08] border border-white/[0.14] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
             aria-hidden="true"
           >
             <StateIcon className="w-4 h-4" />
@@ -291,7 +291,7 @@ export function PrActivityCard({
               </a>
 
               {pr.repoPrivate && (
-                <Lock className="w-3 h-3 text-slate-500 shrink-0" aria-hidden="true" />
+                <Lock className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
               )}
 
               {!isDirectCommits && (
@@ -299,7 +299,7 @@ export function PrActivityCard({
                   href={pr.prUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-slate-300 hover:text-sky-300 hover:underline tabular-nums transition-colors"
+                  className="font-mono text-slate-200 hover:text-sky-300 hover:underline tabular-nums transition-colors"
                 >
                   #{pr.number}
                 </a>
@@ -312,13 +312,13 @@ export function PrActivityCard({
               </span>
 
               {statusNoteTag && (
-                <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-slate-400 text-xs">
+                <span className="px-2 py-0.5 rounded-md bg-white/[0.07] border border-white/[0.14] text-slate-300 text-xs">
                   {statusNoteTag}
                 </span>
               )}
 
               {relativeUpdated && (
-                <span className="text-xs text-slate-500 font-mono tabular-nums whitespace-nowrap">
+                <span className="text-xs text-slate-400 font-mono tabular-nums whitespace-nowrap">
                   • {relativeUpdated}
                 </span>
               )}
@@ -332,7 +332,7 @@ export function PrActivityCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   title={pr.headBranch}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-sky-500/10 border border-white/[0.08] hover:border-sky-400/35 font-mono text-xs text-slate-300 hover:text-sky-300 max-w-full transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.07] hover:bg-sky-500/15 border border-white/[0.14] hover:border-sky-400/40 font-mono text-xs text-slate-200 hover:text-sky-200 max-w-full transition-colors"
                 >
                   <GitBranch className="w-3 h-3 shrink-0 text-slate-400" aria-hidden="true" />
                   <span className="truncate">{pr.headBranch}</span>
@@ -391,8 +391,8 @@ export function PrActivityCard({
                   title={dict.scanner.assignToTaskHeading}
                   className={`inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
                     isOpen || assignedTasks.length > 0
-                      ? 'bg-sky-500/10 text-sky-300 border-sky-400/30 hover:bg-sky-500/15'
-                      : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:text-white hover:border-white/[0.18]'
+                      ? 'bg-sky-500/15 text-sky-200 border-sky-400/35 hover:bg-sky-500/20'
+                      : 'bg-white/[0.07] text-slate-200 border-white/[0.14] hover:text-white hover:border-white/[0.24]'
                   }`}
                 >
                   <FolderKanban className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -410,7 +410,7 @@ export function PrActivityCard({
                   </p>
 
                   {assignableTasks.length === 0 ? (
-                    <p className="px-1.5 py-1 text-xs text-slate-500">{dict.scanner.noTasksHint}</p>
+                    <p className="px-1.5 py-1 text-xs text-slate-400">{dict.scanner.noTasksHint}</p>
                   ) : (
                     <div className="max-h-44 overflow-y-auto custom-scrollbar space-y-1">
                       {assignableTasks.map((task) => {
@@ -435,8 +435,8 @@ export function PrActivityCard({
                             }}
                             className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50 ${
                               isAssigned
-                                ? 'bg-sky-500/15 text-sky-200 border border-sky-400/25'
-                                : 'text-slate-200 hover:bg-white/[0.06] border border-transparent'
+                                ? 'bg-sky-500/15 text-sky-200 border border-sky-400/30'
+                                : 'text-slate-200 hover:bg-white/[0.08] border border-transparent'
                             }`}
                           >
                             <span className="flex items-center gap-2 min-w-0">
@@ -458,7 +458,7 @@ export function PrActivityCard({
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-white/[0.08] space-y-1.5">
+                  <div className="pt-2 border-t border-white/[0.12] space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <input
                         type="text"
@@ -471,7 +471,7 @@ export function PrActivityCard({
                           }
                         }}
                         placeholder={dict.scanner.createTaskQuickPlaceholder}
-                        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
+                        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#152033] border border-slate-600 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-400"
                       />
                       <button
                         type="button"
@@ -506,7 +506,7 @@ export function PrActivityCard({
               onClick={onRemoveFromTask}
               title={removeFromTaskAriaLabel}
               aria-label={removeFromTaskAriaLabel}
-              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-rose-300 hover:bg-rose-500/15 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
             >
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -516,7 +516,7 @@ export function PrActivityCard({
 
       {/* Commits Timeline */}
       {commitRows.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
+        <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-mono text-slate-400 flex items-center gap-2 tabular-nums">
               <GitCommit className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
@@ -571,7 +571,7 @@ export function PrActivityCard({
   if (variant === 'embedded') {
     return (
       <li
-        className={`rounded-xl bg-[#0B0E15]/85 border border-white/[0.08] hover:border-white/[0.16] p-3.5 sm:p-4 min-w-0 transition-[border-color,opacity] duration-200 ${opacityClass}`}
+        className={`rounded-xl bg-[#273549]/85 border border-slate-600/75 hover:border-slate-500 p-3.5 sm:p-4 min-w-0 transition-[border-color,opacity] duration-200 ${opacityClass}`}
       >
         {cardBody}
       </li>

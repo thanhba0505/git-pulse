@@ -376,7 +376,7 @@ function FloatingFieldLayer({ illuminated }: { illuminated: boolean }) {
           ? 'p-1'
           : illuminated
             ? 'px-3 py-2.5 rounded-xl border border-sky-400/65 bg-sky-500/[0.11] shadow-[0_0_26px_rgba(56,189,248,0.22)]'
-            : 'px-3 py-2.5 rounded-xl border border-slate-700/45 bg-slate-900/30 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.45)]';
+            : 'px-3 py-2.5 rounded-xl border border-slate-500/35 bg-slate-800/45 shadow-[0_8px_24px_-8px_rgba(2,6,23,0.45)]';
 
         return (
           <div
@@ -631,7 +631,7 @@ export function InteractiveBackdrop() {
     <div
       ref={containerRef}
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#090B10]"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#0F172A]"
     >
       {/* Layer 1: Stripe-style Ambient Floating Aura Orbs with Inverse Parallax */}
       <div
