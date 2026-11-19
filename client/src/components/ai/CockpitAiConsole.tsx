@@ -275,34 +275,19 @@ export function CockpitAiConsole({
                     <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{dict.aiConsole.addGeminiQuickBtn}</span>
                   </button>
-                ) : availability.reasonCode === 'INVALID_KEY' ||
-                  availability.reasonCode === 'DECRYPT_ERROR' ||
-                  availability.reasonCode === 'NOT_CONNECTED' ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenUpdateAiModal(activeConnection)}
-                    className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer"
-                  >
-                    <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>{dict.aiConsole.updateKeyQuickBtn}</span>
-                  </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={onRefreshModels}
-                    disabled={isRefreshingModels}
-                    className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-medium text-sky-200 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      className={`w-3 h-3 ${isRefreshingModels ? 'animate-spin' : ''}`}
-                      aria-hidden="true"
-                    />
-                    <span>
-                      {isRefreshingModels
-                        ? dict.aiConsole.refreshingModelsBtn
-                        : dict.aiConsole.refreshModelsBtn}
-                    </span>
-                  </button>
+                  (availability.reasonCode === 'INVALID_KEY' ||
+                    availability.reasonCode === 'DECRYPT_ERROR' ||
+                    availability.reasonCode === 'NOT_CONNECTED') && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenUpdateAiModal(activeConnection)}
+                      className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{dict.aiConsole.updateKeyQuickBtn}</span>
+                    </button>
+                  )
                 )}
               </div>
             </div>
