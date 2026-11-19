@@ -131,9 +131,9 @@ export const en: TranslationDictionary = {
     emptyTitle: 'No manual tracking tasks yet',
     emptyDesc:
       'Create a task and explicitly pick related PRs across repositories to track merge progress per deliverable.',
-    allCompletedTitle: 'All tasks are completed',
-    allCompletedDesc:
-      '{count} completed task(s) are currently hidden. Toggle "Show completed tasks" above to review them.',
+    noTasksCount: '0 active tasks',
+    allCompletedTitle: 'All current tasks are completed',
+    allCompletedDesc: '{count} completed task(s) are currently hidden.',
     unassignedTitle: 'Activity not assigned to any task',
     addPrsBtn: 'Assign PRs',
     doneAddPrsBtn: 'Done',

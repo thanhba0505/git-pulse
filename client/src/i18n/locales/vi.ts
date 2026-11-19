@@ -131,9 +131,9 @@ export const vi: TranslationDictionary = {
     emptyTitle: 'Chưa có Task theo dõi nào',
     emptyDesc:
       'Tạo Task thủ công và chủ động chọn các PR liên quan ở nhiều repo để dễ theo dõi tiến độ gộp code theo từng đầu việc.',
+    noTasksCount: '0 Task đang theo dõi',
     allCompletedTitle: 'Tất cả Task hiện tại đã hoàn thành',
-    allCompletedDesc:
-      'Hiện có {count} Task đã hoàn thành đang được ẩn. Nhấn "Hiển thị task đã hoàn thành" để xem lại khi cần.',
+    allCompletedDesc: 'Có {count} Task đã hoàn thành đang được ẩn.',
     unassignedTitle: 'Hoạt động chưa gắn vào Task nào',
     addPrsBtn: 'Chọn thêm PR',
     doneAddPrsBtn: 'Xong',

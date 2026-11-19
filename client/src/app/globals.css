@@ -675,9 +675,9 @@ dialog.gp-top-dialog:modal {
   transform-origin: top center;
   transition:
     grid-template-rows 280ms var(--ease-smooth-out),
-    opacity 200ms var(--ease-smooth-out),
-    translate 240ms var(--ease-smooth-out),
-    scale 240ms var(--ease-smooth-out),
+    opacity 220ms var(--ease-smooth-out),
+    translate 260ms var(--ease-smooth-out),
+    scale 260ms var(--ease-smooth-out),
     margin-bottom 280ms var(--ease-smooth-out);
 }
 
@@ -709,6 +709,44 @@ dialog.gp-top-dialog:modal {
   overflow: hidden;
 }
 
+/* Lockstep-synced All-Completed Banner Slot */
+.gp-collapse-banner-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  translate: 0 -6px;
+  scale: 0.985;
+  margin-bottom: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform-origin: top center;
+  transition:
+    grid-template-rows 280ms var(--ease-smooth-out),
+    opacity 220ms var(--ease-smooth-out),
+    translate 260ms var(--ease-smooth-out),
+    scale 260ms var(--ease-smooth-out),
+    margin-bottom 280ms var(--ease-smooth-out),
+    visibility 280ms;
+  transition-behavior: allow-discrete;
+}
+
+.gp-collapse-banner-slot[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  margin-bottom: 16px;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.gp-collapse-banner-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding-inline: 2px;
+  margin-inline: -2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   dialog.gp-top-dialog,
   dialog.gp-top-dialog::backdrop {
@@ -727,10 +765,16 @@ dialog.gp-top-dialog:modal {
     transition: none !important;
   }
 
-  .gp-task-slot {
+  .gp-task-slot,
+  .gp-collapse-banner-slot {
     translate: none !important;
     scale: none !important;
     transition: opacity 100ms ease-out;
+  }
+
+  .gp-collapse-banner-slot {
+    transition-property: opacity, visibility;
+    transition-duration: 100ms;
   }
 
   @starting-style {

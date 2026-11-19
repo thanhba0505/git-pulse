@@ -224,7 +224,7 @@ export function PrActivityCard({
   };
 
   const opacityClass = disableStandupSelection
-    ? 'opacity-90'
+    ? 'opacity-100'
     : isSelected
       ? 'opacity-100'
       : 'opacity-65';

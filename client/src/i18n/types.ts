@@ -137,6 +137,7 @@ export interface TasksDictionary {
   savingBtn: string;
   emptyTitle: string;
   emptyDesc: string;
+  noTasksCount: string;
   allCompletedTitle: string;
   allCompletedDesc: string;
   unassignedTitle: string;

@@ -162,6 +162,20 @@ export function TaskTrackerView({
     [tasks, showCompleted, exitingTasks],
   );
 
+  const hasPendingExit = useMemo(() => {
+    for (const phase of exitingTasks.values()) {
+      if (phase === 'pending') return true;
+    }
+    return false;
+  }, [exitingTasks]);
+
+  const isAllCompletedBannerOpen =
+    !isCreating &&
+    !showCompleted &&
+    activeTasks.length === 0 &&
+    completedTasks.length > 0 &&
+    !hasPendingExit;
+
   const cancelTaskExit = (ids: string[]) => {
     for (const id of ids) {
       exitEpochRef.current.set(id, (exitEpochRef.current.get(id) ?? 0) + 1);
@@ -339,12 +353,12 @@ export function TaskTrackerView({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col">
       {/* Top Action Bar for Manual Task Tracker */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-slate-400 tabular-nums">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <p className="text-xs text-slate-400 tabular-nums min-w-0 flex-1">
           {tasks.length === 0
-            ? dict.tasks.emptyDesc
+            ? dict.tasks.noTasksCount
             : completedTasks.length > 0
               ? t('tasks.activeCompletedSummary', {
                   active: activeTasks.length,
@@ -353,7 +367,7 @@ export function TaskTrackerView({
               : `${activeTasks.length} ${dict.scanner.groupTask}`}
         </p>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto shrink-0">
           <button
             type="button"
             aria-pressed={showCompleted}
@@ -396,181 +410,205 @@ export function TaskTrackerView({
 
       {/* Inline Manual Task Creation Form */}
       {isCreating && (
-        <ShowcaseCard className="p-5">
-          <form onSubmit={(e) => void handleCreateSubmit(e)} className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.createTitle}</h3>
-              <button
-                type="button"
-                onClick={() => setIsCreating(false)}
-                aria-label={dict.common.cancel}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] cursor-pointer"
-              >
-                <X className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-8 space-y-1.5">
-                <label
-                  htmlFor="new-task-title"
-                  className="block text-xs font-medium text-slate-300"
-                >
-                  {dict.tasks.titleLabel}
-                </label>
-                <input
-                  id="new-task-title"
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder={dict.tasks.titlePlaceholder}
-                  maxLength={160}
-                  autoFocus
-                  className="w-full min-h-[38px] px-3 py-2 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
-                />
-              </div>
-
-              <div className="sm:col-span-4 space-y-1.5">
-                <span className="block text-xs font-medium text-slate-300">
-                  {dict.tasks.colorLabel}
-                </span>
-                <div className="flex items-center gap-2 min-h-[38px]">
-                  {TASK_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setNewColor(color)}
-                      aria-label={color}
-                      aria-pressed={newColor === color}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center border transition-transform cursor-pointer ${
-                        newColor === color
-                          ? 'border-white scale-110'
-                          : 'border-white/20 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <span className={`w-4 h-4 rounded-full ${COLOR_DOT_CLASSES[color]}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
+        <div className="mb-5">
+          <ShowcaseCard className="p-5">
+            <form onSubmit={(e) => void handleCreateSubmit(e)} className="space-y-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-300">
-                  {dict.tasks.selectPrsLabel}
-                </span>
-                <span className="text-xs font-mono text-sky-400 tabular-nums">
-                  {t('tasks.selectedPrsHint', { count: pickedKeysForNew.size })}
-                </span>
+                <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.createTitle}</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  aria-label={dict.common.cancel}
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] cursor-pointer"
+                >
+                  <X className="w-4 h-4" aria-hidden="true" />
+                </button>
               </div>
 
-              {prOnlyActivities.length === 0 ? (
-                <p className="text-xs text-slate-500 py-2">{dict.tasks.noAvailablePrs}</p>
-              ) : (
-                <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#0C0E14]/80 border border-white/[0.08] p-2.5">
-                  {prOnlyActivities.map((pr) => {
-                    const key = getPrKey(pr);
-                    const checked = pickedKeysForNew.has(key);
-                    const chip = getStateChip(pr.state);
-                    const shortRepo = pr.repo.includes('/')
-                      ? pr.repo.split('/')[1] || pr.repo
-                      : pr.repo;
-                    return (
-                      <label
-                        key={key}
-                        className={`flex items-start gap-2.5 p-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                          checked
-                            ? 'bg-sky-500/10 border border-sky-400/25'
-                            : 'hover:bg-white/[0.04] border border-transparent'
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-8 space-y-1.5">
+                  <label
+                    htmlFor="new-task-title"
+                    className="block text-xs font-medium text-slate-300"
+                  >
+                    {dict.tasks.titleLabel}
+                  </label>
+                  <input
+                    id="new-task-title"
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder={dict.tasks.titlePlaceholder}
+                    maxLength={160}
+                    autoFocus
+                    className="w-full min-h-[38px] px-3 py-2 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
+                  />
+                </div>
+
+                <div className="sm:col-span-4 space-y-1.5">
+                  <span className="block text-xs font-medium text-slate-300">
+                    {dict.tasks.colorLabel}
+                  </span>
+                  <div className="flex items-center gap-2 min-h-[38px]">
+                    {TASK_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewColor(color)}
+                        aria-label={color}
+                        aria-pressed={newColor === color}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center border transition-transform cursor-pointer ${
+                          newColor === color
+                            ? 'border-white scale-110'
+                            : 'border-white/20 opacity-75 hover:opacity-100'
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            setPickedKeysForNew((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(key)) next.delete(key);
-                              else next.add(key);
-                              return next;
-                            });
-                          }}
-                          className="mt-0.5 rounded accent-sky-500 cursor-pointer"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-sky-400">{shortRepo}</span>
-                            {pr.activityType === 'pr' && (
-                              <span className="font-mono text-slate-400">#{pr.number}</span>
-                            )}
-                            <span className={`px-1.5 py-0.5 rounded border text-xs ${chip.cls}`}>
-                              {chip.label}
-                            </span>
-                          </div>
-                          <p className="text-slate-200 mt-0.5 break-words">{pr.title}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
+                        <span className={`w-4 h-4 rounded-full ${COLOR_DOT_CLASSES[color]}`} />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-slate-300">
+                    {dict.tasks.selectPrsLabel}
+                  </span>
+                  <span className="text-xs font-mono text-sky-400 tabular-nums">
+                    {t('tasks.selectedPrsHint', { count: pickedKeysForNew.size })}
+                  </span>
+                </div>
+
+                {prOnlyActivities.length === 0 ? (
+                  <p className="text-xs text-slate-500 py-2">{dict.tasks.noAvailablePrs}</p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#0C0E14]/80 border border-white/[0.08] p-2.5">
+                    {prOnlyActivities.map((pr) => {
+                      const key = getPrKey(pr);
+                      const checked = pickedKeysForNew.has(key);
+                      const chip = getStateChip(pr.state);
+                      const shortRepo = pr.repo.includes('/')
+                        ? pr.repo.split('/')[1] || pr.repo
+                        : pr.repo;
+                      return (
+                        <label
+                          key={key}
+                          className={`flex items-start gap-2.5 p-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                            checked
+                              ? 'bg-sky-500/10 border border-sky-400/25'
+                              : 'hover:bg-white/[0.04] border border-transparent'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setPickedKeysForNew((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              });
+                            }}
+                            className="mt-0.5 rounded accent-sky-500 cursor-pointer"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-sky-400">{shortRepo}</span>
+                              {pr.activityType === 'pr' && (
+                                <span className="font-mono text-slate-400">#{pr.number}</span>
+                              )}
+                              <span className={`px-1.5 py-0.5 rounded border text-xs ${chip.cls}`}>
+                                {chip.label}
+                              </span>
+                            </div>
+                            <p className="text-slate-200 mt-0.5 break-words">{pr.title}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  className="min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] cursor-pointer"
+                >
+                  {dict.common.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newTitle.trim() || isSavingNew}
+                  className="inline-flex items-center gap-1.5 min-h-[34px] px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 disabled:opacity-45 cursor-pointer"
+                >
+                  {isSavingNew && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                  )}
+                  <span>{isSavingNew ? dict.tasks.savingBtn : dict.tasks.saveTaskBtn}</span>
+                </button>
+              </div>
+            </form>
+          </ShowcaseCard>
+        </div>
+      )}
+
+      {/* Compact Lockstep-synced All-Completed Banner */}
+      <div
+        data-open={isAllCompletedBannerOpen ? 'true' : 'false'}
+        aria-hidden={!isAllCompletedBannerOpen}
+        className="gp-collapse-banner-slot"
+      >
+        <div className="gp-collapse-banner-inner">
+          <ShowcaseCard className="p-4 border border-emerald-500/20 bg-emerald-500/[0.04]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-100">
+                    {dict.tasks.allCompletedTitle}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {t('tasks.allCompletedDesc', { count: completedTasks.length })}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsCreating(false)}
-                className="min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] cursor-pointer"
+                tabIndex={isAllCompletedBannerOpen ? undefined : -1}
+                disabled={!isAllCompletedBannerOpen}
+                onClick={handleToggleShowCompleted}
+                className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-emerald-200 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 transition-colors cursor-pointer shrink-0 disabled:pointer-events-none"
               >
-                {dict.common.cancel}
-              </button>
-              <button
-                type="submit"
-                disabled={!newTitle.trim() || isSavingNew}
-                className="inline-flex items-center gap-1.5 min-h-[34px] px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 disabled:opacity-45 cursor-pointer"
-              >
-                {isSavingNew && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-                <span>{isSavingNew ? dict.tasks.savingBtn : dict.tasks.saveTaskBtn}</span>
+                <Eye className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{dict.tasks.showCompletedBtn}</span>
               </button>
             </div>
-          </form>
+          </ShowcaseCard>
+        </div>
+      </div>
+
+      {/* Empty State when no tasks exist at all */}
+      {tasks.length === 0 && !isCreating && (
+        <ShowcaseCard className="p-8 text-center mb-5 gp-fade-in">
+          <div className="w-11 h-11 mx-auto rounded-xl bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 mb-3">
+            <FolderKanban className="w-5 h-5" aria-hidden="true" />
+          </div>
+          <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.emptyTitle}</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
+            {dict.tasks.emptyDesc}
+          </p>
         </ShowcaseCard>
       )}
 
       {/* Tasks List */}
-      {renderedTasks.length === 0 && !isCreating ? (
-        completedTasks.length > 0 ? (
-          <ShowcaseCard className="p-8 text-center gp-fade-in">
-            <div className="w-11 h-11 mx-auto rounded-xl bg-emerald-500/10 border border-emerald-400/25 flex items-center justify-center text-emerald-400 mb-3">
-              <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
-            </div>
-            <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.allCompletedTitle}</h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
-              {t('tasks.allCompletedDesc', { count: completedTasks.length })}
-            </p>
-            <button
-              type="button"
-              onClick={handleToggleShowCompleted}
-              className="mt-4 inline-flex items-center gap-1.5 min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-emerald-200 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/35 transition-colors cursor-pointer"
-            >
-              <Eye className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{dict.tasks.showCompletedBtn}</span>
-            </button>
-          </ShowcaseCard>
-        ) : (
-          <ShowcaseCard className="p-8 text-center gp-fade-in">
-            <div className="w-11 h-11 mx-auto rounded-xl bg-sky-500/10 border border-sky-400/25 flex items-center justify-center text-sky-400 mb-3">
-              <FolderKanban className="w-5 h-5" aria-hidden="true" />
-            </div>
-            <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.emptyTitle}</h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
-              {dict.tasks.emptyDesc}
-            </p>
-          </ShowcaseCard>
-        )
-      ) : (
-        <div className="-mb-4">
+      {renderedTasks.length > 0 && (
+        <div className="m-0 p-0">
           {renderedTasks.map((task) => {
             const borderClass = COLOR_BORDER_CLASSES[task.color] || COLOR_BORDER_CLASSES.sky;
             const dotClass = COLOR_DOT_CLASSES[task.color] || COLOR_DOT_CLASSES.sky;
@@ -866,14 +904,13 @@ export function TaskTrackerView({
                       <ul role="list" className="space-y-2.5 pt-2 border-t border-white/[0.06]">
                         {resolvedItems.map(({ item, live, state, title }) => {
                           const targetPr = live ?? buildFallbackActivity(item, title, state);
-                          const liveKey = live ? getPrKey(live) : null;
                           return (
                             <PrActivityCard
                               key={`${item.repo}#${item.prNumber}`}
                               pr={targetPr}
                               variant="embedded"
-                              isSelected={liveKey ? selectedPrKeys.has(liveKey) : false}
-                              disableStandupSelection={!liveKey}
+                              isSelected={true}
+                              disableStandupSelection={true}
                               statusNoteTag={!live ? dict.tasks.outOfWindowTag : undefined}
                               excludeTaskId={task.id}
                               hideTaskAssignMenu={true}
@@ -903,7 +940,7 @@ export function TaskTrackerView({
 
       {/* Unassigned Fetched PRs Below */}
       {unassignedActivities.length > 0 && (
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-1">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
               {dict.tasks.unassignedTitle} ({unassignedActivities.length})
