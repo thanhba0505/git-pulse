@@ -212,7 +212,6 @@ export default function HomePage() {
 
   const [bullets, setBullets] = useState<string[]>([]);
   const [modelUsed, setModelUsed] = useState<string>('');
-  const [generatedLanguage, setGeneratedLanguage] = useState<'vi' | 'en'>('vi');
   const availabilityCheckIdRef = useRef(0);
 
   const selectedActivities = useMemo(() => {
@@ -884,7 +883,6 @@ export default function HomePage() {
           ? `${dict.aiConsole.geminiProviderLabel} (${activeConn.label}) • ${res.modelUsed}`
           : `${dict.aiConsole.githubModelsLabel} • ${res.modelUsed}`,
       );
-      setGeneratedLanguage(reportLanguage);
       showToast({ title: dict.toasts.standupReady, variant: 'success' });
     } catch (err) {
       setAiError((err as Error).message || dict.aiConsole.generateFailed);
@@ -1157,7 +1155,6 @@ export default function HomePage() {
                     bullets={bullets}
                     isGenerating={isGenerating}
                     modelUsed={modelUsed}
-                    reportLanguage={generatedLanguage}
                     onUpdateBullets={setBullets}
                   />
                 </div>

@@ -225,19 +225,8 @@ export interface StandupDockDictionary {
   generatingTitle: string;
   generatingSubtitle: string;
   subtitle: string;
-  copyBullet: string;
-  copyParabol: string;
-  copySlack: string;
-  copyMarkdown: string;
-  copyJira: string;
   copiedToast: string;
   editPlaceholder: string;
-  parabolYesterday: string;
-  parabolToday: string;
-  parabolBlockers: string;
-  slackHeader: string;
-  markdownHeader: string;
-  jiraHeader: string;
 }
 
 export interface CommandPaletteDictionary {

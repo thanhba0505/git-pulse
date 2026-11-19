@@ -48,7 +48,7 @@ export function ReportHistoryModal({ isOpen, onClose }: ReportHistoryModalProps)
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     showToast({
-      title: t('standupDock.copiedToast', { format: dict.standupDock.copyBullet }),
+      title: dict.standupDock.copiedToast,
       variant: 'success',
     });
     setTimeout(() => setCopiedId(null), 2000);
