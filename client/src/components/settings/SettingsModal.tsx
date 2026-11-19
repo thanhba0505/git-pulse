@@ -414,7 +414,7 @@ export function SettingsModal({
                       }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        className={`w-2 h-2 rounded-full shrink-0 ${
                           active ? style.dotClass : 'bg-slate-400'
                         }`}
                         aria-hidden="true"

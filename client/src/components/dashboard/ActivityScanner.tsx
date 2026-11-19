@@ -330,13 +330,14 @@ export function ActivityScanner({
             </div>
           </div>
 
-          {/* Grouping Mode Switcher + State Filter Bar */}
-          <div className="pt-3 border-t border-white/[0.12] flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Grouping Mode Switcher + Selection Toolbar */}
+          <div className="pt-3 border-t border-white/[0.12] flex flex-wrap items-center justify-between gap-3">
             <SegmentedControl
               value={groupBy}
               onChange={onGroupByChange}
               ariaLabel={dict.scanner.groupByLabel}
               size="sm"
+              className="max-w-full overflow-x-auto"
               options={[
                 { value: 'owner', label: dict.scanner.groupOwner },
                 { value: 'task', label: dict.scanner.groupTask },
@@ -346,94 +347,14 @@ export function ActivityScanner({
             />
 
             {groupBy !== 'task' && activities.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {(
-                  [
-                    { key: 'ALL', label: dict.scanner.stateFilterAll },
-                    { key: 'draft', label: dict.scanner.stateDraft },
-                    { key: 'open', label: dict.scanner.stateOpen },
-                    { key: 'merged', label: dict.scanner.stateMerged },
-                    { key: 'closed', label: dict.scanner.stateClosed },
-                    { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
-                  ] as Array<{ key: StateFilter; label: string }>
-                ).map((item) => {
-                  const isActive = stateFilter === item.key;
-                  const stateStyle = item.key !== 'ALL' ? getPrStateStyle(item.key) : null;
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setStateFilter(item.key)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                        isActive
-                          ? stateStyle
-                            ? stateStyle.badgeClass
-                            : 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                          : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
-                      }`}
-                    >
-                      {stateStyle && (
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${stateStyle.dotClass}`}
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Repo Filter Pills & Selection Toolbar */}
-          {groupBy !== 'task' && activities.length > 0 && (
-            <div className="pt-3 border-t border-white/[0.1] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {uniqueRepos.length > 1 ? (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => onRepoFilterChange('ALL')}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                      repoFilter === 'ALL'
-                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                        : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
-                    }`}
-                  >
-                    {dict.scanner.allRepos}
-                  </button>
-                  {uniqueRepos.map((repo) => {
-                    const shortName = repo.includes('/') ? repo.split('/')[1] || repo : repo;
-                    const active = repoFilter === repo;
-                    return (
-                      <button
-                        key={repo}
-                        type="button"
-                        onClick={() => onRepoFilterChange(repo)}
-                        title={repo}
-                        className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors cursor-pointer max-w-[180px] truncate ${
-                          active
-                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                            : 'bg-white/[0.06] text-slate-200 hover:text-white border border-white/[0.14]'
-                        }`}
-                      >
-                        {shortName}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <span className="text-xs font-mono text-slate-400 truncate">{uniqueRepos[0]}</span>
-              )}
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-                <span className="text-slate-400 tabular-nums whitespace-nowrap">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs ml-auto">
+                <span className="text-slate-300 tabular-nums whitespace-nowrap">
                   {t('scanner.selectedSummary', {
                     selected: selectedInVisible,
                     total: visibleActivities.length,
                   })}
                 </span>
-                <div className="flex items-center gap-2 sm:border-l sm:border-slate-700 sm:pl-3 shrink-0">
+                <div className="flex items-center gap-2 border-l border-slate-600/80 pl-3 shrink-0">
                   <button
                     type="button"
                     onClick={onSelectAllPrs}
@@ -453,6 +374,92 @@ export function ActivityScanner({
                   </button>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* State & Repo Filter Bar */}
+          {groupBy !== 'task' && activities.length > 0 && (
+            <div className="pt-3 border-t border-white/[0.1] space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(
+                    [
+                      { key: 'ALL', label: dict.scanner.stateFilterAll },
+                      { key: 'draft', label: dict.scanner.stateDraft },
+                      { key: 'open', label: dict.scanner.stateOpen },
+                      { key: 'merged', label: dict.scanner.stateMerged },
+                      { key: 'closed', label: dict.scanner.stateClosed },
+                      { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
+                    ] as Array<{ key: StateFilter; label: string }>
+                  ).map((item) => {
+                    const isActive = stateFilter === item.key;
+                    const stateStyle = item.key !== 'ALL' ? getPrStateStyle(item.key) : null;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setStateFilter(item.key)}
+                        className={`inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? stateStyle
+                              ? stateStyle.badgeClass
+                              : 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                            : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
+                        }`}
+                      >
+                        {stateStyle && (
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${stateStyle.dotClass}`}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {uniqueRepos.length === 1 && (
+                  <span className="text-xs font-mono text-slate-400 truncate">
+                    {uniqueRepos[0]}
+                  </span>
+                )}
+              </div>
+
+              {uniqueRepos.length > 1 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => onRepoFilterChange('ALL')}
+                    className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      repoFilter === 'ALL'
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                        : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
+                    }`}
+                  >
+                    {dict.scanner.allRepos}
+                  </button>
+                  {uniqueRepos.map((repo) => {
+                    const shortName = repo.includes('/') ? repo.split('/')[1] || repo : repo;
+                    const active = repoFilter === repo;
+                    return (
+                      <button
+                        key={repo}
+                        type="button"
+                        onClick={() => onRepoFilterChange(repo)}
+                        title={repo}
+                        className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer max-w-[180px] truncate ${
+                          active
+                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                            : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
+                        }`}
+                      >
+                        {shortName}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

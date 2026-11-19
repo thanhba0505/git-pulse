@@ -6,17 +6,18 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        canvas: '#090B10',
+        canvas: '#0F172A',
         surface: {
-          DEFAULT: '#11141C',
-          elevated: '#161A24',
-          hover: '#191E2A',
-          recessed: '#0C0E14',
-          overlay: '#141821',
+          DEFAULT: '#1E293B',
+          elevated: '#253349',
+          hover: '#273549',
+          recessed: '#152033',
+          overlay: '#1E293B',
         },
       },
       fontFamily: {
