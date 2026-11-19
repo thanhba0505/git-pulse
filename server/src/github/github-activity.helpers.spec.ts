@@ -28,6 +28,20 @@ describe('github-activity.helpers', () => {
       expect(resolvePrState({ state: 'OPEN', isDraft: false, merged: false })).toBe('open');
       expect(resolvePrState({ state: 'CLOSED', isDraft: false, merged: false })).toBe('closed');
     });
+
+    it('resolves closed or merged precedence even when GitHub still keeps isDraft true', () => {
+      expect(resolvePrState({ state: 'CLOSED', isDraft: true, merged: false })).toBe('closed');
+      expect(
+        resolvePrState({
+          state: 'CLOSED',
+          isDraft: true,
+          merged: false,
+          mergedAt: null,
+        }),
+      ).toBe('closed');
+      expect(resolvePrState({ state: 'MERGED', isDraft: true, merged: true })).toBe('merged');
+      expect(resolvePrState({ state: 'MERGED', isDraft: true, merged: false })).toBe('merged');
+    });
   });
 
   describe('resolveOwnerType & matchesWorkspacePreferences', () => {

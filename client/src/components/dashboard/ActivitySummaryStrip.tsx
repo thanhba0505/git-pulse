@@ -58,6 +58,7 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
   const openPrs = activities.filter((p) => p.state.toLowerCase() === 'open').length;
   const draftPrs = activities.filter((p) => p.state.toLowerCase() === 'draft').length;
   const mergedPrs = activities.filter((p) => p.state.toLowerCase() === 'merged').length;
+  const closedPrs = activities.filter((p) => p.state.toLowerCase() === 'closed').length;
   const totalCommits = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
   const activeRepos = new Set(activities.map((pr) => pr.repo)).size;
 
@@ -80,6 +81,7 @@ export function ActivitySummaryStrip({ activities }: ActivitySummaryStripProps) 
                 draft: draftPrs,
                 merged: mergedPrs,
               })}
+              {closedPrs > 0 ? ` • ${closedPrs} ${dict.scanner.stateClosed}` : ''}
             </p>
           </div>
           <div

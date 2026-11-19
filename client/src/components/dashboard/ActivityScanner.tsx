@@ -353,6 +353,7 @@ export function ActivityScanner({
                     { key: 'draft', label: dict.scanner.stateDraft },
                     { key: 'open', label: dict.scanner.stateOpen },
                     { key: 'merged', label: dict.scanner.stateMerged },
+                    { key: 'closed', label: dict.scanner.stateClosed },
                     { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
                   ] as Array<{ key: StateFilter; label: string }>
                 ).map((item) => (

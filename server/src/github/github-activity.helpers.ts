@@ -130,10 +130,17 @@ export function resolvePrState(input: {
   merged?: boolean;
   mergedAt?: string | null;
 }): Exclude<PrState, 'direct_commits'> {
-  if (input.isDraft) return 'draft';
-  if (input.merged || Boolean(input.mergedAt)) return 'merged';
-  if (input.state.toUpperCase() === 'OPEN') return 'open';
-  return 'closed';
+  const normalizedState = input.state.toUpperCase();
+  if (input.merged || Boolean(input.mergedAt) || normalizedState === 'MERGED') {
+    return 'merged';
+  }
+  if (normalizedState === 'CLOSED') {
+    return 'closed';
+  }
+  if (input.isDraft) {
+    return 'draft';
+  }
+  return 'open';
 }
 
 export function resolveOwnerType(
