@@ -433,10 +433,10 @@ export function PrActivityCard({
                                 setBusyTaskId(null);
                               }
                             }}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50 ${
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs border transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
                               isAssigned
-                                ? 'bg-sky-500/15 text-sky-200 border border-sky-400/30'
-                                : 'text-slate-200 hover:bg-white/[0.08] border border-transparent'
+                                ? 'bg-gradient-to-r from-sky-500/[0.16] to-sky-500/[0.06] text-sky-200 font-semibold border-sky-400/30'
+                                : 'text-slate-200 hover:bg-white/[0.07] border-transparent hover:border-white/[0.08]'
                             }`}
                           >
                             <span className="flex items-center gap-2 min-w-0">
@@ -447,10 +447,12 @@ export function PrActivityCard({
                               <span className="truncate">{task.title}</span>
                             </span>
                             {isAssigned && (
-                              <Check
-                                className="w-3.5 h-3.5 text-sky-400 shrink-0"
+                              <span
                                 aria-hidden="true"
-                              />
+                                className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 shrink-0"
+                              >
+                                <Check className="w-3 h-3" />
+                              </span>
                             )}
                           </button>
                         );
@@ -458,7 +460,7 @@ export function PrActivityCard({
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-white/[0.12] space-y-1.5">
+                  <div className="pt-2 border-t border-white/[0.1] space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <input
                         type="text"
@@ -471,7 +473,7 @@ export function PrActivityCard({
                           }
                         }}
                         placeholder={dict.scanner.createTaskQuickPlaceholder}
-                        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#152033] border border-slate-600 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-400"
+                        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#152033] border border-slate-600 text-xs text-slate-100 placeholder:text-slate-400 focus-visible:outline-none focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/30"
                       />
                       <button
                         type="button"

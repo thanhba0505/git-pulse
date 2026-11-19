@@ -1,6 +1,6 @@
 'use client';
 
-import { RefObject, useCallback, useLayoutEffect, useState } from 'react';
+import { RefObject, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
 export interface FloatingPosition {
   style: React.CSSProperties;
@@ -136,4 +136,70 @@ export function useFloatingPosition({
   }, [isOpen, compute]);
 
   return isOpen ? position : null;
+}
+
+/**
+ * Retains portal mounting during CSS exit transitions so menus/selects animate smoothly on close.
+ */
+export function usePopoverPresence(
+  isOpen: boolean,
+  panelRef: RefObject<HTMLElement | null>,
+): { shouldRender: boolean; isClosing: boolean } {
+  const [rendered, setRendered] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRendered(true);
+      return;
+    }
+
+    if (!rendered) return;
+
+    let cancelled = false;
+    let rafId = 0;
+    let settleTimer = 0;
+    const panel = panelRef.current;
+
+    const finish = () => {
+      if (!cancelled) {
+        setRendered(false);
+      }
+    };
+
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fallbackTimer = window.setTimeout(finish, reducedMotion ? 100 : 190);
+
+    rafId = window.requestAnimationFrame(() => {
+      if (cancelled) return;
+      const animations = panel?.getAnimations ? panel.getAnimations({ subtree: false }) : [];
+      if (animations.length > 0) {
+        void Promise.allSettled(animations.map((a) => a.finished)).then(() => {
+          window.clearTimeout(fallbackTimer);
+          finish();
+        });
+      } else {
+        settleTimer = window.setTimeout(
+          () => {
+            window.clearTimeout(fallbackTimer);
+            finish();
+          },
+          reducedMotion ? 85 : 130,
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(settleTimer);
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [isOpen, rendered, panelRef]);
+
+  return {
+    shouldRender: isOpen || rendered,
+    isClosing: !isOpen && rendered,
+  };
 }

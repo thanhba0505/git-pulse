@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Plus } from 'lucide-react';
-import { useFloatingPosition } from '../../lib/use-floating-position';
+import { useFloatingPosition, usePopoverPresence } from '../../lib/use-floating-position';
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -56,14 +56,21 @@ export function Select<T extends string>({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listboxRef = useRef<HTMLUListElement>(null);
 
+  const { shouldRender, isClosing } = usePopoverPresence(isOpen, listboxRef);
   const floatingPos = useFloatingPosition({
-    isOpen,
+    isOpen: shouldRender,
     anchorRef: triggerRef,
     align: align === 'right' ? 'end' : 'start',
     gap: 6,
-    estimatedHeight: 240,
+    estimatedHeight: 260,
     matchWidth: true,
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const targetEl = document.getElementById(`${listboxId}-opt-${highlightedIndex}`);
+    targetEl?.scrollIntoView({ block: 'nearest' });
+  }, [isOpen, highlightedIndex, listboxId]);
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -210,24 +217,32 @@ export function Select<T extends string>({
         disabled={disabled}
         onClick={() => (isOpen ? closeMenu() : openMenu())}
         onKeyDown={handleKeyDown}
-        className={`flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-lg bg-[#152033] border text-left text-xs sm:text-sm transition-colors outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`group flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#152033]/95 border text-left text-xs sm:text-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.99] motion-reduce:active:scale-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen
-            ? 'border-sky-400 ring-2 ring-sky-500/25 text-slate-50'
-            : 'border-slate-600/90 hover:border-slate-500 hover:bg-[#19253B] text-slate-100 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25'
+            ? 'border-sky-400/80 bg-[#18263D] ring-2 ring-sky-500/25 shadow-[0_0_0_3px_rgba(14,165,233,0.12)] text-slate-50'
+            : 'border-slate-600/85 hover:border-slate-500/90 hover:bg-[#19263D] text-slate-100 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25'
         }`}
       >
         <span id={valueId} className="truncate font-medium">
           {selectedOption ? selectedOption.label : placeholder || ''}
         </span>
-        <ChevronDown
-          className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-150 ${
-            isOpen ? 'rotate-180 text-sky-400' : ''
+        <span
+          className={`inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors duration-150 ${
+            isOpen
+              ? 'bg-sky-500/15 text-sky-300'
+              : 'text-slate-400 group-hover:text-slate-200 group-hover:bg-white/[0.06]'
           }`}
           aria-hidden="true"
-        />
+        >
+          <ChevronDown
+            className={`w-4 h-4 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </span>
       </button>
 
-      {isOpen &&
+      {shouldRender &&
         floatingPos &&
         createPortal(
           <ul
@@ -235,8 +250,12 @@ export function Select<T extends string>({
             id={listboxId}
             role="listbox"
             aria-labelledby={label ? labelId : valueId}
+            data-state={isClosing ? 'closing' : 'open'}
+            data-open-upward={floatingPos.openUpward ? 'true' : 'false'}
             style={floatingPos.style}
-            className="gp-glass-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in"
+            className={`gp-menu-surface gp-menu-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl py-1.5 px-1 space-y-0.5 ${
+              floatingPos.openUpward ? 'origin-bottom' : 'origin-top'
+            }`}
           >
             {options.map((option, idx) => {
               const isSelected = !option.isAction && option.value === value;
@@ -251,70 +270,101 @@ export function Select<T extends string>({
                       : 'bg-sky-500/15 text-sky-300 border-sky-500/30';
 
               return (
-                <li
-                  key={option.value}
-                  id={`${listboxId}-opt-${idx}`}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={option.disabled}
-                  onMouseEnter={() => {
-                    if (!option.disabled) setHighlightedIndex(idx);
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                  }}
-                  onClick={() => handleSelectOption(option)}
-                  className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-colors select-none ${
-                    option.isAction ? 'mt-1 pt-2.5 border-t border-slate-700/80 rounded-t-none' : ''
-                  } ${option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'} ${
-                    isSelected
-                      ? 'bg-sky-500/15 text-slate-50'
-                      : isHighlighted
-                        ? option.isAction
-                          ? 'bg-sky-500/15 text-sky-200'
-                          : 'bg-slate-700/80 text-slate-50'
-                        : option.isAction
-                          ? 'text-sky-300 hover:bg-sky-500/15'
-                          : 'text-slate-200 hover:bg-slate-700/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    {option.isAction && (
-                      <Plus className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0">
+                <React.Fragment key={option.value}>
+                  {option.isAction && idx > 0 && (
+                    <li
+                      role="separator"
+                      aria-hidden="true"
+                      className="my-1.5 mx-2 h-px bg-white/[0.1]"
+                    />
+                  )}
+                  <li
+                    id={`${listboxId}-opt-${idx}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-disabled={option.disabled}
+                    style={{ '--opt-idx': idx } as React.CSSProperties}
+                    onMouseEnter={() => {
+                      if (!option.disabled) setHighlightedIndex(idx);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                    }}
+                    onClick={() => handleSelectOption(option)}
+                    className={`gp-menu-option-in relative flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg border transition-[background-color,border-color,color,transform] duration-150 select-none ${
+                      option.disabled
+                        ? 'opacity-45 cursor-not-allowed'
+                        : 'cursor-pointer active:scale-[0.985] motion-reduce:active:scale-100'
+                    } ${
+                      option.isAction
+                        ? isHighlighted
+                          ? 'bg-sky-500/15 border-sky-400/35 text-sky-200'
+                          : 'border-transparent text-sky-300 hover:bg-sky-500/12 hover:border-sky-400/25'
+                        : isSelected
+                          ? 'bg-gradient-to-r from-sky-500/[0.16] via-sky-500/[0.10] to-indigo-500/[0.06] border-sky-400/30 text-slate-50'
+                          : isHighlighted
+                            ? 'bg-white/[0.08] border-white/[0.10] text-slate-50'
+                            : 'border-transparent text-slate-200 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {isSelected && (
                         <span
-                          className={`text-xs font-semibold truncate ${
-                            option.isAction
-                              ? 'text-sky-300'
-                              : isSelected
-                                ? 'text-sky-300'
-                                : 'text-slate-100'
-                          }`}
+                          aria-hidden="true"
+                          className="w-[3px] self-stretch my-0.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.65)] shrink-0"
+                        />
+                      )}
+                      {option.isAction && (
+                        <span
+                          aria-hidden="true"
+                          className="w-6 h-6 rounded-md bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-300 shrink-0"
                         >
-                          {option.label}
+                          <Plus className="w-3.5 h-3.5" />
                         </span>
-                        {option.badge && (
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span
-                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border shrink-0 ${badgeToneClass}`}
+                            className={`text-xs truncate ${
+                              option.isAction
+                                ? 'font-semibold text-sky-300'
+                                : isSelected
+                                  ? 'font-semibold text-sky-200'
+                                  : 'font-medium text-slate-100'
+                            }`}
                           >
-                            {option.badge}
+                            {option.label}
                           </span>
+                          {option.badge && (
+                            <span
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border shrink-0 ${badgeToneClass}`}
+                            >
+                              {option.badge}
+                            </span>
+                          )}
+                        </div>
+                        {option.description && (
+                          <div
+                            className={`text-xs mt-0.5 truncate ${
+                              isSelected || isHighlighted ? 'text-slate-300/90' : 'text-slate-400'
+                            }`}
+                          >
+                            {option.description}
+                          </div>
                         )}
                       </div>
-                      {option.description && (
-                        <div className="text-xs text-slate-400 mt-0.5 truncate">
-                          {option.description}
-                        </div>
-                      )}
                     </div>
-                  </div>
 
-                  {isSelected && (
-                    <Check className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
-                  )}
-                </li>
+                    {isSelected && (
+                      <span
+                        aria-hidden="true"
+                        className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 shrink-0"
+                      >
+                        <Check className="w-3 h-3" />
+                      </span>
+                    )}
+                  </li>
+                </React.Fragment>
               );
             })}
           </ul>,
