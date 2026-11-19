@@ -116,6 +116,7 @@ export const api = {
     update: (dto: {
       language?: 'vi' | 'en';
       autoCopyToClipboard?: boolean;
+      customPrompt?: string;
       fetchPreferences?: Partial<FetchPreferences>;
     }) =>
       fetchJson<UserSettingsResponse>('/settings', {

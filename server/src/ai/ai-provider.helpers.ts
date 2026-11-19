@@ -332,7 +332,7 @@ export function normalizeStoredModels(raw: unknown): AiModelOption[] {
 }
 
 /**
- * Builds consistent system & user standup summarization prompts across all AI providers.
+ * Builds consistent system & user commit-based report prompts across all AI providers.
  */
 export function buildStandupPrompts(
   prs: readonly PrItemDto[],
@@ -340,23 +340,44 @@ export function buildStandupPrompts(
   customPrompt?: string,
 ): { systemPrompt: string; userPrompt: string } {
   const lang = language === 'en' ? 'English' : 'Vietnamese';
-  const prDetails = prs
+
+  const commitsByRepo = new Map<string, Set<string>>();
+  for (const item of prs) {
+    const repo = item.repo.trim() || 'workspace';
+    let bucket = commitsByRepo.get(repo);
+    for (const rawCommit of item.commits ?? []) {
+      const msg = rawCommit.trim();
+      if (!msg) continue;
+      if (!bucket) {
+        bucket = new Set<string>();
+        commitsByRepo.set(repo, bucket);
+      }
+      bucket.add(msg);
+    }
+  }
+
+  const commitDetails = Array.from(commitsByRepo.entries())
     .map(
-      (p) =>
-        `Repository: ${p.repo}\nPR Title: ${p.title}\nCommits:\n` +
-        p.commits.map((c) => `  - ${c}`).join('\n'),
+      ([repo, commits]) =>
+        `Repository: ${repo}\nCommits:\n${Array.from(commits)
+          .map((c) => `  - ${c}`)
+          .join('\n')}`,
     )
     .join('\n\n');
 
-  const systemPrompt =
-    customPrompt?.trim() ||
-    `You are an expert tech lead summarizing daily developer progress for standup. ` +
-      `Summarize the provided pull requests and commit titles into 3 to 4 concise bullet points in ${lang}. ` +
-      `Group related work, emphasize actual features, bugfixes and outcomes, skip trivial docs or merge noise. ` +
-      `Each bullet point MUST start with "• " or "- ", be under 20 words, and use clean, natural developer terminology without AI clichés. ` +
-      `Return ONLY the bullet points, no preamble, title, or greeting.`;
+  const trimmedCustom = customPrompt?.trim();
+  const defaultInstruction =
+    `You are an expert tech lead summarizing daily developer work progress. ` +
+    `Summarize the provided git commits into 3 to 4 concise bullet points in ${lang}. ` +
+    `Focus strictly on the commit messages, group related changes, emphasize implemented features, bugfixes, and outcomes, and skip trivial merge or chore noise. ` +
+    `Each bullet point MUST start with "• " or "- ", be under 20 words, and use clean, natural developer terminology without AI clichés. ` +
+    `Return ONLY the bullet points, no preamble, title, or greeting.`;
 
-  const userPrompt = `Pull Requests and Commits worked on today:\n\n${prDetails}`;
+  const systemPrompt = trimmedCustom
+    ? `${trimmedCustom}\n\nOutput language: ${lang}. Summarize strictly based on the provided commit messages.`
+    : defaultInstruction;
+
+  const userPrompt = `Git commits to summarize:\n\n${commitDetails}`;
   return { systemPrompt, userPrompt };
 }
 

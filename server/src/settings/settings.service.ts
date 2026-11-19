@@ -11,6 +11,7 @@ import {
 export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
+  customPrompt: string;
   fetchPreferences: FetchPreferences;
 }
 
@@ -38,6 +39,7 @@ export class SettingsService {
     return {
       language: settings.language,
       autoCopyToClipboard: settings.autoCopyToClipboard,
+      customPrompt: settings.customPrompt ?? '',
       fetchPreferences: normalizeFetchPreferences(settings.fetchPreferences),
     };
   }
@@ -48,6 +50,8 @@ export class SettingsService {
       ...current.fetchPreferences,
       ...(dto.fetchPreferences ?? {}),
     });
+    const normalizedCustomPrompt =
+      dto.customPrompt !== undefined ? dto.customPrompt.trim() || null : undefined;
 
     const updated = await this.prisma.userSettings.upsert({
       where: { userId },
@@ -56,6 +60,7 @@ export class SettingsService {
         ...(dto.autoCopyToClipboard !== undefined
           ? { autoCopyToClipboard: dto.autoCopyToClipboard }
           : {}),
+        ...(normalizedCustomPrompt !== undefined ? { customPrompt: normalizedCustomPrompt } : {}),
         fetchPreferences: mergedPreferences as unknown as Prisma.InputJsonValue,
       },
       create: {
@@ -64,6 +69,7 @@ export class SettingsService {
         githubModelName: 'gpt-4o-mini',
         language: dto.language ?? 'vi',
         autoCopyToClipboard: dto.autoCopyToClipboard ?? true,
+        ...(normalizedCustomPrompt !== undefined ? { customPrompt: normalizedCustomPrompt } : {}),
         fetchPreferences: mergedPreferences as unknown as Prisma.InputJsonValue,
       },
     });
@@ -71,6 +77,7 @@ export class SettingsService {
     return {
       language: updated.language,
       autoCopyToClipboard: updated.autoCopyToClipboard,
+      customPrompt: updated.customPrompt ?? '',
       fetchPreferences: normalizeFetchPreferences(updated.fetchPreferences),
     };
   }

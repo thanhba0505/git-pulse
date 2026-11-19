@@ -657,9 +657,31 @@ export class AiService {
     });
   }
 
+  private async resolveCommitPrompts(userId: string, dto: SummarizeDto) {
+    const persistedPrompt =
+      dto.customPrompt !== undefined
+        ? dto.customPrompt
+        : ((
+            await this.prisma.userSettings?.findUnique({
+              where: { userId },
+              select: { customPrompt: true },
+            })
+          )?.customPrompt ?? undefined);
+
+    return buildStandupPrompts(dto.prs, dto.language, persistedPrompt);
+  }
+
   async summarize(userId: string, dto: SummarizeDto, meta?: RequestMetadata) {
     if (!dto.prs || dto.prs.length === 0) {
-      throw new BadRequestException('Không có Pull Request hoặc Commit nào để tóm tắt.');
+      throw new BadRequestException('Chưa chọn hoạt động hoặc Commit nào để tạo báo cáo.');
+    }
+
+    const totalCommits = dto.prs.reduce(
+      (acc, item) => acc + (item.commits?.filter((c) => c.trim().length > 0).length ?? 0),
+      0,
+    );
+    if (totalCommits === 0) {
+      throw new BadRequestException('Các mục đã chọn hiện chưa có Commit nào để tạo báo cáo.');
     }
 
     const engine: ValidAiEngine = dto.engine || 'GITHUB_MODELS';
@@ -679,11 +701,7 @@ export class AiService {
 
     const apiKey = this.crypto.decrypt(conn.encryptedKey, conn.keyIv, conn.keyTag, userId);
     const model = (dto.model || DEFAULT_GEMINI_MODELS[0].id).trim().replace(/^models\//, '');
-    const { systemPrompt, userPrompt } = buildStandupPrompts(
-      dto.prs,
-      dto.language,
-      dto.customPrompt,
-    );
+    const { systemPrompt, userPrompt } = await this.resolveCommitPrompts(userId, dto);
 
     let response: Response;
     try {
@@ -804,11 +822,7 @@ export class AiService {
     );
     const rawModel = dto.model || 'openai/gpt-4o-mini';
     const model = mapGitHubModelId(rawModel);
-    const { systemPrompt, userPrompt } = buildStandupPrompts(
-      dto.prs,
-      dto.language,
-      dto.customPrompt,
-    );
+    const { systemPrompt, userPrompt } = await this.resolveCommitPrompts(userId, dto);
 
     let response: Response;
     try {

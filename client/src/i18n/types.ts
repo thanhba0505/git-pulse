@@ -166,6 +166,7 @@ export interface AiModelsDictionary {
 export interface AiConsoleDictionary {
   title: string;
   description: string;
+  aiSettingsBtn: string;
   providerLabel: string;
   githubModelsLabel: string;
   githubModelsDesc: string;
@@ -176,9 +177,6 @@ export interface AiConsoleDictionary {
   modelLabel: string;
   refreshModelsBtn: string;
   refreshingModelsBtn: string;
-  outputLangLabel: string;
-  outputLangVi: string;
-  outputLangEn: string;
   checkingAvailability: string;
   availableStatus: string;
   unavailablePrefix: string;
@@ -190,8 +188,25 @@ export interface AiConsoleDictionary {
   generatingBtn: string;
   noActivitiesError: string;
   noSelectedPrsError: string;
+  noSelectedCommitsError: string;
   generateFailed: string;
   models: AiModelsDictionary;
+}
+
+export interface AiSettingsModalDictionary {
+  title: string;
+  subtitle: string;
+  outputLangLabel: string;
+  outputLangVi: string;
+  outputLangEn: string;
+  customPromptLabel: string;
+  customPromptPlaceholder: string;
+  customPromptHint: string;
+  resetPromptBtn: string;
+  charCount: string;
+  saveError: string;
+  saveBtn: string;
+  savingBtn: string;
 }
 
 export interface AiModalDictionary {
@@ -267,6 +282,7 @@ export interface ToastsDictionary {
   aiModelsRefreshError: string;
   reportDeleted: string;
   settingsSaved: string;
+  aiSettingsSaved: string;
   taskCreated: string;
   taskUpdated: string;
   taskCompleted: string;
@@ -445,6 +461,7 @@ export interface TranslationDictionary {
   tasks: TasksDictionary;
   aiConsole: AiConsoleDictionary;
   aiModal: AiModalDictionary;
+  aiSettingsModal: AiSettingsModalDictionary;
   standupDock: StandupDockDictionary;
   commandPalette: CommandPaletteDictionary;
   toasts: ToastsDictionary;

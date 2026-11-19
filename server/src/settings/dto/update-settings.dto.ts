@@ -81,6 +81,12 @@ export class UpdateSettingsDto {
   @IsBoolean()
   autoCopyToClipboard?: boolean;
 
+  @ApiPropertyOptional({ maxLength: 2000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  customPrompt?: string;
+
   @ApiPropertyOptional({ type: UpdateFetchPreferencesDto })
   @IsOptional()
   @ValidateNested()

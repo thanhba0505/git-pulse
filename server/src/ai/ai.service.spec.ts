@@ -347,8 +347,19 @@ describe('AiService', () => {
       connectionId: 'conn-1',
       model: 'gemini-2.5-flash',
       language: 'en',
-      prs: [{ repo: 'org/git-pulse', title: 'feat: gemini byok', commits: ['add vault'] }],
+      customPrompt: 'Group work clearly by module.',
+      prs: [{ repo: 'org/git-pulse', title: 'PR TITLE MUST BE IGNORED', commits: ['add vault'] }],
     });
+
+    const sentPayload = JSON.parse(
+      ((global.fetch as jest.Mock).mock.calls[0][1] as RequestInit).body as string,
+    ) as {
+      systemInstruction: { parts: Array<{ text: string }> };
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    expect(sentPayload.systemInstruction.parts[0].text).toContain('Group work clearly by module.');
+    expect(sentPayload.contents[0].parts[0].text).toContain('add vault');
+    expect(sentPayload.contents[0].parts[0].text).not.toContain('PR TITLE MUST BE IGNORED');
 
     expect(res.engine).toBe('GOOGLE_GEMINI');
     expect(res.bullets).toEqual(['Added Gemini BYOK vault', 'Verified model availability check']);
@@ -360,6 +371,15 @@ describe('AiService', () => {
         }),
       }),
     );
+  });
+
+  it('rejects summarization when selected items contain zero commits', async () => {
+    await expect(
+      aiService.summarize(userId, {
+        engine: 'GOOGLE_GEMINI',
+        prs: [{ repo: 'org/git-pulse', title: 'Empty PR', commits: ['   '] }],
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('previews live models from an unsaved Gemini key without storing it', async () => {

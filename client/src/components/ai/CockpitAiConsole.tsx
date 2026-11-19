@@ -12,6 +12,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Settings,
   Sparkles,
 } from 'lucide-react';
 
@@ -25,8 +26,8 @@ interface CockpitAiConsoleProps {
   githubModels: readonly AiModelOption[];
   selectedModel: string;
   onModelChange: (model: string) => void;
-  language: 'vi' | 'en';
-  onLanguageChange: (lang: 'vi' | 'en') => void;
+  hasCustomPrompt: boolean;
+  onOpenAiSettings: () => void;
   availability: AiAvailabilityState;
   onRecheckAvailability: () => void;
   onRefreshModels: () => void;
@@ -37,6 +38,7 @@ interface CockpitAiConsoleProps {
   isGenerating: boolean;
   error?: string | null;
   selectedPrCount: number;
+  selectedCommitCount: number;
 }
 
 export function CockpitAiConsole({
@@ -46,8 +48,8 @@ export function CockpitAiConsole({
   githubModels,
   selectedModel,
   onModelChange,
-  language,
-  onLanguageChange,
+  hasCustomPrompt,
+  onOpenAiSettings,
   availability,
   onRecheckAvailability,
   onRefreshModels,
@@ -58,6 +60,7 @@ export function CockpitAiConsole({
   isGenerating,
   error,
   selectedPrCount,
+  selectedCommitCount,
 }: CockpitAiConsoleProps) {
   const { dict, t } = useTranslation();
 
@@ -123,14 +126,6 @@ export function CockpitAiConsole({
     ];
   }, [activeConnection, githubModels, dict]);
 
-  const outputLanguageOptions = useMemo<readonly SelectOption<'vi' | 'en'>[]>(
-    () => [
-      { value: 'vi', label: dict.aiConsole.outputLangVi },
-      { value: 'en', label: dict.aiConsole.outputLangEn },
-    ],
-    [dict],
-  );
-
   const handleToolChange = (nextKey: string) => {
     if (nextKey === ADD_AI_PROVIDER_ACTION) {
       onOpenAddAiModal();
@@ -147,24 +142,42 @@ export function CockpitAiConsole({
 
   const ctaText = isGenerating
     ? dict.aiConsole.generatingBtn
-    : hasSelection
-      ? t('aiConsole.generateSelectedBtn', { count: selectedPrCount })
+    : selectedCommitCount > 0
+      ? t('aiConsole.generateSelectedBtn', { count: selectedCommitCount })
       : dict.aiConsole.generateBtn;
 
   return (
     <ShowcaseCard as="section" aria-labelledby="ai-console-heading" className="p-5 sm:p-6">
       <div className="space-y-4">
-        {/* Header */}
-        <div className="border-b border-slate-700/80 pb-4">
-          <h2
-            id="ai-console-heading"
-            className="text-base font-semibold text-slate-100 tracking-tight"
+        {/* Header + AI Prompt & Language Settings Trigger */}
+        <div className="flex items-start justify-between gap-3 border-b border-slate-700/80 pb-4">
+          <div className="min-w-0">
+            <h2
+              id="ai-console-heading"
+              className="text-base font-semibold text-slate-100 tracking-tight"
+            >
+              {dict.aiConsole.title}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              {dict.aiConsole.description}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenAiSettings}
+            title={dict.aiConsole.aiSettingsBtn}
+            aria-label={dict.aiConsole.aiSettingsBtn}
+            className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.14] hover:border-white/[0.24] transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
           >
-            {dict.aiConsole.title}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            {dict.aiConsole.description}
-          </p>
+            <Settings className="w-4 h-4" aria-hidden="true" />
+            {hasCustomPrompt && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.85)]"
+              />
+            )}
+          </button>
         </div>
 
         {/* AI Provider Select */}
@@ -177,46 +190,35 @@ export function CockpitAiConsole({
           disabled={isGenerating || isRefreshingModels}
         />
 
-        {/* Model & Report Language Select Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Select
-            id="ai-model-select"
-            label={dict.aiConsole.modelLabel}
-            labelAction={
-              <button
-                type="button"
-                onClick={onRefreshModels}
-                disabled={isGenerating || isRefreshingModels}
-                title={dict.aiConsole.refreshModelsBtn}
-                aria-label={dict.aiConsole.refreshModelsBtn}
-                className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`w-3 h-3 ${isRefreshingModels ? 'animate-spin' : ''}`}
-                  aria-hidden="true"
-                />
-                <span>
-                  {isRefreshingModels
-                    ? dict.aiConsole.refreshingModelsBtn
-                    : dict.aiConsole.refreshModelsBtn}
-                </span>
-              </button>
-            }
-            value={selectedModel}
-            options={modelOptions}
-            onChange={onModelChange}
-            disabled={isGenerating || isRefreshingModels}
-          />
-
-          <Select
-            id="ai-language-select"
-            label={dict.aiConsole.outputLangLabel}
-            value={language}
-            options={outputLanguageOptions}
-            onChange={onLanguageChange}
-            disabled={isGenerating}
-          />
-        </div>
+        {/* Full-Width AI Model Select */}
+        <Select
+          id="ai-model-select"
+          label={dict.aiConsole.modelLabel}
+          labelAction={
+            <button
+              type="button"
+              onClick={onRefreshModels}
+              disabled={isGenerating || isRefreshingModels}
+              title={dict.aiConsole.refreshModelsBtn}
+              aria-label={dict.aiConsole.refreshModelsBtn}
+              className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-3 h-3 ${isRefreshingModels ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              <span>
+                {isRefreshingModels
+                  ? dict.aiConsole.refreshingModelsBtn
+                  : dict.aiConsole.refreshModelsBtn}
+              </span>
+            </button>
+          }
+          value={selectedModel}
+          options={modelOptions}
+          onChange={onModelChange}
+          disabled={isGenerating || isRefreshingModels}
+        />
 
         {/* Live Model Availability Status */}
         <div aria-live="polite">

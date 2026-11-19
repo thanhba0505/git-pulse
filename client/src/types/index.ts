@@ -102,6 +102,7 @@ export interface FetchPreferences {
 export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
+  customPrompt?: string;
   fetchPreferences: FetchPreferences;
 }
 

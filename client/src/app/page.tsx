@@ -66,6 +66,11 @@ const SettingsModal = dynamic(
   { ssr: false },
 );
 
+const AiSettingsModal = dynamic(
+  () => import('../components/ai/AiSettingsModal').then((m) => m.AiSettingsModal),
+  { ssr: false },
+);
+
 const ACTIVITY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const DEFAULT_FETCH_PREFERENCES: FetchPreferences = {
@@ -198,6 +203,8 @@ export default function HomePage() {
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
   const [reportLanguage, setReportLanguage] = useState<'vi' | 'en'>('vi');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [isAiSettingsModalOpen, setIsAiSettingsModalOpen] = useState(false);
   const [availability, setAvailability] = useState<AiAvailabilityState>({
     status: 'idle',
     available: false,
@@ -221,6 +228,15 @@ export default function HomePage() {
         : activities.filter((a) => a.repo === repoFilter);
     return base.filter((pr) => selectedPrKeys.has(getPrKey(pr)));
   }, [activities, groupBy, repoFilter, selectedPrKeys]);
+
+  const selectedCommitCount = useMemo(
+    () =>
+      selectedActivities.reduce(
+        (total, activity) => total + activity.commits.filter((c) => c.trim().length > 0).length,
+        0,
+      ),
+    [selectedActivities],
+  );
 
   const applyScannedActivities = useCallback((nextActivities: PrActivity[]) => {
     setActivities(nextActivities);
@@ -438,6 +454,9 @@ export default function HomePage() {
       setAiConnections([]);
       setGithubModels([]);
       setAvailability({ status: 'idle', available: false });
+      setReportLanguage('vi');
+      setCustomPrompt('');
+      setIsAiSettingsModalOpen(false);
       return;
     }
 
@@ -453,6 +472,10 @@ export default function HomePage() {
         setGroupBy(settingsRes.fetchPreferences.defaultGroupBy);
         setSinceOption(settingsRes.fetchPreferences.defaultTimeRange);
         targetRange = settingsRes.fetchPreferences.defaultTimeRange;
+      }
+      if (settingsRes) {
+        setReportLanguage(settingsRes.language === 'en' ? 'en' : 'vi');
+        setCustomPrompt(settingsRes.customPrompt ?? '');
       }
       setTasks(loadedTasks);
       setAiConnections(loadedConns);
@@ -595,6 +618,16 @@ export default function HomePage() {
     if (gitStatus.connected) {
       await handleScanActivity(saved.fetchPreferences.defaultTimeRange, false, undefined, true);
     }
+  };
+
+  const handleSaveAiSettings = async (next: { language: 'vi' | 'en'; customPrompt: string }) => {
+    const saved = await api.settings.update({
+      language: next.language,
+      customPrompt: next.customPrompt,
+    });
+    setReportLanguage(saved.language === 'en' ? 'en' : 'vi');
+    setCustomPrompt(saved.customPrompt ?? '');
+    showToast({ title: dict.toasts.aiSettingsSaved, variant: 'success' });
   };
 
   const handleCreateTask = async (title: string, color: TaskColor, prs: PrActivity[]) => {
@@ -855,6 +888,11 @@ export default function HomePage() {
       return;
     }
 
+    if (selectedCommitCount === 0) {
+      setAiError(dict.aiConsole.noSelectedCommitsError);
+      return;
+    }
+
     const isConn = selectedToolKey.startsWith('conn:');
     const engine: AiEngine = isConn ? 'GOOGLE_GEMINI' : 'GITHUB_MODELS';
     const connectionId = isConn ? selectedToolKey.slice(5) : undefined;
@@ -875,6 +913,7 @@ export default function HomePage() {
         connectionId,
         model: selectedModel,
         language: reportLanguage,
+        customPrompt: customPrompt.trim() || undefined,
       });
 
       setBullets(res.bullets);
@@ -892,10 +931,12 @@ export default function HomePage() {
   }, [
     activities.length,
     selectedActivities,
+    selectedCommitCount,
     selectedToolKey,
     aiConnections,
     selectedModel,
     reportLanguage,
+    customPrompt,
     dict,
     showToast,
   ]);
@@ -1129,8 +1170,8 @@ export default function HomePage() {
                     githubModels={githubModels}
                     selectedModel={selectedModel}
                     onModelChange={handleSelectAiModel}
-                    language={reportLanguage}
-                    onLanguageChange={setReportLanguage}
+                    hasCustomPrompt={Boolean(customPrompt.trim())}
+                    onOpenAiSettings={() => setIsAiSettingsModalOpen(true)}
                     availability={availability}
                     onRecheckAvailability={() =>
                       void checkModelAvailability(selectedToolKey, selectedModel)
@@ -1149,6 +1190,7 @@ export default function HomePage() {
                     isGenerating={isGenerating}
                     error={aiError}
                     selectedPrCount={selectedActivities.length}
+                    selectedCommitCount={selectedCommitCount}
                   />
 
                   <StandupOutputDock
@@ -1212,6 +1254,14 @@ export default function HomePage() {
         }}
         onRefreshAiModels={handleRefreshAiConnection}
         onDeleteAiConnection={handleDeleteAiConnection}
+      />
+
+      <AiSettingsModal
+        isOpen={isAiSettingsModalOpen}
+        onClose={() => setIsAiSettingsModalOpen(false)}
+        language={reportLanguage}
+        customPrompt={customPrompt}
+        onSave={handleSaveAiSettings}
       />
 
       {gitStatus.connected && (

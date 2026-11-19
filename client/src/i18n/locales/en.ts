@@ -151,8 +151,8 @@ export const en: TranslationDictionary = {
   },
   aiConsole: {
     title: 'AI Report Generator',
-    description:
-      'Choose an AI provider to summarize your Pull Requests and Commits into a concise report.',
+    description: 'Choose an AI provider to summarize selected Git commits into a concise report.',
+    aiSettingsBtn: 'Configure AI Prompt & Language',
     providerLabel: 'AI Provider',
     githubModelsLabel: 'GitHub Models',
     githubModelsDesc: 'Uses your active connected GitHub token',
@@ -163,9 +163,6 @@ export const en: TranslationDictionary = {
     modelLabel: 'AI Model',
     refreshModelsBtn: 'Refresh',
     refreshingModelsBtn: 'Syncing...',
-    outputLangLabel: 'Report language',
-    outputLangVi: 'Vietnamese',
-    outputLangEn: 'English',
     checkingAvailability: 'Checking model availability...',
     availableStatus: 'Model available • Ready to summarize',
     unavailablePrefix: 'Unavailable:',
@@ -173,11 +170,12 @@ export const en: TranslationDictionary = {
     addGeminiQuickBtn: 'Add Google Gemini',
     updateKeyQuickBtn: 'Update Key',
     generateBtn: 'Generate Report',
-    generateSelectedBtn: 'Generate Report ({count} PRs selected)',
+    generateSelectedBtn: 'Generate Report ({count} commits selected)',
     generatingBtn: 'Generating report...',
-    noActivitiesError:
-      'No Pull Requests or Commits available to summarize. Please sync activity first.',
-    noSelectedPrsError: 'Please select at least one Pull Request to summarize.',
+    noActivitiesError: 'No commit activity available to summarize. Please sync activity first.',
+    noSelectedPrsError: 'Please select at least one item with commits to summarize.',
+    noSelectedCommitsError:
+      'Selected items currently contain 0 commits to summarize. Pick an item with commits.',
     generateFailed: 'Failed to generate AI summary. Please try again.',
     models: {
       gpt4oMiniLabel: 'GPT-4o Mini',
@@ -185,6 +183,23 @@ export const en: TranslationDictionary = {
       llama33Label: 'Llama 3.3 70B Instruct',
       llama33Desc: 'Deep reasoning • Detailed',
     },
+  },
+  aiSettingsModal: {
+    title: 'AI Report Settings',
+    subtitle: 'Customize report output language and prompt instructions for commit synthesis.',
+    outputLangLabel: 'Report language',
+    outputLangVi: 'Vietnamese',
+    outputLangEn: 'English',
+    customPromptLabel: 'Custom AI Prompt',
+    customPromptPlaceholder:
+      'e.g., Summarize into 3-5 concise bullets grouped by feature, ignoring chore/lint commits...',
+    customPromptHint:
+      'Leave blank to use the default commit-only prompt (ignores PR titles and focuses strictly on commit messages).',
+    resetPromptBtn: 'Reset to default',
+    charCount: '{count}/2000 chars',
+    saveError: 'Failed to save AI settings. Please try again.',
+    saveBtn: 'Save settings',
+    savingBtn: 'Saving...',
   },
   aiModal: {
     titleAdd: 'Add AI Provider',
@@ -256,6 +271,7 @@ export const en: TranslationDictionary = {
     aiModelsRefreshError: 'Failed to refresh available models from token.',
     reportDeleted: 'Report deleted from history.',
     settingsSaved: 'Fetch & display settings saved.',
+    aiSettingsSaved: 'AI prompt & report language saved.',
     taskCreated: 'Created task "{title}".',
     taskUpdated: 'Updated task "{title}".',
     taskCompleted: 'Marked task "{title}" as completed.',

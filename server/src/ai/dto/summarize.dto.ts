@@ -48,8 +48,9 @@ export class SummarizeDto {
   @IsString()
   language?: string;
 
-  @ApiPropertyOptional({ example: 'Tùy chỉnh thêm...' })
+  @ApiPropertyOptional({ example: 'Tùy chỉnh thêm...', maxLength: 2000 })
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   customPrompt?: string;
 }

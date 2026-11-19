@@ -68,13 +68,28 @@ describe('ai-provider.helpers', () => {
     ]);
   });
 
-  it('builds consistent standup prompts and strips bullet prefixes cleanly', () => {
+  it('builds commit-only prompts omitting PR titles and appends output language on custom prompt', () => {
     const { systemPrompt, userPrompt } = buildStandupPrompts(
-      [{ repo: 'org/repo', title: 'feat: add vault', commits: ['add schema'] }],
+      [
+        { repo: 'org/repo', title: 'PR #12 ignored title', commits: ['feat: add vault'] },
+        { repo: 'org/repo', title: 'PR #13 ignored title', commits: ['fix: timeout guard'] },
+      ],
       'en',
     );
     expect(systemPrompt).toContain('English');
     expect(userPrompt).toContain('Repository: org/repo');
+    expect(userPrompt).toContain('  - feat: add vault');
+    expect(userPrompt).toContain('  - fix: timeout guard');
+    expect(userPrompt).not.toContain('PR #12 ignored title');
+    expect(userPrompt).not.toContain('PR Title');
+
+    const custom = buildStandupPrompts(
+      [{ repo: 'org/repo', title: 'ignored', commits: ['chore: refactor'] }],
+      'vi',
+      'Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.',
+    );
+    expect(custom.systemPrompt).toContain('Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.');
+    expect(custom.systemPrompt).toContain('Vietnamese');
 
     expect(parseStandupBullets('• First item\n- Second item\n* Third item')).toEqual([
       'First item',

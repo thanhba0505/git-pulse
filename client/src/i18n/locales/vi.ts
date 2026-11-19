@@ -152,7 +152,8 @@ export const vi: TranslationDictionary = {
   aiConsole: {
     title: 'Tổng hợp Báo cáo AI',
     description:
-      'Chọn công cụ AI để chuyển đổi danh sách Pull Request và Commit thành bản tóm tắt công việc.',
+      'Chọn công cụ AI để chuyển đổi danh sách Commit đã chọn thành bản tóm tắt công việc.',
+    aiSettingsBtn: 'Cài đặt Prompt & Ngôn ngữ AI',
     providerLabel: 'Công cụ AI',
     githubModelsLabel: 'GitHub Models',
     githubModelsDesc: 'Sử dụng trực tiếp token GitHub đã kết nối',
@@ -163,9 +164,6 @@ export const vi: TranslationDictionary = {
     modelLabel: 'Mô hình AI',
     refreshModelsBtn: 'Làm mới',
     refreshingModelsBtn: 'Đang tải...',
-    outputLangLabel: 'Ngôn ngữ báo cáo',
-    outputLangVi: 'Tiếng Việt',
-    outputLangEn: 'Tiếng Anh',
     checkingAvailability: 'Đang kiểm tra khả dụng của mô hình...',
     availableStatus: 'Mô hình khả dụng • Sẵn sàng tóm tắt',
     unavailablePrefix: 'Không khả dụng:',
@@ -173,11 +171,12 @@ export const vi: TranslationDictionary = {
     addGeminiQuickBtn: 'Thêm Google Gemini',
     updateKeyQuickBtn: 'Cập nhật Key',
     generateBtn: 'Tạo báo cáo',
-    generateSelectedBtn: 'Tạo báo cáo ({count} PR đã chọn)',
+    generateSelectedBtn: 'Tạo báo cáo ({count} commit đã chọn)',
     generatingBtn: 'Đang tạo báo cáo...',
-    noActivitiesError:
-      'Chưa có Pull Request hoặc Commit nào để tóm tắt. Vui lòng tải dữ liệu trước.',
-    noSelectedPrsError: 'Vui lòng chọn ít nhất một Pull Request để tổng hợp báo cáo.',
+    noActivitiesError: 'Chưa có dữ liệu Commit nào để tóm tắt. Vui lòng tải dữ liệu trước.',
+    noSelectedPrsError: 'Vui lòng chọn ít nhất một mục có Commit để tổng hợp báo cáo.',
+    noSelectedCommitsError:
+      'Các mục đã chọn hiện chưa có Commit nào để tạo báo cáo. Hãy chọn mục có commit.',
     generateFailed: 'Không thể tạo báo cáo AI. Vui lòng thử lại.',
     models: {
       gpt4oMiniLabel: 'GPT-4o Mini',
@@ -185,6 +184,23 @@ export const vi: TranslationDictionary = {
       llama33Label: 'Llama 3.3 70B Instruct',
       llama33Desc: 'Phân tích sâu • Chi tiết',
     },
+  },
+  aiSettingsModal: {
+    title: 'Cài đặt AI tạo báo cáo',
+    subtitle: 'Tùy chỉnh ngôn ngữ đầu ra và prompt hướng dẫn AI khi tổng hợp từ Commit.',
+    outputLangLabel: 'Ngôn ngữ báo cáo',
+    outputLangVi: 'Tiếng Việt',
+    outputLangEn: 'Tiếng Anh',
+    customPromptLabel: 'Prompt tùy chỉnh cho AI',
+    customPromptPlaceholder:
+      'VD: Tóm tắt ngắn gọn thành 3-5 gạch đầu dòng theo tính năng chính, bỏ qua các commit format/chore...',
+    customPromptHint:
+      'Để trống để dùng prompt mặc định (tóm tắt dựa trên nội dung các commit theo repo, bỏ qua tiêu đề PR).',
+    resetPromptBtn: 'Khôi phục mặc định',
+    charCount: '{count}/2000 ký tự',
+    saveError: 'Không thể lưu cài đặt AI. Vui lòng thử lại.',
+    saveBtn: 'Lưu cài đặt',
+    savingBtn: 'Đang lưu...',
   },
   aiModal: {
     titleAdd: 'Thêm công cụ AI',
@@ -256,6 +272,7 @@ export const vi: TranslationDictionary = {
     aiModelsRefreshError: 'Không thể làm mới danh sách mô hình từ token.',
     reportDeleted: 'Đã xóa bản báo cáo khỏi lịch sử.',
     settingsSaved: 'Đã lưu cấu hình Fetch & Hiển thị.',
+    aiSettingsSaved: 'Đã lưu cài đặt Prompt & Ngôn ngữ báo cáo AI.',
     taskCreated: 'Đã tạo Task "{title}".',
     taskUpdated: 'Đã cập nhật Task "{title}".',
     taskCompleted: 'Đã đánh dấu hoàn thành Task "{title}".',
