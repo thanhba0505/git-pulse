@@ -136,22 +136,22 @@ export function ShowcaseCard({
     <Tag
       ref={cardRef}
       style={mergedStyle}
-      className={`group relative overflow-hidden rounded-xl gp-card transition-colors duration-200 hover:border-slate-700/90 ${
+      className={`group relative rounded-xl gp-card transition-colors duration-200 hover:border-slate-700/90 ${
         tiltStrength > 0 ? 'gp-showcase-tilt' : ''
       } ${staggerIndex !== undefined ? 'gp-stagger-item' : ''} ${className}`}
       {...rest}
     >
-      {/* Inner Surface Pointer Sheen */}
+      {/* Clipped strictly to card border-radius so interior dropdowns/selects never clip */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-300 gp-showcase-surface"
-      />
+        className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+      >
+        {/* Inner Surface Pointer Sheen */}
+        <div className="absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-300 gp-showcase-surface" />
 
-      {/* 1px Perimeter Border Spotlight */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-300 gp-showcase-border-glow"
-      />
+        {/* 1px Perimeter Border Spotlight */}
+        <div className="absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity duration-300 gp-showcase-border-glow" />
+      </div>
 
       <div className="relative z-10">{children}</div>
     </Tag>

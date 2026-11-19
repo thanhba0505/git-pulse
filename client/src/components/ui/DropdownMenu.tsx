@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useFloatingPosition } from '../../lib/use-floating-position';
 
 interface DropdownMenuProps {
   trigger: (props: {
@@ -31,6 +33,14 @@ export function DropdownMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const floatingPos = useFloatingPosition({
+    isOpen,
+    anchorRef: rootRef,
+    align,
+    gap: 8,
+    estimatedHeight: 260,
+  });
+
   const getEnabledItems = () => {
     const container = menuRef.current;
     if (!container) return [];
@@ -43,7 +53,8 @@ export function DropdownMenu({
     if (!isOpen) return;
 
     const handlePointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setIsOpen(false);
       }
     };
@@ -106,6 +117,15 @@ export function DropdownMenu({
 
   const close = () => setIsOpen(false);
 
+  const originClass =
+    align === 'end'
+      ? floatingPos?.openUpward
+        ? 'origin-bottom-right'
+        : 'origin-top-right'
+      : floatingPos?.openUpward
+        ? 'origin-bottom-left'
+        : 'origin-top-left';
+
   return (
     <div ref={rootRef} className="relative inline-block">
       {trigger({
@@ -120,20 +140,22 @@ export function DropdownMenu({
         },
       })}
 
-      {isOpen && (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          aria-labelledby={triggerId}
-          onKeyDown={handleMenuKeyDown}
-          className={`gp-glass-panel gp-popover-in absolute top-full mt-2 z-50 rounded-xl p-1.5 max-w-[calc(100vw-1.5rem)] ${widthClass} ${
-            align === 'end' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'
-          }`}
-        >
-          {children({ close })}
-        </div>
-      )}
+      {isOpen &&
+        floatingPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            id={menuId}
+            role="menu"
+            aria-labelledby={triggerId}
+            onKeyDown={handleMenuKeyDown}
+            style={floatingPos.style}
+            className={`gp-glass-panel gp-popover-in custom-scrollbar overflow-y-auto overscroll-contain rounded-xl p-1.5 max-w-[calc(100vw-1.5rem)] ${widthClass} ${originClass}`}
+          >
+            {children({ close })}
+          </div>,
+          floatingPos.portalTarget,
+        )}
     </div>
   );
 }

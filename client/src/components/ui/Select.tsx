@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
+import { useFloatingPosition } from '../../lib/use-floating-position';
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -40,7 +42,6 @@ export function Select<T extends string>({
   const listboxId = `${triggerId}-listbox`;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(() => {
     const idx = options.findIndex((o) => o.value === value);
     return idx >= 0 ? idx : 0;
@@ -48,6 +49,16 @@ export function Select<T extends string>({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const listboxRef = useRef<HTMLUListElement>(null);
+
+  const floatingPos = useFloatingPosition({
+    isOpen,
+    anchorRef: triggerRef,
+    align: align === 'right' ? 'end' : 'start',
+    gap: 6,
+    estimatedHeight: 240,
+    matchWidth: true,
+  });
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -57,12 +68,6 @@ export function Select<T extends string>({
 
   const openMenu = useCallback(() => {
     if (disabled) return;
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      setOpenUpward(spaceBelow < 220 && spaceAbove > spaceBelow);
-    }
     const currentIdx = options.findIndex((o) => o.value === value && !o.disabled);
     setHighlightedIndex(currentIdx >= 0 ? currentIdx : 0);
     setIsOpen(true);
@@ -78,12 +83,13 @@ export function Select<T extends string>({
     [onChange],
   );
 
-  // Close on outside click
+  // Close on outside click (checking both trigger container and portaled listbox)
   useEffect(() => {
     if (!isOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!containerRef.current?.contains(target) && !listboxRef.current?.contains(target)) {
         closeMenu();
       }
     };
@@ -215,66 +221,69 @@ export function Select<T extends string>({
         />
       </button>
 
-      {isOpen && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-labelledby={label ? labelId : valueId}
-          className={`gp-glass-panel custom-scrollbar absolute z-50 min-w-full w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in ${
-            openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-          } ${align === 'right' ? 'right-0' : 'left-0'}`}
-        >
-          {options.map((option, idx) => {
-            const isSelected = option.value === value;
-            const isHighlighted = idx === highlightedIndex;
+      {isOpen &&
+        floatingPos &&
+        createPortal(
+          <ul
+            ref={listboxRef}
+            id={listboxId}
+            role="listbox"
+            aria-labelledby={label ? labelId : valueId}
+            style={floatingPos.style}
+            className="gp-glass-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in"
+          >
+            {options.map((option, idx) => {
+              const isSelected = option.value === value;
+              const isHighlighted = idx === highlightedIndex;
 
-            return (
-              <li
-                key={option.value}
-                id={`${listboxId}-opt-${idx}`}
-                role="option"
-                aria-selected={isSelected}
-                aria-disabled={option.disabled}
-                onMouseEnter={() => {
-                  if (!option.disabled) setHighlightedIndex(idx);
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                }}
-                onClick={() => handleSelectOption(option)}
-                className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-colors select-none ${
-                  option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
-                } ${
-                  isSelected
-                    ? 'bg-sky-500/10 text-slate-100'
-                    : isHighlighted
-                      ? 'bg-slate-800/90 text-slate-100'
-                      : 'text-slate-300 hover:bg-slate-800/70'
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={`text-xs font-semibold truncate ${
-                      isSelected ? 'text-sky-300' : 'text-slate-100'
-                    }`}
-                  >
-                    {option.label}
-                  </div>
-                  {option.description && (
-                    <div className="text-xs text-slate-400 mt-0.5 truncate">
-                      {option.description}
+              return (
+                <li
+                  key={option.value}
+                  id={`${listboxId}-opt-${idx}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  aria-disabled={option.disabled}
+                  onMouseEnter={() => {
+                    if (!option.disabled) setHighlightedIndex(idx);
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
+                  onClick={() => handleSelectOption(option)}
+                  className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-colors select-none ${
+                    option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    isSelected
+                      ? 'bg-sky-500/10 text-slate-100'
+                      : isHighlighted
+                        ? 'bg-slate-800/90 text-slate-100'
+                        : 'text-slate-300 hover:bg-slate-800/70'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={`text-xs font-semibold truncate ${
+                        isSelected ? 'text-sky-300' : 'text-slate-100'
+                      }`}
+                    >
+                      {option.label}
                     </div>
-                  )}
-                </div>
+                    {option.description && (
+                      <div className="text-xs text-slate-400 mt-0.5 truncate">
+                        {option.description}
+                      </div>
+                    )}
+                  </div>
 
-                {isSelected && (
-                  <Check className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  {isSelected && (
+                    <Check className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
+                  )}
+                </li>
+              );
+            })}
+          </ul>,
+          floatingPos.portalTarget,
+        )}
     </div>
   );
 }
