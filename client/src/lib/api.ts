@@ -1,6 +1,7 @@
 import {
   AiConnectionSummary,
   AiEngine,
+  AiModelOption,
   AiProviderType,
   FetchPreferences,
   GitHubWorkspacesResponse,
@@ -174,6 +175,18 @@ export const api = {
   },
   ai: {
     listConnections: () => fetchJson<AiConnectionSummary[]>('/ai/connections'),
+    previewModels: (dto: { provider: AiProviderType; apiKey: string }) =>
+      fetchJson<{ valid: boolean; maskedKey: string; models: AiModelOption[] }>(
+        '/ai/preview-models',
+        {
+          method: 'POST',
+          body: JSON.stringify(dto),
+        },
+      ),
+    refreshConnectionModels: (id: string) =>
+      fetchJson<AiConnectionSummary>(`/ai/connections/${encodeURIComponent(id)}/refresh-models`, {
+        method: 'POST',
+      }),
     createConnection: (dto: { provider: AiProviderType; apiKey: string; label?: string }) =>
       fetchJson<AiConnectionSummary>('/ai/connections', {
         method: 'POST',
@@ -199,6 +212,7 @@ export const api = {
         latencyMs: number;
         reasonCode?: string;
         reason?: string;
+        availableModels?: AiModelOption[];
       }>('/ai/check-availability', {
         method: 'POST',
         body: JSON.stringify(dto),

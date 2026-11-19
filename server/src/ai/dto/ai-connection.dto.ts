@@ -7,6 +7,18 @@ export type SupportedAiProvider = (typeof SUPPORTED_AI_PROVIDERS)[number];
 export const VALID_AI_ENGINES = ['GITHUB_MODELS', 'GOOGLE_GEMINI'] as const;
 export type ValidAiEngine = (typeof VALID_AI_ENGINES)[number];
 
+export class PreviewAiModelsDto {
+  @ApiProperty({ enum: SUPPORTED_AI_PROVIDERS, example: 'GOOGLE_GEMINI' })
+  @IsIn(SUPPORTED_AI_PROVIDERS)
+  provider!: SupportedAiProvider;
+
+  @ApiProperty({ example: 'AIza...' })
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập API Key.' })
+  @MaxLength(512)
+  apiKey!: string;
+}
+
 export class CreateAiConnectionDto {
   @ApiProperty({ enum: SUPPORTED_AI_PROVIDERS, example: 'GOOGLE_GEMINI' })
   @IsIn(SUPPORTED_AI_PROVIDERS)

@@ -6,6 +6,7 @@ import {
   AiAvailabilityState,
   AiConnectionSummary,
   AiEngine,
+  AiModelOption,
   FetchPreferences,
   GitHubWorkspacesResponse,
   GitStatus,
@@ -193,6 +194,7 @@ export default function HomePage() {
   const [selectedPrKeys, setSelectedPrKeys] = useState<Set<string>>(() => new Set());
 
   const [aiConnections, setAiConnections] = useState<AiConnectionSummary[]>([]);
+  const [githubModels, setGithubModels] = useState<AiModelOption[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
   const [reportLanguage, setReportLanguage] = useState<'vi' | 'en'>('vi');
@@ -200,6 +202,7 @@ export default function HomePage() {
     status: 'idle',
     available: false,
   });
+  const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [editingAiConnection, setEditingAiConnection] = useState<AiConnectionSummary | null>(null);
 
@@ -335,13 +338,17 @@ export default function HomePage() {
   }, [handleScanActivity]);
 
   const resolveDefaultModelForTool = useCallback(
-    (toolKey: string, conns: readonly AiConnectionSummary[]): string => {
+    (
+      toolKey: string,
+      conns: readonly AiConnectionSummary[],
+      ghModels: readonly AiModelOption[] = [],
+    ): string => {
       if (toolKey.startsWith('conn:')) {
         const targetId = toolKey.slice(5);
         const conn = conns.find((c) => c.id === targetId);
         return conn?.availableModels[0]?.id || 'gemini-2.5-flash';
       }
-      return 'openai/gpt-4o-mini';
+      return ghModels[0]?.id || 'openai/gpt-4o-mini';
     },
     [],
   );
@@ -362,7 +369,11 @@ export default function HomePage() {
   );
 
   const checkModelAvailability = useCallback(
-    async (toolKey: string, model: string) => {
+    async (
+      toolKey: string,
+      model: string,
+      allowModelAutoFallback = true,
+    ): Promise<{ availableModels?: AiModelOption[] } | null> => {
       const checkId = ++availabilityCheckIdRef.current;
       setAvailability({ status: 'checking', available: false });
 
@@ -372,7 +383,18 @@ export default function HomePage() {
 
       try {
         const res = await api.ai.checkAvailability({ engine, connectionId, model });
-        if (checkId !== availabilityCheckIdRef.current) return;
+        if (checkId !== availabilityCheckIdRef.current) return null;
+
+        if (engine === 'GITHUB_MODELS' && res.availableModels && res.availableModels.length > 0) {
+          setGithubModels(res.availableModels);
+          const hasModel = res.availableModels.some((m) => m.id === model);
+          if (!hasModel && allowModelAutoFallback) {
+            const fallbackModel = res.availableModels[0].id;
+            setSelectedModel(fallbackModel);
+            persistAiSelection(user?.id, toolKey, fallbackModel);
+            return checkModelAvailability(toolKey, fallbackModel, false);
+          }
+        }
 
         setAvailability({
           status: res.available ? 'available' : 'unavailable',
@@ -393,16 +415,19 @@ export default function HomePage() {
             );
           }
         }
+
+        return { availableModels: res.availableModels };
       } catch (err) {
-        if (checkId !== availabilityCheckIdRef.current) return;
+        if (checkId !== availabilityCheckIdRef.current) return null;
         setAvailability({
           status: 'unavailable',
           available: false,
           reason: (err as Error).message || dict.aiConsole.generateFailed,
         });
+        return null;
       }
     },
-    [dict.aiConsole.generateFailed],
+    [dict.aiConsole.generateFailed, persistAiSelection, user?.id],
   );
 
   const userId = user?.id;
@@ -412,6 +437,7 @@ export default function HomePage() {
       setWorkspaces(null);
       setTasks([]);
       setAiConnections([]);
+      setGithubModels([]);
       setAvailability({ status: 'idle', available: false });
       return;
     }
@@ -655,14 +681,21 @@ export default function HomePage() {
 
   const handleSelectAiTool = useCallback(
     (nextToolKey: string) => {
-      const nextModel = resolveDefaultModelForTool(nextToolKey, aiConnections);
+      const nextModel = resolveDefaultModelForTool(nextToolKey, aiConnections, githubModels);
       setSelectedToolKey(nextToolKey);
       setSelectedModel(nextModel);
       setAiError(null);
       persistAiSelection(userId, nextToolKey, nextModel);
       void checkModelAvailability(nextToolKey, nextModel);
     },
-    [aiConnections, checkModelAvailability, persistAiSelection, resolveDefaultModelForTool, userId],
+    [
+      aiConnections,
+      checkModelAvailability,
+      githubModels,
+      persistAiSelection,
+      resolveDefaultModelForTool,
+      userId,
+    ],
   );
 
   const handleSelectAiModel = useCallback(
@@ -676,7 +709,7 @@ export default function HomePage() {
   );
 
   const handleAiConnectionSaved = useCallback(
-    (savedConn: AiConnectionSummary, isUpdate: boolean) => {
+    (savedConn: AiConnectionSummary, isUpdate: boolean, preferredModel?: string) => {
       setAiConnections((prev) => {
         const exists = prev.some((c) => c.id === savedConn.id);
         return exists
@@ -684,7 +717,10 @@ export default function HomePage() {
           : [savedConn, ...prev];
       });
       const nextToolKey = `conn:${savedConn.id}`;
-      const nextModel = savedConn.availableModels[0]?.id || 'gemini-2.5-flash';
+      const hasPreferred =
+        Boolean(preferredModel) && savedConn.availableModels.some((m) => m.id === preferredModel);
+      const nextModel =
+        (hasPreferred ? preferredModel : savedConn.availableModels[0]?.id) || 'gemini-2.5-flash';
       setSelectedToolKey(nextToolKey);
       setSelectedModel(nextModel);
       setAiError(null);
@@ -698,6 +734,87 @@ export default function HomePage() {
     [checkModelAvailability, persistAiSelection, showToast, t, userId],
   );
 
+  const handleRefreshAiConnection = useCallback(
+    async (connectionId: string) => {
+      setIsRefreshingModels(true);
+      try {
+        const refreshed = await api.ai.refreshConnectionModels(connectionId);
+        setAiConnections((prev) => prev.map((c) => (c.id === connectionId ? refreshed : c)));
+
+        if (selectedToolKey === `conn:${connectionId}`) {
+          const stillExists = refreshed.availableModels.some((m) => m.id === selectedModel);
+          const nextModel = stillExists
+            ? selectedModel
+            : refreshed.availableModels[0]?.id || 'gemini-2.5-flash';
+          if (nextModel !== selectedModel) {
+            setSelectedModel(nextModel);
+            persistAiSelection(userId, selectedToolKey, nextModel);
+          }
+          void checkModelAvailability(selectedToolKey, nextModel);
+        }
+
+        showToast({
+          title: t('toasts.aiModelsRefreshed', { count: refreshed.availableModels.length }),
+          variant: 'success',
+        });
+      } catch (err) {
+        setAiConnections((prev) =>
+          prev.map((c) => (c.id === connectionId ? { ...c, status: 'REVOKED' } : c)),
+        );
+        showToast({
+          title: (err as Error).message || dict.toasts.aiModelsRefreshError,
+          variant: 'error',
+        });
+        if (selectedToolKey === `conn:${connectionId}`) {
+          void checkModelAvailability(selectedToolKey, selectedModel);
+        }
+        throw err;
+      } finally {
+        setIsRefreshingModels(false);
+      }
+    },
+    [
+      checkModelAvailability,
+      dict.toasts.aiModelsRefreshError,
+      persistAiSelection,
+      selectedModel,
+      selectedToolKey,
+      showToast,
+      t,
+      userId,
+    ],
+  );
+
+  const handleRefreshActiveModels = useCallback(async () => {
+    if (selectedToolKey.startsWith('conn:')) {
+      const connId = selectedToolKey.slice(5);
+      await handleRefreshAiConnection(connId).catch(() => {
+        // Error toast & availability update already handled inside handleRefreshAiConnection
+      });
+      return;
+    }
+
+    setIsRefreshingModels(true);
+    try {
+      const result = await checkModelAvailability(BUILTIN_GITHUB_TOOL_KEY, selectedModel);
+      if (result?.availableModels && result.availableModels.length > 0) {
+        showToast({
+          title: t('toasts.aiModelsRefreshed', { count: result.availableModels.length }),
+          variant: 'success',
+        });
+      }
+    } finally {
+      setIsRefreshingModels(false);
+    }
+  }, [
+    checkModelAvailability,
+    handleRefreshAiConnection,
+    selectedModel,
+    selectedToolKey,
+    showToast,
+    t,
+  ]);
+
   const handleDeleteAiConnection = useCallback(
     async (connectionId: string) => {
       await api.ai.deleteConnection(connectionId);
@@ -708,7 +825,7 @@ export default function HomePage() {
       if (selectedToolKey === `conn:${connectionId}`) {
         const fallback = remaining[0];
         const nextToolKey = fallback ? `conn:${fallback.id}` : BUILTIN_GITHUB_TOOL_KEY;
-        const nextModel = resolveDefaultModelForTool(nextToolKey, remaining);
+        const nextModel = resolveDefaultModelForTool(nextToolKey, remaining, githubModels);
         setSelectedToolKey(nextToolKey);
         setSelectedModel(nextModel);
         persistAiSelection(userId, nextToolKey, nextModel);
@@ -719,6 +836,7 @@ export default function HomePage() {
       aiConnections,
       checkModelAvailability,
       dict.toasts.aiDeleted,
+      githubModels,
       persistAiSelection,
       resolveDefaultModelForTool,
       selectedToolKey,
@@ -1010,6 +1128,7 @@ export default function HomePage() {
                     selectedToolKey={selectedToolKey}
                     onSelectToolKey={handleSelectAiTool}
                     connections={aiConnections}
+                    githubModels={githubModels}
                     selectedModel={selectedModel}
                     onModelChange={handleSelectAiModel}
                     language={reportLanguage}
@@ -1018,6 +1137,8 @@ export default function HomePage() {
                     onRecheckAvailability={() =>
                       void checkModelAvailability(selectedToolKey, selectedModel)
                     }
+                    onRefreshModels={() => void handleRefreshActiveModels()}
+                    isRefreshingModels={isRefreshingModels}
                     onOpenAddAiModal={() => {
                       setEditingAiConnection(null);
                       setIsAiModalOpen(true);
@@ -1092,6 +1213,7 @@ export default function HomePage() {
           setEditingAiConnection(conn);
           setIsAiModalOpen(true);
         }}
+        onRefreshAiModels={handleRefreshAiConnection}
         onDeleteAiConnection={handleDeleteAiConnection}
       />
 

@@ -174,6 +174,8 @@ export interface AiConsoleDictionary {
   addProviderOptionDesc: string;
   revokedBadge: string;
   modelLabel: string;
+  refreshModelsBtn: string;
+  refreshingModelsBtn: string;
   outputLangLabel: string;
   outputLangVi: string;
   outputLangEn: string;
@@ -208,6 +210,10 @@ export interface AiModalDictionary {
   apiKeyPlaceholder: string;
   apiKeyHint: string;
   apiKeyRequired: string;
+  previewModelsBtn: string;
+  previewingModelsBtn: string;
+  previewSuccess: string;
+  defaultModelLabel: string;
   saveError: string;
   saveBtn: string;
   savingBtn: string;
@@ -268,6 +274,8 @@ export interface ToastsDictionary {
   aiConnected: string;
   aiUpdated: string;
   aiDeleted: string;
+  aiModelsRefreshed: string;
+  aiModelsRefreshError: string;
   reportDeleted: string;
   settingsSaved: string;
   taskCreated: string;

@@ -255,4 +255,118 @@ describe('AiService', () => {
       }),
     );
   });
+
+  it('previews live models from an unsaved Gemini key without storing it', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          models: [
+            {
+              name: 'models/gemini-2.5-flash',
+              displayName: 'Gemini 2.5 Flash',
+              supportedGenerationMethods: ['generateContent'],
+            },
+            {
+              name: 'models/gemini-2.5-pro',
+              displayName: 'Gemini 2.5 Pro',
+              supportedGenerationMethods: ['generateContent'],
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const preview = await aiService.previewModels(userId, {
+      provider: 'GOOGLE_GEMINI',
+      apiKey: syntheticGeminiKey,
+    });
+
+    expect(preview.valid).toBe(true);
+    expect(preview.maskedKey).toBe('AIza••••hijk');
+    expect(preview.models.map((m) => m.id)).toEqual(['gemini-2.5-flash', 'gemini-2.5-pro']);
+    expect(mockPrisma.aiConnection.create).not.toHaveBeenCalled();
+  });
+
+  it('refreshes live models from a saved Gemini connection and updates database', async () => {
+    const encrypted = cryptoService.encrypt(syntheticGeminiKey, userId);
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-1',
+      userId,
+      provider: 'GOOGLE_GEMINI',
+      label: 'lethanhba',
+      encryptedKey: encrypted.encryptedText,
+      keyIv: encrypted.iv,
+      keyTag: encrypted.tag,
+      keyVersion: encrypted.keyVersion,
+      maskedKey: 'AIza••••hijk',
+      status: 'ACTIVE',
+    });
+    mockPrisma.aiConnection.update.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'conn-1',
+        userId,
+        provider: 'GOOGLE_GEMINI',
+        label: 'lethanhba',
+        maskedKey: 'AIza••••hijk',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          models: [
+            {
+              name: 'models/gemini-3.8-flash',
+              displayName: 'Gemini 3.8 Flash',
+              supportedGenerationMethods: ['generateContent'],
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const refreshed = await aiService.refreshConnectionModels(userId, 'conn-1');
+    expect(refreshed.availableModels.map((m) => m.id)).toEqual(['gemini-3.8-flash']);
+    expect(mockPrisma.aiConnection.update).toHaveBeenCalled();
+  });
+
+  it('returns live GitHub catalog models when catalog endpoint returns valid JSON', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: 'openai/gpt-4o-mini',
+            friendly_name: 'GPT-4o mini',
+            publisher: 'OpenAI',
+            task: 'chat-completion',
+            supported_output_modalities: ['text'],
+          },
+          {
+            id: 'deepseek/deepseek-r1',
+            friendly_name: 'DeepSeek R1',
+            publisher: 'DeepSeek',
+            task: 'chat-completion',
+            supported_output_modalities: ['text'],
+          },
+        ]),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const result = await aiService.checkAvailability(userId, {
+      engine: 'GITHUB_MODELS',
+      model: 'openai/gpt-4o-mini',
+    });
+
+    expect(result.available).toBe(true);
+    expect(result.availableModels?.map((m) => m.id)).toEqual([
+      'openai/gpt-4o-mini',
+      'deepseek/deepseek-r1',
+    ]);
+  });
 });

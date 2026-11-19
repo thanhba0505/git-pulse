@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { AiAvailabilityState, AiConnectionSummary } from '../../types';
+import { AiAvailabilityState, AiConnectionSummary, AiModelOption } from '../../types';
 import { useTranslation } from '../../i18n';
 import { Select, SelectOption } from '../ui/Select';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
@@ -22,12 +22,15 @@ interface CockpitAiConsoleProps {
   selectedToolKey: string;
   onSelectToolKey: (toolKey: string) => void;
   connections: readonly AiConnectionSummary[];
+  githubModels: readonly AiModelOption[];
   selectedModel: string;
   onModelChange: (model: string) => void;
   language: 'vi' | 'en';
   onLanguageChange: (lang: 'vi' | 'en') => void;
   availability: AiAvailabilityState;
   onRecheckAvailability: () => void;
+  onRefreshModels: () => void;
+  isRefreshingModels: boolean;
   onOpenAddAiModal: () => void;
   onOpenUpdateAiModal: (connection: AiConnectionSummary) => void;
   onGenerate: () => void;
@@ -40,12 +43,15 @@ export function CockpitAiConsole({
   selectedToolKey,
   onSelectToolKey,
   connections,
+  githubModels,
   selectedModel,
   onModelChange,
   language,
   onLanguageChange,
   availability,
   onRecheckAvailability,
+  onRefreshModels,
+  isRefreshingModels,
   onOpenAddAiModal,
   onOpenUpdateAiModal,
   onGenerate,
@@ -95,6 +101,14 @@ export function CockpitAiConsole({
       }));
     }
 
+    if (githubModels.length > 0) {
+      return githubModels.map((m) => ({
+        value: m.id,
+        label: m.label,
+        description: m.description,
+      }));
+    }
+
     return [
       {
         value: 'openai/gpt-4o-mini',
@@ -107,7 +121,7 @@ export function CockpitAiConsole({
         description: dict.aiConsole.models.llama33Desc,
       },
     ];
-  }, [activeConnection, dict]);
+  }, [activeConnection, githubModels, dict]);
 
   const outputLanguageOptions = useMemo<readonly SelectOption<'vi' | 'en'>[]>(
     () => [
@@ -128,7 +142,8 @@ export function CockpitAiConsole({
   const hasSelection = selectedPrCount > 0;
   const isChecking = availability.status === 'checking';
   const isUnavailable = availability.status === 'unavailable';
-  const isGenerateDisabled = !hasSelection || isGenerating || isChecking || isUnavailable;
+  const isGenerateDisabled =
+    !hasSelection || isGenerating || isRefreshingModels || isChecking || isUnavailable;
 
   const ctaText = isGenerating
     ? dict.aiConsole.generatingBtn
@@ -159,7 +174,7 @@ export function CockpitAiConsole({
           value={selectedToolKey}
           options={providerOptions}
           onChange={handleToolChange}
-          disabled={isGenerating}
+          disabled={isGenerating || isRefreshingModels}
         />
 
         {/* Model & Report Language Select Row */}
@@ -167,10 +182,30 @@ export function CockpitAiConsole({
           <Select
             id="ai-model-select"
             label={dict.aiConsole.modelLabel}
+            labelAction={
+              <button
+                type="button"
+                onClick={onRefreshModels}
+                disabled={isGenerating || isRefreshingModels}
+                title={dict.aiConsole.refreshModelsBtn}
+                aria-label={dict.aiConsole.refreshModelsBtn}
+                className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`w-3 h-3 ${isRefreshingModels ? 'animate-spin' : ''}`}
+                  aria-hidden="true"
+                />
+                <span>
+                  {isRefreshingModels
+                    ? dict.aiConsole.refreshingModelsBtn
+                    : dict.aiConsole.refreshModelsBtn}
+                </span>
+              </button>
+            }
             value={selectedModel}
             options={modelOptions}
             onChange={onModelChange}
-            disabled={isGenerating}
+            disabled={isGenerating || isRefreshingModels}
           />
 
           <Select

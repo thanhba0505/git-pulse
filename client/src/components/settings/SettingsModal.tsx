@@ -23,6 +23,7 @@ import {
   LayoutGrid,
   Loader2,
   Plus,
+  RefreshCw,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -47,6 +48,7 @@ interface SettingsModalProps {
   onOpenAddAccount: () => void;
   onOpenAddAi: () => void;
   onOpenUpdateAi: (connection: AiConnectionSummary) => void;
+  onRefreshAiModels: (connectionId: string) => Promise<void>;
   onDeleteAiConnection: (connectionId: string) => Promise<void>;
 }
 
@@ -108,6 +110,7 @@ export function SettingsModal({
   onOpenAddAccount,
   onOpenAddAi,
   onOpenUpdateAi,
+  onRefreshAiModels,
   onDeleteAiConnection,
 }: SettingsModalProps) {
   const { locale, setLocale, dict, t } = useTranslation();
@@ -235,6 +238,18 @@ export function SettingsModal({
       setConfirmingAiId(null);
     } catch (err) {
       setError((err as Error).message || dict.aiModal.saveError);
+    } finally {
+      setBusyAiId(null);
+    }
+  };
+
+  const handleRefreshAi = async (connectionId: string) => {
+    setBusyAiId(connectionId);
+    setError(null);
+    try {
+      await onRefreshAiModels(connectionId);
+    } catch (err) {
+      setError((err as Error).message || dict.toasts.aiModelsRefreshError);
     } finally {
       setBusyAiId(null);
     }
@@ -823,6 +838,22 @@ export function SettingsModal({
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0 justify-end">
+                        {!isConfirming && (
+                          <button
+                            type="button"
+                            onClick={() => void handleRefreshAi(conn.id)}
+                            disabled={isBusy}
+                            title={dict.aiConsole.refreshModelsBtn}
+                            aria-label={`${dict.aiConsole.refreshModelsBtn}: ${conn.label}`}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-sky-300 hover:bg-sky-500/15 border border-white/[0.12] hover:border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <RefreshCw
+                              className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        )}
+
                         {!isConfirming && (
                           <button
                             type="button"

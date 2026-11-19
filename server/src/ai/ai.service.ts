@@ -7,6 +7,7 @@ import { GitHubService, RequestMetadata } from '../github/github.service';
 import {
   CheckAvailabilityDto,
   CreateAiConnectionDto,
+  PreviewAiModelsDto,
   ValidAiEngine,
 } from './dto/ai-connection.dto';
 import { SummarizeDto } from './dto/summarize.dto';
@@ -14,11 +15,13 @@ import {
   AiModelOption,
   buildStandupPrompts,
   DEFAULT_GEMINI_MODELS,
+  filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
   GEMINI_API_BASE_URL,
   GeminiApiModelEntry,
   GITHUB_MODELS_CATALOG_URL,
   GITHUB_MODELS_INFERENCE_URL,
+  GitHubCatalogModelEntry,
   isJsonContentType,
   mapGitHubModelId,
   maskApiKey,
@@ -45,6 +48,13 @@ export interface AiAvailabilityResult {
   latencyMs: number;
   reasonCode?: string;
   reason?: string;
+  availableModels?: AiModelOption[];
+}
+
+export interface AiPreviewModelsResult {
+  valid: boolean;
+  maskedKey: string;
+  models: AiModelOption[];
 }
 
 interface GeminiListModelsResponse {
@@ -59,11 +69,6 @@ interface GeminiGenerateContentResponse {
     };
   }>;
   error?: { message?: string; status?: string };
-}
-
-interface GitHubCatalogModel {
-  id?: string;
-  name?: string;
 }
 
 interface ChatCompletionsResponse {
@@ -235,10 +240,79 @@ export class AiService {
     return { success: true };
   }
 
+  async previewModels(
+    userId: string,
+    dto: PreviewAiModelsDto,
+    meta?: RequestMetadata,
+  ): Promise<AiPreviewModelsResult> {
+    const cleanKey = dto.apiKey.trim();
+    if (!cleanKey) {
+      throw new BadRequestException('API Key không được để trống.');
+    }
+
+    const models = await this.verifyAndFetchGeminiModels(userId, cleanKey, meta, 'AI_KEY_PREVIEW');
+    return {
+      valid: true,
+      maskedKey: maskApiKey(cleanKey),
+      models,
+    };
+  }
+
+  async refreshConnectionModels(
+    userId: string,
+    connectionId: string,
+    meta?: RequestMetadata,
+  ): Promise<AiConnectionSummary> {
+    const existing = await this.prisma.aiConnection.findFirst({
+      where: { id: connectionId, userId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Không tìm thấy kết nối AI.');
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = this.crypto.decrypt(existing.encryptedKey, existing.keyIv, existing.keyTag, userId);
+    } catch {
+      throw new BadRequestException('Không thể giải mã API Key. Vui lòng cập nhật lại key.');
+    }
+
+    let models: AiModelOption[];
+    try {
+      models = await this.verifyAndFetchGeminiModels(userId, apiKey, meta, 'AI_MODELS_REFRESH');
+    } catch (err) {
+      await this.prisma.aiConnection.updateMany({
+        where: { id: existing.id, userId },
+        data: { status: 'REVOKED' },
+      });
+      throw err;
+    }
+
+    const updated = await this.prisma.aiConnection.update({
+      where: { id: existing.id },
+      data: {
+        availableModels: models as unknown as Prisma.InputJsonValue,
+        status: 'ACTIVE',
+        lastVerifiedAt: new Date(),
+      },
+    });
+
+    await this.githubService.recordAuditLog(
+      userId,
+      'AI_MODELS_REFRESH',
+      'SUCCESS',
+      `Refreshed ${models.length} models for ${existing.provider} (${existing.label})`,
+      meta,
+    );
+
+    return this.toConnectionSummary(updated);
+  }
+
   private async verifyAndFetchGeminiModels(
     userId: string,
     apiKey: string,
     meta?: RequestMetadata,
+    auditAction = 'AI_KEY_SAVE',
   ): Promise<AiModelOption[]> {
     let response: Response;
     try {
@@ -253,7 +327,7 @@ export class AiService {
     } catch {
       await this.githubService.recordAuditLog(
         userId,
-        'AI_KEY_SAVE',
+        auditAction,
         'FAILED',
         'Network failure contacting Google Gemini API',
         meta,
@@ -266,7 +340,7 @@ export class AiService {
       const safeErr = redactTokens(body.error?.message || response.statusText);
       await this.githubService.recordAuditLog(
         userId,
-        'AI_KEY_SAVE',
+        auditAction,
         'FAILED',
         `Google Gemini API rejected key (${response.status}): ${safeErr}`,
         meta,
@@ -367,7 +441,7 @@ export class AiService {
       }
 
       const payload = (await response.json().catch(() => null)) as
-        GitHubCatalogModel[] | { models?: GitHubCatalogModel[] } | null;
+        GitHubCatalogModelEntry[] | { models?: GitHubCatalogModelEntry[] } | null;
       const list = Array.isArray(payload) ? payload : payload?.models;
       if (!Array.isArray(list)) {
         return {
@@ -380,6 +454,7 @@ export class AiService {
         };
       }
 
+      const availableModels = filterAndNormalizeGitHubCatalogModels(list);
       const normalizedTarget = mapGitHubModelId(model).toLowerCase();
       const matched = list.some((item) => {
         const candidateId = (item.id || item.name || '').toLowerCase();
@@ -394,10 +469,17 @@ export class AiService {
           latencyMs,
           reasonCode: 'MODEL_NOT_FOUND',
           reason: `Mô hình ${model} không còn trong danh mục GitHub Models.`,
+          ...(availableModels.length > 0 ? { availableModels } : {}),
         };
       }
 
-      return { available: true, engine: 'GITHUB_MODELS', model, latencyMs };
+      return {
+        available: true,
+        engine: 'GITHUB_MODELS',
+        model,
+        latencyMs,
+        ...(availableModels.length > 0 ? { availableModels } : {}),
+      };
     } catch {
       return {
         available: false,

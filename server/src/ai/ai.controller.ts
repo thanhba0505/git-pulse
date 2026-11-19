@@ -3,7 +3,11 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { AiService } from './ai.service';
-import { CheckAvailabilityDto, CreateAiConnectionDto } from './dto/ai-connection.dto';
+import {
+  CheckAvailabilityDto,
+  CreateAiConnectionDto,
+  PreviewAiModelsDto,
+} from './dto/ai-connection.dto';
 import { SummarizeDto } from './dto/summarize.dto';
 import { AuthenticatedUser, JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -17,6 +21,34 @@ export class AiController {
   @ApiOperation({ summary: 'List user saved AI provider connections (masked keys only)' })
   async listConnections(@Req() req: Request & { user: AuthenticatedUser }) {
     return this.aiService.listConnections(req.user.id);
+  }
+
+  @Post('preview-models')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Validate an unsaved AI key and preview its available models' })
+  async previewModels(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Body() dto: PreviewAiModelsDto,
+  ) {
+    const meta = {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
+    return this.aiService.previewModels(req.user.id, dto, meta);
+  }
+
+  @Post('connections/:id/refresh-models')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Refresh live model list from a saved AI connection token' })
+  async refreshConnectionModels(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Param('id') id: string,
+  ) {
+    const meta = {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
+    return this.aiService.refreshConnectionModels(req.user.id, id, meta);
   }
 
   @Post('connections')

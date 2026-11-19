@@ -17,6 +17,16 @@ export interface GeminiApiModelEntry {
   supportedGenerationMethods?: string[];
 }
 
+export interface GitHubCatalogModelEntry {
+  id?: string;
+  name?: string;
+  friendly_name?: string;
+  publisher?: string;
+  summary?: string;
+  task?: string;
+  supported_output_modalities?: string[];
+}
+
 export const DEFAULT_GITHUB_MODELS: readonly AiModelOption[] = [
   {
     id: 'openai/gpt-4o-mini',
@@ -145,6 +155,44 @@ export function filterAndSortGeminiModels(
 
   filtered.sort((a, b) => extractGeminiSortScore(b.id) - extractGeminiSortScore(a.id));
   return filtered.slice(0, 15);
+}
+
+/**
+ * Filters and normalizes a live GitHub Models catalog payload into AiModelOption[].
+ */
+export function filterAndNormalizeGitHubCatalogModels(
+  rawList: readonly GitHubCatalogModelEntry[],
+): AiModelOption[] {
+  const seen = new Set<string>();
+  const normalized: AiModelOption[] = [];
+
+  for (const entry of rawList) {
+    const id = (entry.id || entry.name || '').trim();
+    if (!id) continue;
+
+    const task = entry.task?.toLowerCase();
+    if (task && (task.includes('embedding') || task.includes('image') || task.includes('audio'))) {
+      continue;
+    }
+
+    const outputs = entry.supported_output_modalities;
+    if (Array.isArray(outputs) && outputs.length > 0 && !outputs.includes('text')) {
+      continue;
+    }
+
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    const label = entry.friendly_name?.trim() || entry.name?.trim() || id;
+    const rawDesc = entry.summary?.trim() || entry.publisher?.trim();
+    normalized.push({
+      id,
+      label,
+      ...(rawDesc ? { description: rawDesc.slice(0, 90) } : {}),
+    });
+  }
+
+  return normalized.slice(0, 20);
 }
 
 /**

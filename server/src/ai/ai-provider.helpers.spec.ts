@@ -1,5 +1,6 @@
 import {
   buildStandupPrompts,
+  filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
   isJsonContentType,
   mapGitHubModelId,
@@ -78,6 +79,41 @@ describe('ai-provider.helpers', () => {
       'First item',
       'Second item',
       'Third item',
+    ]);
+  });
+
+  it('filters GitHub catalog entries to text chat models cleanly', () => {
+    const models = filterAndNormalizeGitHubCatalogModels([
+      {
+        id: 'openai/text-embedding-3-large',
+        name: 'Text Embedding 3 Large',
+        task: 'embeddings',
+      },
+      {
+        id: 'openai/gpt-4o-mini',
+        friendly_name: 'OpenAI GPT-4o mini',
+        publisher: 'OpenAI',
+        task: 'chat-completion',
+        supported_output_modalities: ['text'],
+      },
+      {
+        id: 'deepseek/deepseek-r1',
+        name: 'DeepSeek R1',
+        summary: 'Reasoning model',
+      },
+    ]);
+
+    expect(models).toEqual([
+      {
+        id: 'openai/gpt-4o-mini',
+        label: 'OpenAI GPT-4o mini',
+        description: 'OpenAI',
+      },
+      {
+        id: 'deepseek/deepseek-r1',
+        label: 'DeepSeek R1',
+        description: 'Reasoning model',
+      },
     ]);
   });
 });

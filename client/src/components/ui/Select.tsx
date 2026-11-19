@@ -18,6 +18,7 @@ export interface SelectOption<T extends string> {
 interface SelectProps<T extends string> {
   id?: string;
   label?: string;
+  labelAction?: React.ReactNode;
   value: T;
   options: readonly SelectOption<T>[];
   onChange: (value: T) => void;
@@ -30,6 +31,7 @@ interface SelectProps<T extends string> {
 export function Select<T extends string>({
   id,
   label,
+  labelAction,
   value,
   options,
   onChange,
@@ -184,14 +186,15 @@ export function Select<T extends string>({
 
   return (
     <div ref={containerRef} className={`relative w-full min-w-0 ${className}`}>
-      {label && (
-        <label
-          id={labelId}
-          htmlFor={triggerId}
-          className="block text-xs font-medium text-slate-300 mb-1.5"
-        >
-          {label}
-        </label>
+      {(label || labelAction) && (
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          {label && (
+            <label id={labelId} htmlFor={triggerId} className="text-xs font-medium text-slate-300">
+              {label}
+            </label>
+          )}
+          {labelAction}
+        </div>
       )}
 
       <button
