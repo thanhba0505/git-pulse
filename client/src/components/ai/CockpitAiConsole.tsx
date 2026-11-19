@@ -77,7 +77,7 @@ export function CockpitAiConsole({
       ...connections.map((conn) => ({
         value: `conn:${conn.id}`,
         label: `${dict.aiConsole.geminiProviderLabel} (${conn.label})`,
-        description: conn.maskedKey,
+        description: dict.aiModal.apiKeyLabel,
         ...(conn.status === 'REVOKED'
           ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
           : {}),
