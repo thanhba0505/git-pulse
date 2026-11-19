@@ -26,8 +26,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Git Pulse | Git Activity & AI Standup Workspace',
-  description: 'Developer Intelligence & AI Standup Workspace.',
+  title: 'Git Pulse | Git Activity & AI Report Workspace',
+  description: 'Developer Intelligence & AI Report Workspace.',
 };
 
 function getSafeOrigin(urlValue?: string): string | null {

@@ -23,7 +23,7 @@ export const vi: TranslationDictionary = {
   },
   header: {
     brand: 'Git Pulse',
-    subtitle: 'Tổng hợp hoạt động Git & Báo cáo Standup',
+    subtitle: 'Tổng hợp hoạt động Git & Báo cáo công việc',
     gitSwitcherLabel: 'Chọn tài khoản GitHub',
     gitConnectPrompt: 'Kết nối tài khoản Git',
     gitAccountsHeading: 'Tài khoản GitHub đã liên kết',
@@ -36,14 +36,14 @@ export const vi: TranslationDictionary = {
     toggleMotionPause: 'Tạm dừng hiệu ứng chuyển động nền',
     toggleMotionPlay: 'Bật hiệu ứng chuyển động nền',
     history: 'Lịch sử',
-    historyTitle: 'Xem lịch sử báo cáo Standup',
+    historyTitle: 'Xem lịch sử báo cáo',
     connectGit: 'Kết nối GitHub',
     manageGitTitle: 'Quản lý kết nối GitHub',
     logout: 'Đăng xuất',
     languageSwitchLabel: 'Ngôn ngữ giao diện',
   },
   workspace: {
-    title: 'Bảng điều khiển Standup',
+    title: 'Bảng điều khiển công việc',
     subtitle: 'Tổng hợp hoạt động Pull Request và tạo báo cáo hằng ngày.',
     activeAccountContext: 'Đang hiển thị hoạt động của @{username}',
   },
@@ -58,11 +58,11 @@ export const vi: TranslationDictionary = {
   onboarding: {
     title: 'Kết nối tài khoản GitHub để bắt đầu',
     description:
-      'Liên kết tài khoản GitHub của bạn để tải Pull Request, Commit và tạo báo cáo Standup hằng ngày chỉ trong vài giây.',
+      'Liên kết tài khoản GitHub của bạn để tải Pull Request, Commit và tạo báo cáo công việc hằng ngày chỉ trong vài giây.',
     connectNow: 'Kết nối tài khoản GitHub',
     featureSync: 'Tổng hợp PR & Commit tự động theo khung thời gian',
-    featureAi: 'Tóm tắt Standup với GitHub Models hoặc Google Gemini cá nhân',
-    featureExport: 'Chỉnh sửa nhanh và xuất Slack, Jira, Markdown 1 chạm',
+    featureAi: 'Tóm tắt báo cáo với GitHub Models hoặc Google Gemini cá nhân',
+    featureExport: 'Chỉnh sửa nhanh và sao chép báo cáo 1 chạm',
   },
   scanner: {
     title: 'Hoạt động Pull Request & Commit',
@@ -150,9 +150,9 @@ export const vi: TranslationDictionary = {
     removeItemAria: 'Gỡ {title} khỏi Task',
   },
   aiConsole: {
-    title: 'Tổng hợp Báo cáo Standup',
+    title: 'Tổng hợp Báo cáo AI',
     description:
-      'Chọn công cụ AI để chuyển đổi danh sách Pull Request và Commit thành bản tóm tắt Standup.',
+      'Chọn công cụ AI để chuyển đổi danh sách Pull Request và Commit thành bản tóm tắt công việc.',
     providerLabel: 'Công cụ AI',
     githubModelsLabel: 'GitHub Models',
     githubModelsDesc: 'Sử dụng trực tiếp token GitHub đã kết nối',
@@ -172,7 +172,7 @@ export const vi: TranslationDictionary = {
     recheckBtn: 'Kiểm tra lại',
     addGeminiQuickBtn: 'Thêm Google Gemini',
     updateKeyQuickBtn: 'Cập nhật Key',
-    generateBtn: 'Tạo báo cáo Standup',
+    generateBtn: 'Tạo báo cáo',
     generateSelectedBtn: 'Tạo báo cáo ({count} PR đã chọn)',
     generatingBtn: 'Đang tạo báo cáo...',
     noActivitiesError:
@@ -181,7 +181,7 @@ export const vi: TranslationDictionary = {
     generateFailed: 'Không thể tạo báo cáo AI. Vui lòng thử lại.',
     models: {
       gpt4oMiniLabel: 'GPT-4o Mini',
-      gpt4oMiniDesc: 'Tốc độ cao • Tối ưu Standup',
+      gpt4oMiniDesc: 'Tốc độ cao • Tối ưu báo cáo',
       llama33Label: 'Llama 3.3 70B Instruct',
       llama33Desc: 'Phân tích sâu • Chi tiết',
     },
@@ -189,7 +189,7 @@ export const vi: TranslationDictionary = {
   aiModal: {
     titleAdd: 'Thêm công cụ AI',
     titleUpdate: 'Cập nhật kết nối AI',
-    subtitle: 'Kết nối API Key cá nhân để tổng hợp báo cáo Standup theo tài khoản của bạn.',
+    subtitle: 'Kết nối API Key cá nhân để tổng hợp báo cáo theo tài khoản của bạn.',
     providerLabel: 'Nhà cung cấp AI',
     providerGeminiLabel: 'Google Gemini',
     providerGeminiDesc: 'Google AI Studio • Gemini Flash / Pro',
@@ -212,7 +212,7 @@ export const vi: TranslationDictionary = {
     updateBtn: 'Cập nhật & Xác thực',
   },
   standupDock: {
-    title: 'Bản báo cáo Standup',
+    title: 'Bản báo cáo công việc',
     generatingTitle: 'Đang tổng hợp điểm nhấn công việc...',
     generatingSubtitle: 'AI đang phân tích các Pull Request và Commit đã chọn.',
     subtitle: 'Chỉnh sửa nhanh nội dung hoặc sao chép bản báo cáo.',
@@ -233,10 +233,10 @@ export const vi: TranslationDictionary = {
       syncToday: 'Tải Pull Request hôm nay',
       sync24h: 'Tải Pull Request 24 giờ qua',
       sync7d: 'Tải Pull Request 7 ngày qua',
-      generateStandup: 'Tạo báo cáo Standup ngay',
+      generateStandup: 'Tạo báo cáo AI ngay',
       switchCloudAi: 'Chuyển công cụ AI sang GitHub Models',
       addGeminiAi: 'Thêm công cụ AI (Google Gemini)',
-      openHistory: 'Mở lịch sử báo cáo Standup',
+      openHistory: 'Mở lịch sử báo cáo',
       openGitModal: 'Quản lý kết nối GitHub',
       toggleLanguage: 'Chuyển ngôn ngữ giao diện sang English',
       toggleMotionPause: 'Tạm dừng hiệu ứng trôi nổi trên nền',
@@ -245,7 +245,7 @@ export const vi: TranslationDictionary = {
   },
   toasts: {
     syncSuccess: 'Đã tải {prs} mục hoạt động và {commits} Commit.',
-    standupReady: 'Bản báo cáo Standup đã sẵn sàng.',
+    standupReady: 'Bản báo cáo đã sẵn sàng.',
     gitConnected: 'Đã kết nối tài khoản GitHub thành công.',
     gitSwitched: 'Đã chuyển sang tài khoản @{username}.',
     gitDisconnected: 'Đã ngắt kết nối tài khoản GitHub.',
@@ -345,7 +345,7 @@ export const vi: TranslationDictionary = {
     aiModelsCount: '{count} mô hình',
   },
   historyModal: {
-    title: 'Lịch sử báo cáo Standup',
+    title: 'Lịch sử báo cáo',
     subtitle: 'Các bản tóm tắt đã lưu trong không gian làm việc của bạn.',
     loading: 'Đang tải lịch sử báo cáo...',
     empty: 'Chưa có bản báo cáo nào được lưu.',
@@ -356,7 +356,7 @@ export const vi: TranslationDictionary = {
   },
   auth: {
     workspaceLoading: 'Đang tải không gian làm việc...',
-    brandTagline: 'Tổng hợp hoạt động Git & Báo cáo Standup AI',
+    brandTagline: 'Tổng hợp hoạt động Git & Báo cáo AI',
     loginTitle: 'Đăng nhập Git Pulse',
     registerTitle: 'Tạo tài khoản Git Pulse',
     forgotTitle: 'Khôi phục mật khẩu',

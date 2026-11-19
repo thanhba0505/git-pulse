@@ -831,9 +831,6 @@ export function SettingsModal({
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-mono text-slate-400 mt-0.5">
-                            {conn.maskedKey}
-                          </p>
                         </div>
                       </div>
 
