@@ -73,10 +73,8 @@
 .gp-scroll-area,
 .overflow-y-auto {
   --scrollbar-thumb: #64748b;
-  --scrollbar-track: #0f172a;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  --scrollbar-track: transparent;
+  scrollbar-gutter: stable both-edges;
 }
 
 @media (prefers-contrast: more) {
@@ -92,43 +90,47 @@
   overscroll-behavior: contain;
 }
 
-/* Legacy fallback for browsers without standard scrollbar-color support */
-@supports not (scrollbar-color: auto) {
+/* Ultra-slim 5px scrollbar for WebKit/Chromium */
+.custom-scrollbar::-webkit-scrollbar,
+.gp-scroll-area::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.gp-scroll-area::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.gp-scroll-area::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.9), rgba(56, 189, 248, 0.65));
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.gp-scroll-area::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #38bdf8, #818cf8);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active,
+.gp-scroll-area::-webkit-scrollbar-thumb:active,
+.overflow-y-auto::-webkit-scrollbar-thumb:active {
+  background: #7dd3fc;
+}
+
+/* Standard fallback for engines without ::-webkit-scrollbar (Firefox) */
+@supports not selector(::-webkit-scrollbar) {
   .custom-scrollbar,
-  .gp-scroll-area {
-    scrollbar-width: auto;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar,
-  .gp-scroll-area::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track,
-  .gp-scroll-area::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.85);
-    border-radius: 9999px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb,
-  .gp-scroll-area::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(100, 116, 139, 0.9), rgba(56, 189, 248, 0.65));
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
-  .gp-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #38bdf8, #818cf8);
-    border: 1.5px solid transparent;
-    background-clip: padding-box;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:active,
-  .gp-scroll-area::-webkit-scrollbar-thumb:active {
-    background: #7dd3fc;
+  .gp-scroll-area,
+  .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 }
 
