@@ -118,7 +118,8 @@ Or run individually:
 ### 3. Verification & Testing
 
 ```bash
-pnpm check          # Full pipeline: Format -> Lint -> Typecheck -> Unit Tests -> Build
+pnpm check          # Verification pipeline: Format -> Lint -> Typecheck -> Unit Tests
+pnpm build          # Production build (server + client)
 pnpm test           # Run Jest unit test suites
 pnpm lint           # ESLint validation with 0 warnings policy
 pnpm format:check   # Prettier code formatting check
