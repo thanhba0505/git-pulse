@@ -7,9 +7,18 @@ const GITHUB_TOKEN_PATTERNS = [
   /ghr_[a-zA-Z0-9]{36,}/g, // GitHub Refresh Token
 ];
 
+const AI_KEY_PATTERNS = [
+  /AIza[0-9A-Za-z_-]{35}/g, // Google Gemini / Google AI Studio API Key
+  /AQ\.[0-9A-Za-z_-]{25,}/g, // Google AI Studio / Vertex Express AQ. API Key
+  /sk-ant-[a-zA-Z0-9_-]{20,}/g, // Anthropic API Key
+  /sk-or-[a-zA-Z0-9_-]{20,}/g, // OpenRouter API Key
+  /sk-[a-zA-Z0-9_-]{20,}/g, // OpenAI / compatible API Key
+  /gsk_[a-zA-Z0-9]{20,}/g, // Groq API Key
+];
+
 /**
- * Sanitizes any string or JSON representation by replacing any detected GitHub token
- * with a safe redacted placeholder '[REDACTED_GITHUB_TOKEN]' to prevent leaks in logs.
+ * Sanitizes any string or JSON representation by replacing detected GitHub tokens
+ * and AI provider keys with safe placeholders to prevent leaks in logs or errors.
  */
 export function redactTokens(input: unknown): string {
   if (input === null || input === undefined) {
@@ -30,6 +39,9 @@ export function redactTokens(input: unknown): string {
   let sanitized = text;
   for (const pattern of GITHUB_TOKEN_PATTERNS) {
     sanitized = sanitized.replace(pattern, '[REDACTED_GITHUB_TOKEN]');
+  }
+  for (const pattern of AI_KEY_PATTERNS) {
+    sanitized = sanitized.replace(pattern, '[REDACTED_AI_KEY]');
   }
 
   return sanitized;

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useFloatingPosition } from '../../lib/use-floating-position';
+import { useFloatingPosition, usePopoverPresence } from '../../lib/use-floating-position';
 
 interface DropdownMenuProps {
   trigger: (props: {
@@ -33,8 +33,9 @@ export function DropdownMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const { shouldRender, isClosing } = usePopoverPresence(isOpen, menuRef);
   const floatingPos = useFloatingPosition({
-    isOpen,
+    isOpen: shouldRender,
     anchorRef: rootRef,
     align,
     gap: 8,
@@ -140,7 +141,7 @@ export function DropdownMenu({
         },
       })}
 
-      {isOpen &&
+      {shouldRender &&
         floatingPos &&
         createPortal(
           <div
@@ -148,9 +149,11 @@ export function DropdownMenu({
             id={menuId}
             role="menu"
             aria-labelledby={triggerId}
+            data-state={isClosing ? 'closing' : 'open'}
+            data-open-upward={floatingPos.openUpward ? 'true' : 'false'}
             onKeyDown={handleMenuKeyDown}
             style={floatingPos.style}
-            className={`gp-glass-panel gp-popover-in custom-scrollbar overflow-y-auto overscroll-contain rounded-xl p-1.5 max-w-[calc(100vw-1.5rem)] ${widthClass} ${originClass}`}
+            className={`gp-menu-surface gp-menu-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl py-1.5 px-1 max-w-[calc(100vw-1.5rem)] ${widthClass} ${originClass}`}
           >
             {children({ close })}
           </div>,

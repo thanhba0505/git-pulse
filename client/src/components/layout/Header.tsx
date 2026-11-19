@@ -136,10 +136,10 @@ export function Header({
                           onSelectGitAccount(account.id);
                         }
                       }}
-                      className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left transition-colors cursor-pointer ${
+                      className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-xs text-left border transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
                         account.isActive
-                          ? 'bg-sky-500/15 text-sky-200 font-medium'
-                          : 'text-slate-200 hover:bg-white/[0.08]'
+                          ? 'bg-gradient-to-r from-sky-500/[0.16] to-sky-500/[0.06] border-sky-400/30 text-sky-200 font-semibold'
+                          : 'border-transparent text-slate-200 hover:bg-white/[0.07] hover:border-white/[0.08]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -158,15 +158,17 @@ export function Header({
                       </div>
 
                       {account.isActive && (
-                        <Check
-                          className="w-3.5 h-3.5 text-emerald-400 shrink-0"
+                        <span
                           aria-hidden="true"
-                        />
+                          className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0"
+                        >
+                          <Check className="w-3 h-3" />
+                        </span>
                       )}
                     </button>
                   ))}
 
-                  <hr className="border-white/[0.12] my-1" />
+                  <hr className="border-white/[0.1] my-1.5 mx-1.5" />
 
                   <button
                     type="button"
@@ -175,7 +177,7 @@ export function Header({
                       close();
                       onOpenAddGitAccount();
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 hover:bg-sky-500/15 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium border border-transparent text-sky-300 hover:text-sky-200 hover:bg-sky-500/15 hover:border-sky-400/25 transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
                   >
                     <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>{dict.header.addGitAccount}</span>
@@ -258,7 +260,7 @@ export function Header({
                     )}
                   </div>
 
-                  <hr className="border-white/[0.12] my-1" />
+                  <hr className="border-white/[0.1] my-1.5 mx-1.5" />
 
                   <button
                     type="button"
@@ -267,7 +269,7 @@ export function Header({
                       close();
                       onOpenHistory();
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
                   >
                     <History className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                     <span>{dict.header.history}</span>
@@ -280,13 +282,13 @@ export function Header({
                       close();
                       onOpenSettings();
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
                   >
                     <Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                     <span>{dict.header.settings}</span>
                   </button>
 
-                  <hr className="border-white/[0.12] my-1" />
+                  <hr className="border-white/[0.1] my-1.5 mx-1.5" />
 
                   <button
                     type="button"
@@ -295,7 +297,7 @@ export function Header({
                       close();
                       onLogout();
                     }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 transition-colors cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-rose-300 hover:text-rose-200 border border-transparent hover:bg-rose-500/15 hover:border-rose-500/25 transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400/60 focus-visible:bg-rose-500/15"
                   >
                     <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>{dict.header.logout}</span>

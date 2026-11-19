@@ -1,257 +1,302 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { AiEngine } from '../../types';
+import React, { useMemo } from 'react';
+import { AiAvailabilityState, AiConnectionSummary, AiModelOption } from '../../types';
 import { useTranslation } from '../../i18n';
 import { Select, SelectOption } from '../ui/Select';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
-import { Sparkles, Cpu, Globe, Loader2, AlertCircle, HardDrive, CheckCircle2 } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Settings,
+  Sparkles,
+} from 'lucide-react';
+
+export const BUILTIN_GITHUB_TOOL_KEY = 'builtin:GITHUB_MODELS';
+export const ADD_AI_PROVIDER_ACTION = '__ADD_AI_PROVIDER__';
 
 interface CockpitAiConsoleProps {
-  engine: AiEngine;
-  onEngineChange: (engine: AiEngine) => void;
+  selectedToolKey: string;
+  onSelectToolKey: (toolKey: string) => void;
+  connections: readonly AiConnectionSummary[];
+  githubModels: readonly AiModelOption[];
   selectedModel: string;
   onModelChange: (model: string) => void;
-  language: 'vi' | 'en';
-  onLanguageChange: (lang: 'vi' | 'en') => void;
+  hasCustomPrompt: boolean;
+  onOpenAiSettings: () => void;
+  availability: AiAvailabilityState;
+  onRecheckAvailability: () => void;
+  onRefreshModels: () => void;
+  isRefreshingModels: boolean;
+  onOpenAddAiModal: () => void;
+  onOpenUpdateAiModal: (connection: AiConnectionSummary) => void;
   onGenerate: () => void;
   isGenerating: boolean;
   error?: string | null;
-  webLlmProgressText?: string;
-  webLlmProgressPercent?: number;
   selectedPrCount: number;
+  selectedCommitCount: number;
 }
 
 export function CockpitAiConsole({
-  engine,
-  onEngineChange,
+  selectedToolKey,
+  onSelectToolKey,
+  connections,
+  githubModels,
   selectedModel,
   onModelChange,
-  language,
-  onLanguageChange,
+  hasCustomPrompt,
+  onOpenAiSettings,
+  availability,
+  onRecheckAvailability,
+  onRefreshModels,
+  isRefreshingModels,
+  onOpenAddAiModal,
+  onOpenUpdateAiModal,
   onGenerate,
   isGenerating,
   error,
-  webLlmProgressText,
-  webLlmProgressPercent,
   selectedPrCount,
+  selectedCommitCount,
 }: CockpitAiConsoleProps) {
   const { dict, t } = useTranslation();
-  const isWebLLM = engine === 'WEB_LLM';
-  const [hasWebGpuCache, setHasWebGpuCache] = useState(false);
 
-  useEffect(() => {
-    if (!isWebLLM || typeof window === 'undefined' || !('caches' in window)) return;
+  const activeConnection = useMemo(() => {
+    if (!selectedToolKey.startsWith('conn:')) return null;
+    const targetId = selectedToolKey.slice(5);
+    return connections.find((c) => c.id === targetId) ?? null;
+  }, [selectedToolKey, connections]);
 
-    let mounted = true;
-    window.caches
-      .keys()
-      .then((keys) => {
-        if (mounted) {
-          setHasWebGpuCache(keys.some((k) => k.toLowerCase().includes('webllm')));
-        }
-      })
-      .catch(() => {
-        if (mounted) setHasWebGpuCache(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [isWebLLM]);
-
-  const preloadWebLlm = () => {
-    void import('../../lib/webllm');
-  };
+  const providerOptions = useMemo<readonly SelectOption<string>[]>(() => {
+    const items: SelectOption<string>[] = [
+      {
+        value: BUILTIN_GITHUB_TOOL_KEY,
+        label: dict.aiConsole.githubModelsLabel,
+        description: dict.aiConsole.githubModelsDesc,
+      },
+      ...connections.map((conn) => ({
+        value: `conn:${conn.id}`,
+        label: `${dict.aiConsole.geminiProviderLabel} (${conn.label})`,
+        description: dict.aiModal.apiKeyLabel,
+        ...(conn.status === 'REVOKED'
+          ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
+          : {}),
+      })),
+      {
+        value: ADD_AI_PROVIDER_ACTION,
+        label: dict.aiConsole.addProviderOptionLabel,
+        description: dict.aiConsole.addProviderOptionDesc,
+        isAction: true,
+      },
+    ];
+    return items;
+  }, [connections, dict]);
 
   const modelOptions = useMemo<readonly SelectOption<string>[]>(() => {
-    if (isWebLLM) {
-      return [
-        {
-          value: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
-          label: dict.aiConsole.models.llama32LocalLabel,
-          description: dict.aiConsole.models.llama32LocalDesc,
-        },
-        {
-          value: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
-          label: dict.aiConsole.models.qwenLocalLabel,
-          description: dict.aiConsole.models.qwenLocalDesc,
-        },
-      ];
+    if (activeConnection) {
+      return activeConnection.availableModels.map((m) => ({
+        value: m.id,
+        label: m.label,
+        description: m.description,
+      }));
+    }
+
+    if (githubModels.length > 0) {
+      return githubModels.map((m) => ({
+        value: m.id,
+        label: m.label,
+        description: m.description,
+      }));
     }
 
     return [
       {
-        value: 'gpt-4o-mini',
+        value: 'openai/gpt-4o-mini',
         label: dict.aiConsole.models.gpt4oMiniLabel,
         description: dict.aiConsole.models.gpt4oMiniDesc,
       },
       {
-        value: 'meta-llama-3.3-70b-instruct',
+        value: 'meta/llama-3.3-70b-instruct',
         label: dict.aiConsole.models.llama33Label,
         description: dict.aiConsole.models.llama33Desc,
       },
     ];
-  }, [isWebLLM, dict]);
+  }, [activeConnection, githubModels, dict]);
 
-  const outputLanguageOptions = useMemo<readonly SelectOption<'vi' | 'en'>[]>(
-    () => [
-      { value: 'vi', label: dict.aiConsole.outputLangVi },
-      { value: 'en', label: dict.aiConsole.outputLangEn },
-    ],
-    [dict],
-  );
+  const handleToolChange = (nextKey: string) => {
+    if (nextKey === ADD_AI_PROVIDER_ACTION) {
+      onOpenAddAiModal();
+      return;
+    }
+    onSelectToolKey(nextKey);
+  };
 
-  const progressPct = Math.max(0, Math.min(100, Math.round((webLlmProgressPercent || 0) * 100)));
   const hasSelection = selectedPrCount > 0;
+  const isChecking = availability.status === 'checking';
+  const isUnavailable = availability.status === 'unavailable';
+  const isGenerateDisabled =
+    !hasSelection || isGenerating || isRefreshingModels || isChecking || isUnavailable;
+
   const ctaText = isGenerating
     ? dict.aiConsole.generatingBtn
-    : hasSelection
-      ? t('aiConsole.generateSelectedBtn', { count: selectedPrCount })
+    : selectedCommitCount > 0
+      ? t('aiConsole.generateSelectedBtn', { count: selectedCommitCount })
       : dict.aiConsole.generateBtn;
 
   return (
     <ShowcaseCard as="section" aria-labelledby="ai-console-heading" className="p-5 sm:p-6">
-      <div className="space-y-5">
-        {/* Header */}
-        <div className="border-b border-slate-700/80 pb-4">
-          <h2
-            id="ai-console-heading"
-            className="text-base font-semibold text-slate-100 tracking-tight"
-          >
-            {dict.aiConsole.title}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-            {dict.aiConsole.description}
-          </p>
-        </div>
-
-        {/* Engine Radio Selection */}
-        <div
-          role="radiogroup"
-          aria-label={dict.aiConsole.engineGroupLabel}
-          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-        >
-          {/* Cloud Engine */}
-          <button
-            type="button"
-            role="radio"
-            aria-checked={engine === 'GITHUB_MODELS'}
-            onClick={() => {
-              onEngineChange('GITHUB_MODELS');
-              onModelChange('gpt-4o-mini');
-            }}
-            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-              engine === 'GITHUB_MODELS'
-                ? 'bg-sky-500/[0.14] border-sky-400/60 text-slate-50 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
-                : 'bg-[#253349]/65 border-slate-600/80 hover:border-sky-400/50 hover:bg-[#2A3A53]/85 text-slate-200'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2 mb-2 w-full">
-              <div className="flex items-center gap-2 min-w-0">
-                <Globe
-                  className={`w-4 h-4 shrink-0 ${
-                    engine === 'GITHUB_MODELS' ? 'text-sky-400' : 'text-slate-400'
-                  }`}
-                  aria-hidden="true"
-                />
-                <span className="text-xs font-semibold text-slate-100 truncate">
-                  {dict.aiConsole.cloudTitle}
-                </span>
-              </div>
-              <span
-                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                  engine === 'GITHUB_MODELS'
-                    ? 'border-sky-400 bg-sky-500/20'
-                    : 'border-slate-500 bg-[#152033]'
-                }`}
-                aria-hidden="true"
-              >
-                {engine === 'GITHUB_MODELS' && <span className="w-2 h-2 rounded-full bg-sky-400" />}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">{dict.aiConsole.cloudDesc}</p>
-          </button>
-
-          {/* Browser WebGPU Engine with Predictive Chunk Preload */}
-          <button
-            type="button"
-            role="radio"
-            aria-checked={engine === 'WEB_LLM'}
-            onPointerEnter={preloadWebLlm}
-            onFocus={preloadWebLlm}
-            onClick={() => {
-              preloadWebLlm();
-              onEngineChange('WEB_LLM');
-              onModelChange('Llama-3.2-1B-Instruct-q4f16_1-MLC');
-            }}
-            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-              engine === 'WEB_LLM'
-                ? 'bg-sky-500/[0.14] border-sky-400/60 text-slate-50 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
-                : 'bg-[#253349]/65 border-slate-600/80 hover:border-sky-400/50 hover:bg-[#2A3A53]/85 text-slate-200'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-2 mb-2 w-full">
-              <div className="flex items-center gap-2 min-w-0">
-                <Cpu
-                  className={`w-4 h-4 shrink-0 ${
-                    engine === 'WEB_LLM' ? 'text-sky-400' : 'text-slate-400'
-                  }`}
-                  aria-hidden="true"
-                />
-                <span className="text-xs font-semibold text-slate-100 truncate">
-                  {dict.aiConsole.localTitle}
-                </span>
-              </div>
-              <span
-                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                  engine === 'WEB_LLM'
-                    ? 'border-sky-400 bg-sky-500/20'
-                    : 'border-slate-500 bg-[#152033]'
-                }`}
-                aria-hidden="true"
-              >
-                {engine === 'WEB_LLM' && <span className="w-2 h-2 rounded-full bg-sky-400" />}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">{dict.aiConsole.localDesc}</p>
-          </button>
-        </div>
-
-        {/* Model & Report Language Select Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Select
-            label={dict.aiConsole.modelLabel}
-            value={selectedModel}
-            options={modelOptions}
-            onChange={onModelChange}
-            disabled={isGenerating}
-          />
-
-          <Select
-            label={dict.aiConsole.outputLangLabel}
-            value={language}
-            options={outputLanguageOptions}
-            onChange={onLanguageChange}
-            disabled={isGenerating}
-          />
-        </div>
-
-        {/* WebGPU Local Cache Indicator */}
-        {isWebLLM && (
-          <div className="flex items-center gap-2 text-xs text-slate-300 px-3 py-2 rounded-lg bg-[#152033] border border-slate-700/80">
-            {hasWebGpuCache ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
-            ) : (
-              <HardDrive className="w-3.5 h-3.5 text-sky-400 shrink-0" aria-hidden="true" />
-            )}
-            <span className="leading-snug">
-              {hasWebGpuCache ? dict.aiConsole.webgpuCachedHint : dict.aiConsole.webgpuDownloadHint}
-            </span>
+      <div className="space-y-4">
+        {/* Header + AI Prompt & Language Settings Trigger */}
+        <div className="flex items-start justify-between gap-3 border-b border-slate-700/80 pb-4">
+          <div className="min-w-0">
+            <h2
+              id="ai-console-heading"
+              className="text-base font-semibold text-slate-100 tracking-tight"
+            >
+              {dict.aiConsole.title}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              {dict.aiConsole.description}
+            </p>
           </div>
-        )}
 
-        {/* Inline Error Alert */}
+          <button
+            type="button"
+            onClick={onOpenAiSettings}
+            title={dict.aiConsole.aiSettingsBtn}
+            aria-label={dict.aiConsole.aiSettingsBtn}
+            className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.14] hover:border-white/[0.24] transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+          >
+            <Settings className="w-4 h-4" aria-hidden="true" />
+            {hasCustomPrompt && (
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.85)]"
+              />
+            )}
+          </button>
+        </div>
+
+        {/* AI Provider Select */}
+        <Select
+          id="ai-provider-select"
+          label={dict.aiConsole.providerLabel}
+          value={selectedToolKey}
+          options={providerOptions}
+          onChange={handleToolChange}
+          disabled={isGenerating || isRefreshingModels}
+        />
+
+        {/* Full-Width AI Model Select */}
+        <Select
+          id="ai-model-select"
+          label={dict.aiConsole.modelLabel}
+          labelAction={
+            <button
+              type="button"
+              onClick={onRefreshModels}
+              disabled={isGenerating || isRefreshingModels}
+              title={dict.aiConsole.refreshModelsBtn}
+              aria-label={dict.aiConsole.refreshModelsBtn}
+              className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-3 h-3 ${isRefreshingModels ? 'animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              <span>
+                {isRefreshingModels
+                  ? dict.aiConsole.refreshingModelsBtn
+                  : dict.aiConsole.refreshModelsBtn}
+              </span>
+            </button>
+          }
+          value={selectedModel}
+          options={modelOptions}
+          onChange={onModelChange}
+          disabled={isGenerating || isRefreshingModels}
+        />
+
+        {/* Live Model Availability Status */}
+        <div aria-live="polite">
+          {isChecking && (
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-[#152033] border border-slate-700/80 text-xs text-slate-300">
+              <Loader2 className="w-4 h-4 text-sky-400 animate-spin shrink-0" aria-hidden="true" />
+              <span>{dict.aiConsole.checkingAvailability}</span>
+            </div>
+          )}
+
+          {availability.status === 'available' && (
+            <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg bg-emerald-500/[0.08] border border-emerald-500/25 text-xs text-emerald-300">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
+                <span className="truncate font-medium">{dict.aiConsole.availableStatus}</span>
+              </div>
+              {typeof availability.latencyMs === 'number' && (
+                <span className="font-mono text-xs text-emerald-300/85 tabular-nums shrink-0">
+                  {availability.latencyMs}ms
+                </span>
+              )}
+            </div>
+          )}
+
+          {isUnavailable && (
+            <div
+              role="status"
+              className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-xs text-rose-200 space-y-2.5"
+            >
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="leading-relaxed">
+                  <span className="font-semibold text-rose-100">
+                    {dict.aiConsole.unavailablePrefix}{' '}
+                  </span>
+                  {availability.reason}
+                </p>
+              </div>
+
+              <div className="flex items-center flex-wrap gap-2 pl-6">
+                <button
+                  type="button"
+                  onClick={onRecheckAvailability}
+                  className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-medium text-slate-100 bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.16] transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" aria-hidden="true" />
+                  <span>{dict.aiConsole.recheckBtn}</span>
+                </button>
+
+                {!activeConnection ? (
+                  <button
+                    type="button"
+                    onClick={onOpenAddAiModal}
+                    className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>{dict.aiConsole.addGeminiQuickBtn}</span>
+                  </button>
+                ) : (
+                  (availability.reasonCode === 'INVALID_KEY' ||
+                    availability.reasonCode === 'DECRYPT_ERROR' ||
+                    availability.reasonCode === 'NOT_CONNECTED') && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenUpdateAiModal(activeConnection)}
+                      className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{dict.aiConsole.updateKeyQuickBtn}</span>
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Inline Generate Error Alert */}
         {error && (
           <div
             role="alert"
@@ -266,7 +311,7 @@ export function CockpitAiConsole({
         <button
           type="button"
           onClick={onGenerate}
-          disabled={!hasSelection || isGenerating}
+          disabled={isGenerateDisabled}
           className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:bg-slate-700/70 disabled:text-slate-300 disabled:border disabled:border-slate-600/80 disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         >
           {isGenerating ? (
@@ -275,28 +320,12 @@ export function CockpitAiConsole({
             <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
           )}
           <span>{ctaText}</span>
-          {!isGenerating && hasSelection && (
+          {!isGenerating && !isGenerateDisabled && (
             <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950/20 text-xs font-mono font-semibold text-slate-950/80 ml-1">
               ⌘↵
             </kbd>
           )}
         </button>
-
-        {/* WebGPU Download / Init Progress */}
-        {isGenerating && isWebLLM && (
-          <div className="p-3.5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-2">
-            <div className="flex items-center justify-between gap-2 text-xs text-slate-200 font-mono">
-              <span className="truncate">{webLlmProgressText || dict.aiConsole.loadingModel}</span>
-              <span className="tabular-nums text-sky-400 shrink-0">{progressPct}%</span>
-            </div>
-            <div className="w-full h-1.5 rounded-full bg-slate-700 overflow-hidden">
-              <div
-                className="h-full bg-sky-500 transition-all duration-200"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </ShowcaseCard>
   );

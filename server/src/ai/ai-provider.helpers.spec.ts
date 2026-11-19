@@ -1,0 +1,208 @@
+import {
+  buildStandupPrompts,
+  classifyGeminiHttpError,
+  filterAndNormalizeGitHubCatalogModels,
+  filterAndSortGeminiModels,
+  isJsonContentType,
+  mapGitHubModelId,
+  maskApiKey,
+  parseStandupBullets,
+} from './ai-provider.helpers';
+
+describe('ai-provider.helpers', () => {
+  it('masks API keys preserving only first 4 and last 4 characters', () => {
+    expect(maskApiKey('AIzaSyB1234567890abcdefXYZ9')).toBe('AIza••••XYZ9');
+    expect(maskApiKey('short')).toBe('••••');
+  });
+
+  it('normalizes legacy GitHub Models IDs to publisher/model format', () => {
+    expect(mapGitHubModelId('gpt-4o-mini')).toBe('openai/gpt-4o-mini');
+    expect(mapGitHubModelId('meta-llama-3.3-70b-instruct')).toBe('meta/llama-3.3-70b-instruct');
+    expect(mapGitHubModelId('openai/gpt-4.1')).toBe('openai/gpt-4.1');
+  });
+
+  it('detects JSON content-type and rejects plain text retirement stubs', () => {
+    expect(isJsonContentType('application/json; charset=utf-8')).toBe(true);
+    expect(isJsonContentType('text/plain')).toBe(false);
+    expect(isJsonContentType(null)).toBe(false);
+  });
+
+  it('filters out embeddings/imagen/audio and prioritizes flagship Gemini chat models', () => {
+    const models = filterAndSortGeminiModels([
+      {
+        name: 'models/gemini-embedding-001',
+        displayName: 'Gemini Embedding',
+        supportedGenerationMethods: ['embedContent'],
+      },
+      {
+        name: 'models/imagen-3.0-generate-002',
+        displayName: 'Imagen 3',
+        supportedGenerationMethods: ['predict'],
+      },
+      {
+        name: 'models/gemini-2.0-flash',
+        displayName: 'Gemini 2.0 Flash',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-pro',
+        displayName: 'Gemini 2.5 Pro',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash',
+        displayName: 'Gemini 2.5 Flash',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash-tts',
+        displayName: 'Gemini 2.5 Flash TTS',
+        supportedGenerationMethods: ['generateContent'],
+      },
+    ]);
+
+    expect(models.map((m) => m.id)).toEqual([
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-2.0-flash',
+    ]);
+  });
+
+  it('builds commit-only prompts omitting PR titles and appends output language on custom prompt', () => {
+    const { systemPrompt, userPrompt } = buildStandupPrompts(
+      [
+        { repo: 'org/repo', title: 'PR #12 ignored title', commits: ['feat: add vault'] },
+        { repo: 'org/repo', title: 'PR #13 ignored title', commits: ['fix: timeout guard'] },
+      ],
+      'en',
+    );
+    expect(systemPrompt).toContain('English');
+    expect(userPrompt).toContain('Repository: org/repo');
+    expect(userPrompt).toContain('  - feat: add vault');
+    expect(userPrompt).toContain('  - fix: timeout guard');
+    expect(userPrompt).not.toContain('PR #12 ignored title');
+    expect(userPrompt).not.toContain('PR Title');
+
+    const custom = buildStandupPrompts(
+      [{ repo: 'org/repo', title: 'ignored', commits: ['chore: refactor'] }],
+      'vi',
+      'Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.',
+    );
+    expect(custom.systemPrompt).toContain('Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.');
+    expect(custom.systemPrompt).toContain('Vietnamese');
+
+    expect(parseStandupBullets('• First item\n- Second item\n* Third item')).toEqual([
+      'First item',
+      'Second item',
+      'Third item',
+    ]);
+  });
+
+  it('filters GitHub catalog entries to text chat models cleanly', () => {
+    const models = filterAndNormalizeGitHubCatalogModels([
+      {
+        id: 'openai/text-embedding-3-large',
+        name: 'Text Embedding 3 Large',
+        task: 'embeddings',
+      },
+      {
+        id: 'openai/gpt-4o-mini',
+        friendly_name: 'OpenAI GPT-4o mini',
+        publisher: 'OpenAI',
+        task: 'chat-completion',
+        supported_output_modalities: ['text'],
+      },
+      {
+        id: 'deepseek/deepseek-r1',
+        name: 'DeepSeek R1',
+        summary: 'Reasoning model',
+      },
+    ]);
+
+    expect(models).toEqual([
+      {
+        id: 'openai/gpt-4o-mini',
+        label: 'OpenAI GPT-4o mini',
+        description: 'OpenAI',
+      },
+      {
+        id: 'deepseek/deepseek-r1',
+        label: 'DeepSeek R1',
+        description: 'Reasoning model',
+      },
+    ]);
+  });
+
+  it('filters out specialized non-standup models and prioritizes stable GA Flash above codenames', () => {
+    const models = filterAndSortGeminiModels([
+      {
+        name: 'models/gemini-4-argon',
+        displayName: 'Gemini 4 Argon',
+        description: 'Gemini 4 Argon',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-3.5-transcribe',
+        displayName: 'Gemini 3.5 Transcribe',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-3.1-pro-preview-customtools',
+        displayName: 'Gemini 3.1 Pro Custom Tools',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-nano-banana-2.1',
+        displayName: 'Nano Banana 2.1',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash-lite',
+        displayName: 'Gemini 2.5 Flash-Lite',
+        description: 'Stable version of Gemini 2.5 Flash-Lite',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash',
+        displayName: 'Gemini 2.5 Flash',
+        description: 'Stable version of Gemini 2.5 Flash',
+        supportedGenerationMethods: ['generateContent'],
+      },
+    ]);
+
+    expect(models.map((m) => m.id)).toEqual([
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-4-argon',
+    ]);
+  });
+
+  it('classifies Gemini quota-zero vs invalid-key vs model-argument HTTP errors accurately', () => {
+    const quotaZero = classifyGeminiHttpError(
+      'gemini-4-argon',
+      429,
+      'Quota exceeded for metric: generate_content_free_tier_requests, limit: 0, model: gemini-4-argon',
+    );
+    expect(quotaZero.reasonCode).toBe('QUOTA_EXCEEDED');
+    expect(quotaZero.shouldRevoke).toBe(false);
+    expect(quotaZero.reason).toContain('limit = 0');
+
+    const badArg = classifyGeminiHttpError(
+      'gemini-2.5-pro',
+      400,
+      'Thinking budget is not supported for this request.',
+      'INVALID_ARGUMENT',
+    );
+    expect(badArg.reasonCode).toBe('MODEL_UNSUPPORTED');
+    expect(badArg.shouldRevoke).toBe(false);
+
+    const badKey = classifyGeminiHttpError(
+      'gemini-2.5-flash',
+      400,
+      'API key not valid. Please pass a valid API key.',
+      'INVALID_ARGUMENT',
+    );
+    expect(badKey.reasonCode).toBe('INVALID_KEY');
+    expect(badKey.shouldRevoke).toBe(true);
+  });
+});

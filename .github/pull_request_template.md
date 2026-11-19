@@ -11,8 +11,8 @@
 
 ## Checklist
 
-- [ ] Code follows project conventions in `AGENTS.md` and `CONTRIBUTING.md`
-- [ ] `pnpm check` passes locally (`format:check`, `lint`, `typecheck`, `test`, `build`)
+- [ ] Code follows project conventions in [Prism Hub AGENTS.md](https://github.com/thanhba0505/prism-hub/blob/main/AGENTS.md) and [Contributing Guide](https://github.com/thanhba0505/prism-hub/blob/main/CONTRIBUTING.md)
+- [ ] `pnpm check` passes locally (`format:check`, `lint`, `typecheck`, `test`) and `pnpm build` succeeds when production packaging is impacted
 - [ ] Tests covering new logic have been added
 - [ ] No hardcoded secrets or credentials are introduced
 - [ ] Documentation updated if relevant

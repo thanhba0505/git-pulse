@@ -256,7 +256,7 @@ export function GitHubConnectModal({
               requiredMark
               labelAction={
                 <a
-                  href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=GitPulse+Standup+Scanner"
+                  href="https://github.com/settings/tokens/new?scopes=repo,read:user&description=GitPulse+Activity+Scanner"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-sky-400 hover:text-sky-300 inline-flex items-center gap-1 transition-colors"

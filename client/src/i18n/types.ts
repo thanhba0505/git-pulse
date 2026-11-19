@@ -161,35 +161,78 @@ export interface AiModelsDictionary {
   gpt4oMiniDesc: string;
   llama33Label: string;
   llama33Desc: string;
-  llama32LocalLabel: string;
-  llama32LocalDesc: string;
-  qwenLocalLabel: string;
-  qwenLocalDesc: string;
 }
 
 export interface AiConsoleDictionary {
   title: string;
   description: string;
-  engineGroupLabel: string;
-  cloudTitle: string;
-  cloudDesc: string;
-  localTitle: string;
-  localDesc: string;
+  aiSettingsBtn: string;
+  providerLabel: string;
+  githubModelsLabel: string;
+  githubModelsDesc: string;
+  geminiProviderLabel: string;
+  addProviderOptionLabel: string;
+  addProviderOptionDesc: string;
+  revokedBadge: string;
   modelLabel: string;
-  outputLangLabel: string;
-  outputLangVi: string;
-  outputLangEn: string;
-  webgpuCachedHint: string;
-  webgpuDownloadHint: string;
+  refreshModelsBtn: string;
+  refreshingModelsBtn: string;
+  checkingAvailability: string;
+  availableStatus: string;
+  unavailablePrefix: string;
+  recheckBtn: string;
+  addGeminiQuickBtn: string;
+  updateKeyQuickBtn: string;
   generateBtn: string;
   generateSelectedBtn: string;
   generatingBtn: string;
   noActivitiesError: string;
   noSelectedPrsError: string;
-  webgpuUnsupported: string;
+  noSelectedCommitsError: string;
   generateFailed: string;
-  loadingModel: string;
   models: AiModelsDictionary;
+}
+
+export interface AiSettingsModalDictionary {
+  title: string;
+  subtitle: string;
+  outputLangLabel: string;
+  outputLangVi: string;
+  outputLangEn: string;
+  customPromptLabel: string;
+  customPromptPlaceholder: string;
+  customPromptHint: string;
+  resetPromptBtn: string;
+  charCount: string;
+  saveError: string;
+  saveBtn: string;
+  savingBtn: string;
+}
+
+export interface AiModalDictionary {
+  titleAdd: string;
+  titleUpdate: string;
+  subtitle: string;
+  providerLabel: string;
+  providerGeminiLabel: string;
+  providerGeminiDesc: string;
+  providerScopeNote: string;
+  labelField: string;
+  labelPlaceholder: string;
+  labelHint: string;
+  apiKeyLabel: string;
+  getGeminiKeyLink: string;
+  apiKeyPlaceholder: string;
+  apiKeyHint: string;
+  apiKeyRequired: string;
+  previewModelsBtn: string;
+  previewingModelsBtn: string;
+  previewSuccess: string;
+  defaultModelLabel: string;
+  saveError: string;
+  saveBtn: string;
+  savingBtn: string;
+  updateBtn: string;
 }
 
 export interface StandupDockDictionary {
@@ -197,19 +240,8 @@ export interface StandupDockDictionary {
   generatingTitle: string;
   generatingSubtitle: string;
   subtitle: string;
-  copyBullet: string;
-  copyParabol: string;
-  copySlack: string;
-  copyMarkdown: string;
-  copyJira: string;
   copiedToast: string;
   editPlaceholder: string;
-  parabolYesterday: string;
-  parabolToday: string;
-  parabolBlockers: string;
-  slackHeader: string;
-  markdownHeader: string;
-  jiraHeader: string;
 }
 
 export interface CommandPaletteDictionary {
@@ -228,7 +260,7 @@ export interface CommandPaletteDictionary {
     sync7d: string;
     generateStandup: string;
     switchCloudAi: string;
-    switchWebGpuAi: string;
+    addGeminiAi: string;
     openHistory: string;
     openGitModal: string;
     toggleLanguage: string;
@@ -243,8 +275,14 @@ export interface ToastsDictionary {
   gitConnected: string;
   gitSwitched: string;
   gitDisconnected: string;
+  aiConnected: string;
+  aiUpdated: string;
+  aiDeleted: string;
+  aiModelsRefreshed: string;
+  aiModelsRefreshError: string;
   reportDeleted: string;
   settingsSaved: string;
+  aiSettingsSaved: string;
   taskCreated: string;
   taskUpdated: string;
   taskCompleted: string;
@@ -402,6 +440,13 @@ export interface SettingsModalDictionary {
   switchToBtn: string;
   disconnectAccountBtn: string;
   confirmDisconnectBtn: string;
+  aiConnectionsSection: string;
+  addAiBtn: string;
+  noAiConnections: string;
+  updateAiKeyBtn: string;
+  deleteAiBtn: string;
+  confirmDeleteAiBtn: string;
+  aiModelsCount: string;
 }
 
 export interface TranslationDictionary {
@@ -415,6 +460,8 @@ export interface TranslationDictionary {
   scanner: ScannerDictionary;
   tasks: TasksDictionary;
   aiConsole: AiConsoleDictionary;
+  aiModal: AiModalDictionary;
+  aiSettingsModal: AiSettingsModalDictionary;
   standupDock: StandupDockDictionary;
   commandPalette: CommandPaletteDictionary;
   toasts: ToastsDictionary;

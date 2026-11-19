@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AiConnectionSummary,
   FetchPreferences,
   GitAccountSummary,
   GitHubWorkspacesResponse,
@@ -17,10 +18,12 @@ import {
   Building2,
   Check,
   GitBranch,
+  KeyRound,
   Languages,
   LayoutGrid,
   Loader2,
   Plus,
+  RefreshCw,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -36,12 +39,17 @@ interface SettingsModalProps {
   initialTab?: SettingsTabKey;
   onClose: () => void;
   accounts: GitAccountSummary[];
+  aiConnections: readonly AiConnectionSummary[];
   workspaces: GitHubWorkspacesResponse | null;
   preferences: FetchPreferences;
   onSavePreferences: (next: FetchPreferences) => Promise<void>;
   onSwitchAccount: (accountId: string) => Promise<void>;
   onDisconnectAccount: (accountId: string) => Promise<void>;
   onOpenAddAccount: () => void;
+  onOpenAddAi: () => void;
+  onOpenUpdateAi: (connection: AiConnectionSummary) => void;
+  onRefreshAiModels: (connectionId: string) => Promise<void>;
+  onDeleteAiConnection: (connectionId: string) => Promise<void>;
 }
 
 interface ToggleRowProps {
@@ -93,20 +101,27 @@ export function SettingsModal({
   initialTab = 'general',
   onClose,
   accounts,
+  aiConnections,
   workspaces,
   preferences,
   onSavePreferences,
   onSwitchAccount,
   onDisconnectAccount,
   onOpenAddAccount,
+  onOpenAddAi,
+  onOpenUpdateAi,
+  onRefreshAiModels,
+  onDeleteAiConnection,
 }: SettingsModalProps) {
-  const { locale, setLocale, dict } = useTranslation();
+  const { locale, setLocale, dict, t } = useTranslation();
   const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
 
   const [activeTab, setActiveTab] = useState<SettingsTabKey>(initialTab);
   const [draftPrefs, setDraftPrefs] = useState<FetchPreferences>(preferences);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmingAiId, setConfirmingAiId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyAiId, setBusyAiId] = useState<string | null>(null);
   const [isSavingPrefs, setIsSavingPrefs] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +131,8 @@ export function SettingsModal({
     if (isOpen) {
       setActiveTab(initialTab);
       setDraftPrefs(preferences);
+      setConfirmingId(null);
+      setConfirmingAiId(null);
       setError(null);
     }
   }, [isOpen, initialTab, preferences]);
@@ -210,6 +227,31 @@ export function SettingsModal({
       setError((err as Error).message || dict.githubModal.patSaveError);
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const handleDeleteAi = async (connectionId: string) => {
+    setBusyAiId(connectionId);
+    setError(null);
+    try {
+      await onDeleteAiConnection(connectionId);
+      setConfirmingAiId(null);
+    } catch (err) {
+      setError((err as Error).message || dict.aiModal.saveError);
+    } finally {
+      setBusyAiId(null);
+    }
+  };
+
+  const handleRefreshAi = async (connectionId: string) => {
+    setBusyAiId(connectionId);
+    setError(null);
+    try {
+      await onRefreshAiModels(connectionId);
+    } catch (err) {
+      setError((err as Error).message || dict.toasts.aiModelsRefreshError);
+    } finally {
+      setBusyAiId(null);
     }
   };
 
@@ -714,6 +756,143 @@ export function SettingsModal({
                             <button
                               type="button"
                               onClick={() => setConfirmingId(null)}
+                              disabled={isBusy}
+                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
+                            >
+                              {dict.common.cancel}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                {dict.settingsModal.aiConnectionsSection}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenAddAi();
+                }}
+                className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/25 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{dict.settingsModal.addAiBtn}</span>
+              </button>
+            </div>
+
+            {aiConnections.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[#253349]/55 border border-slate-600/75 text-center">
+                <Sparkles className="w-5 h-5 text-slate-400 mx-auto mb-2" aria-hidden="true" />
+                <p className="text-xs text-slate-400">{dict.settingsModal.noAiConnections}</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {aiConnections.map((conn) => {
+                  const isBusy = busyAiId === conn.id;
+                  const isConfirming = confirmingAiId === conn.id;
+
+                  return (
+                    <div
+                      key={conn.id}
+                      className="p-3.5 rounded-xl border bg-[#253349]/55 border-slate-600/75 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-9 h-9 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
+                          aria-hidden="true"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center flex-wrap gap-2">
+                            <span className="text-sm font-semibold text-slate-100 truncate">
+                              {dict.aiConsole.geminiProviderLabel} ({conn.label})
+                            </span>
+                            {conn.status === 'REVOKED' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0">
+                                {dict.aiConsole.revokedBadge}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                <Check className="w-3 h-3" aria-hidden="true" />
+                                {t('settingsModal.aiModelsCount', {
+                                  count: conn.availableModels.length,
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 justify-end">
+                        {!isConfirming && (
+                          <button
+                            type="button"
+                            onClick={() => void handleRefreshAi(conn.id)}
+                            disabled={isBusy}
+                            title={dict.aiConsole.refreshModelsBtn}
+                            aria-label={`${dict.aiConsole.refreshModelsBtn}: ${conn.label}`}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-sky-300 hover:bg-sky-500/15 border border-white/[0.12] hover:border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <RefreshCw
+                              className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        )}
+
+                        {!isConfirming && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenUpdateAi(conn);
+                            }}
+                            disabled={isBusy}
+                            className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>{dict.settingsModal.updateAiKeyBtn}</span>
+                          </button>
+                        )}
+
+                        {!isConfirming ? (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingAiId(conn.id)}
+                            disabled={isBusy}
+                            title={dict.settingsModal.deleteAiBtn}
+                            aria-label={`${dict.settingsModal.deleteAiBtn}: ${conn.label}`}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteAi(conn.id)}
+                              disabled={isBusy}
+                              className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {isBusy && (
+                                <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                              )}
+                              <span>{dict.settingsModal.confirmDeleteAiBtn}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingAiId(null)}
                               disabled={isBusy}
                               className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
                             >

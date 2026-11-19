@@ -102,6 +102,7 @@ export interface FetchPreferences {
 export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
+  customPrompt?: string;
   fetchPreferences: FetchPreferences;
 }
 
@@ -135,11 +136,40 @@ export interface ReportItem {
   summaryText: string;
   prCount: number;
   commitCount: number;
-  aiEngineUsed: 'GITHUB_MODELS' | 'WEB_LLM';
+  aiEngineUsed: 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'WEB_LLM';
   modelName: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   createdAt: string;
 }
 
-export type AiEngine = 'GITHUB_MODELS' | 'WEB_LLM';
+export type AiEngine = 'GITHUB_MODELS' | 'GOOGLE_GEMINI';
+export type AiProviderType = 'GOOGLE_GEMINI';
+
+export interface AiModelOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export interface AiConnectionSummary {
+  id: string;
+  provider: AiProviderType;
+  label: string;
+  maskedKey: string;
+  availableModels: AiModelOption[];
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
+  lastVerifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AiAvailabilityStatus = 'idle' | 'checking' | 'available' | 'unavailable';
+
+export interface AiAvailabilityState {
+  status: AiAvailabilityStatus;
+  available: boolean;
+  latencyMs?: number;
+  reasonCode?: string;
+  reason?: string;
+}

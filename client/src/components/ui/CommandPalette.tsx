@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Sparkles,
   Globe,
-  Cpu,
+  Plus,
   History,
   GitBranch,
   Languages,
@@ -17,6 +17,7 @@ import {
   Pause,
   Play,
 } from 'lucide-react';
+import { AiConnectionSummary } from '../../types';
 
 export interface CommandItem {
   id: string;
@@ -32,9 +33,11 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   canGenerate: boolean;
+  aiConnections: readonly AiConnectionSummary[];
   onSyncRange: (range: 'today' | '24h' | '7d') => void;
   onGenerate: () => void;
-  onSwitchEngine: (engine: 'GITHUB_MODELS' | 'WEB_LLM') => void;
+  onSelectAiTool: (toolKey: string) => void;
+  onOpenAddAiModal: () => void;
   onOpenHistory: () => void;
   onOpenGitModal: () => void;
   onToggleLanguage: () => void;
@@ -44,9 +47,11 @@ export function CommandPalette({
   isOpen,
   onClose,
   canGenerate,
+  aiConnections,
   onSyncRange,
   onGenerate,
-  onSwitchEngine,
+  onSelectAiTool,
+  onOpenAddAiModal,
   onOpenHistory,
   onOpenGitModal,
   onToggleLanguage,
@@ -100,14 +105,21 @@ export function CommandPalette({
         label: dict.commandPalette.actions.switchCloudAi,
         group: dict.commandPalette.groups.ai,
         icon: Globe,
-        onSelect: () => onSwitchEngine('GITHUB_MODELS'),
+        onSelect: () => onSelectAiTool('builtin:GITHUB_MODELS'),
       },
-      {
-        id: 'engine-webgpu',
-        label: dict.commandPalette.actions.switchWebGpuAi,
+      ...aiConnections.map((conn) => ({
+        id: `engine-conn-${conn.id}`,
+        label: `${dict.aiConsole.geminiProviderLabel} (${conn.label})`,
         group: dict.commandPalette.groups.ai,
-        icon: Cpu,
-        onSelect: () => onSwitchEngine('WEB_LLM'),
+        icon: Sparkles,
+        onSelect: () => onSelectAiTool(`conn:${conn.id}`),
+      })),
+      {
+        id: 'engine-add-gemini',
+        label: dict.commandPalette.actions.addGeminiAi,
+        group: dict.commandPalette.groups.ai,
+        icon: Plus,
+        onSelect: onOpenAddAiModal,
       },
       {
         id: 'open-history',
@@ -143,10 +155,12 @@ export function CommandPalette({
     [
       dict,
       canGenerate,
+      aiConnections,
       isMotionPaused,
       onSyncRange,
       onGenerate,
-      onSwitchEngine,
+      onSelectAiTool,
+      onOpenAddAiModal,
       onOpenHistory,
       onOpenGitModal,
       onToggleLanguage,

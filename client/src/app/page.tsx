@@ -3,7 +3,10 @@
 import React, { startTransition, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
+  AiAvailabilityState,
+  AiConnectionSummary,
   AiEngine,
+  AiModelOption,
   FetchPreferences,
   GitHubWorkspacesResponse,
   GitStatus,
@@ -21,7 +24,7 @@ import { Footer } from '../components/layout/Footer';
 import { IntroScreen } from '../components/layout/IntroScreen';
 import { ActivitySummaryStrip } from '../components/dashboard/ActivitySummaryStrip';
 import { ActivityScanner, getPrKey } from '../components/dashboard/ActivityScanner';
-import { CockpitAiConsole } from '../components/ai/CockpitAiConsole';
+import { BUILTIN_GITHUB_TOOL_KEY, CockpitAiConsole } from '../components/ai/CockpitAiConsole';
 import { StandupOutputDock } from '../components/standup/StandupOutputDock';
 import { AuthModal } from '../components/auth/AuthModal';
 import type { SettingsTabKey } from '../components/settings/SettingsModal';
@@ -34,6 +37,11 @@ import { CheckCircle2, GitBranch, Pause, RefreshCw, Sparkles } from 'lucide-reac
 // Lazy-load secondary modal overlays to keep initial page JS lean
 const GitHubConnectModal = dynamic(
   () => import('../components/github/GitHubConnectBanner').then((m) => m.GitHubConnectModal),
+  { ssr: false },
+);
+
+const AiConnectModal = dynamic(
+  () => import('../components/ai/AiConnectModal').then((m) => m.AiConnectModal),
   { ssr: false },
 );
 
@@ -55,6 +63,11 @@ const CommandPalette = dynamic(
 
 const SettingsModal = dynamic(
   () => import('../components/settings/SettingsModal').then((m) => m.SettingsModal),
+  { ssr: false },
+);
+
+const AiSettingsModal = dynamic(
+  () => import('../components/ai/AiSettingsModal').then((m) => m.AiSettingsModal),
   { ssr: false },
 );
 
@@ -185,19 +198,28 @@ export default function HomePage() {
   const [repoFilter, setRepoFilter] = useState<string>('ALL');
   const [selectedPrKeys, setSelectedPrKeys] = useState<Set<string>>(() => new Set());
 
-  const [aiEngine, setAiEngine] = useState<AiEngine>('GITHUB_MODELS');
-  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
+  const [aiConnections, setAiConnections] = useState<AiConnectionSummary[]>([]);
+  const [githubModels, setGithubModels] = useState<AiModelOption[]>([]);
+  const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
+  const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
   const [reportLanguage, setReportLanguage] = useState<'vi' | 'en'>('vi');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [isAiSettingsModalOpen, setIsAiSettingsModalOpen] = useState(false);
+  const [availability, setAvailability] = useState<AiAvailabilityState>({
+    status: 'idle',
+    available: false,
+  });
+  const [isRefreshingModels, setIsRefreshingModels] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [editingAiConnection, setEditingAiConnection] = useState<AiConnectionSummary | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [webLlmProgressText, setWebLlmProgressText] = useState<string>('');
-  const [webLlmProgressPercent, setWebLlmProgressPercent] = useState<number>(0);
 
   const [bullets, setBullets] = useState<string[]>([]);
   const [modelUsed, setModelUsed] = useState<string>('');
-  const [generatedLanguage, setGeneratedLanguage] = useState<'vi' | 'en'>('vi');
+  const availabilityCheckIdRef = useRef(0);
 
   const selectedActivities = useMemo(() => {
     const base =
@@ -206,6 +228,15 @@ export default function HomePage() {
         : activities.filter((a) => a.repo === repoFilter);
     return base.filter((pr) => selectedPrKeys.has(getPrKey(pr)));
   }, [activities, groupBy, repoFilter, selectedPrKeys]);
+
+  const selectedCommitCount = useMemo(
+    () =>
+      selectedActivities.reduce(
+        (total, activity) => total + activity.commits.filter((c) => c.trim().length > 0).length,
+        0,
+      ),
+    [selectedActivities],
+  );
 
   const applyScannedActivities = useCallback((nextActivities: PrActivity[]) => {
     setActivities(nextActivities);
@@ -321,12 +352,111 @@ export default function HomePage() {
     scanRef.current = handleScanActivity;
   }, [handleScanActivity]);
 
+  const resolveDefaultModelForTool = useCallback(
+    (
+      toolKey: string,
+      conns: readonly AiConnectionSummary[],
+      ghModels: readonly AiModelOption[] = [],
+    ): string => {
+      if (toolKey.startsWith('conn:')) {
+        const targetId = toolKey.slice(5);
+        const conn = conns.find((c) => c.id === targetId);
+        return conn?.availableModels[0]?.id || 'gemini-2.5-flash';
+      }
+      return ghModels[0]?.id || 'openai/gpt-4o-mini';
+    },
+    [],
+  );
+
+  const persistAiSelection = useCallback(
+    (uid: string | undefined, toolKey: string, model: string) => {
+      if (!uid || typeof window === 'undefined') return;
+      try {
+        window.localStorage.setItem(
+          `git_pulse_ai_selection:${uid}`,
+          JSON.stringify({ toolKey, model }),
+        );
+      } catch {
+        // Ignore storage quota errors
+      }
+    },
+    [],
+  );
+
+  const checkModelAvailability = useCallback(
+    async (
+      toolKey: string,
+      model: string,
+      allowModelAutoFallback = true,
+    ): Promise<{ availableModels?: AiModelOption[] } | null> => {
+      const checkId = ++availabilityCheckIdRef.current;
+      setAvailability({ status: 'checking', available: false });
+
+      const isConn = toolKey.startsWith('conn:');
+      const engine: AiEngine = isConn ? 'GOOGLE_GEMINI' : 'GITHUB_MODELS';
+      const connectionId = isConn ? toolKey.slice(5) : undefined;
+
+      try {
+        const res = await api.ai.checkAvailability({ engine, connectionId, model });
+        if (checkId !== availabilityCheckIdRef.current) return null;
+
+        if (engine === 'GITHUB_MODELS' && res.availableModels && res.availableModels.length > 0) {
+          setGithubModels(res.availableModels);
+          const hasModel = res.availableModels.some((m) => m.id === model);
+          if (!hasModel && allowModelAutoFallback) {
+            const fallbackModel = res.availableModels[0].id;
+            setSelectedModel(fallbackModel);
+            persistAiSelection(user?.id, toolKey, fallbackModel);
+            return checkModelAvailability(toolKey, fallbackModel, false);
+          }
+        }
+
+        setAvailability({
+          status: res.available ? 'available' : 'unavailable',
+          available: res.available,
+          latencyMs: res.latencyMs,
+          reasonCode: res.reasonCode,
+          reason: res.reason,
+        });
+
+        if (connectionId) {
+          if (res.reasonCode === 'INVALID_KEY') {
+            setAiConnections((prev) =>
+              prev.map((c) => (c.id === connectionId ? { ...c, status: 'REVOKED' } : c)),
+            );
+          } else if (res.available) {
+            setAiConnections((prev) =>
+              prev.map((c) => (c.id === connectionId ? { ...c, status: 'ACTIVE' } : c)),
+            );
+          }
+        }
+
+        return { availableModels: res.availableModels };
+      } catch (err) {
+        if (checkId !== availabilityCheckIdRef.current) return null;
+        setAvailability({
+          status: 'unavailable',
+          available: false,
+          reason: (err as Error).message || dict.aiConsole.generateFailed,
+        });
+        return null;
+      }
+    },
+    [dict.aiConsole.generateFailed, persistAiSelection, user?.id],
+  );
+
   const userId = user?.id;
   useEffect(() => {
     if (!userId) {
       setGitStatus({ connected: false, accounts: [] });
       setWorkspaces(null);
       setTasks([]);
+      setAiConnections([]);
+      setGithubModels([]);
+      setAvailability({ status: 'idle', available: false });
+      setReportLanguage('vi');
+      setCustomPrompt('');
+      setIsAiSettingsModalOpen(false);
       return;
     }
 
@@ -334,7 +464,8 @@ export default function HomePage() {
       loadGitStatus(),
       api.settings.get().catch(() => null),
       api.tasks.list().catch(() => [] as TrackingTask[]),
-    ]).then(([status, settingsRes, loadedTasks]) => {
+      api.ai.listConnections().catch(() => [] as AiConnectionSummary[]),
+    ]).then(([status, settingsRes, loadedTasks, loadedConns]) => {
       let targetRange: 'today' | '24h' | '7d' = 'today';
       if (settingsRes?.fetchPreferences) {
         setFetchPrefs(settingsRes.fetchPreferences);
@@ -342,14 +473,63 @@ export default function HomePage() {
         setSinceOption(settingsRes.fetchPreferences.defaultTimeRange);
         targetRange = settingsRes.fetchPreferences.defaultTimeRange;
       }
+      if (settingsRes) {
+        setReportLanguage(settingsRes.language === 'en' ? 'en' : 'vi');
+        setCustomPrompt(settingsRes.customPrompt ?? '');
+      }
       setTasks(loadedTasks);
+      setAiConnections(loadedConns);
+
+      let initialToolKey = BUILTIN_GITHUB_TOOL_KEY;
+      let initialModel = 'openai/gpt-4o-mini';
+
+      if (typeof window !== 'undefined') {
+        try {
+          const rawSaved = window.localStorage.getItem(`git_pulse_ai_selection:${userId}`);
+          if (rawSaved) {
+            const parsed = JSON.parse(rawSaved) as { toolKey?: string; model?: string };
+            if (parsed.toolKey === BUILTIN_GITHUB_TOOL_KEY) {
+              initialToolKey = BUILTIN_GITHUB_TOOL_KEY;
+              if (
+                parsed.model === 'openai/gpt-4o-mini' ||
+                parsed.model === 'meta/llama-3.3-70b-instruct'
+              ) {
+                initialModel = parsed.model;
+              }
+            } else if (parsed.toolKey?.startsWith('conn:')) {
+              const targetId = parsed.toolKey.slice(5);
+              const matched = loadedConns.find((c) => c.id === targetId);
+              if (matched) {
+                initialToolKey = parsed.toolKey;
+                const hasModel = matched.availableModels.some((m) => m.id === parsed.model);
+                initialModel =
+                  hasModel && parsed.model
+                    ? parsed.model
+                    : resolveDefaultModelForTool(initialToolKey, loadedConns);
+              }
+            }
+          } else {
+            const firstActive = loadedConns.find((c) => c.status === 'ACTIVE');
+            if (firstActive) {
+              initialToolKey = `conn:${firstActive.id}`;
+              initialModel = resolveDefaultModelForTool(initialToolKey, loadedConns);
+            }
+          }
+        } catch {
+          // Ignore invalid localStorage entry
+        }
+      }
+
+      setSelectedToolKey(initialToolKey);
+      setSelectedModel(initialModel);
 
       if (status.connected) {
         void loadWorkspaces();
         void scanRef.current(targetRange, false, status, false);
+        void checkModelAvailability(initialToolKey, initialModel);
       }
     });
-  }, [userId, loadGitStatus, loadWorkspaces]);
+  }, [userId, loadGitStatus, loadWorkspaces, resolveDefaultModelForTool, checkModelAvailability]);
 
   const handleAccountSelect = async (account: {
     username: string;
@@ -379,6 +559,9 @@ export default function HomePage() {
     setAiError(null);
     void loadWorkspaces();
     await handleScanActivity(undefined, false, nextStatus, true);
+    if (selectedToolKey === BUILTIN_GITHUB_TOOL_KEY) {
+      void checkModelAvailability(selectedToolKey, selectedModel);
+    }
     showToast({ title: dict.toasts.gitConnected, variant: 'success' });
   };
 
@@ -399,6 +582,9 @@ export default function HomePage() {
     if (nextStatus.connected) {
       void loadWorkspaces();
       await handleScanActivity(undefined, false, nextStatus, false);
+      if (selectedToolKey === BUILTIN_GITHUB_TOOL_KEY) {
+        void checkModelAvailability(selectedToolKey, selectedModel);
+      }
     }
   };
 
@@ -432,6 +618,16 @@ export default function HomePage() {
     if (gitStatus.connected) {
       await handleScanActivity(saved.fetchPreferences.defaultTimeRange, false, undefined, true);
     }
+  };
+
+  const handleSaveAiSettings = async (next: { language: 'vi' | 'en'; customPrompt: string }) => {
+    const saved = await api.settings.update({
+      language: next.language,
+      customPrompt: next.customPrompt,
+    });
+    setReportLanguage(saved.language === 'en' ? 'en' : 'vi');
+    setCustomPrompt(saved.customPrompt ?? '');
+    showToast({ title: dict.toasts.aiSettingsSaved, variant: 'success' });
   };
 
   const handleCreateTask = async (title: string, color: TaskColor, prs: PrActivity[]) => {
@@ -515,6 +711,172 @@ export default function HomePage() {
     await logout();
   };
 
+  const handleSelectAiTool = useCallback(
+    (nextToolKey: string) => {
+      const nextModel = resolveDefaultModelForTool(nextToolKey, aiConnections, githubModels);
+      setSelectedToolKey(nextToolKey);
+      setSelectedModel(nextModel);
+      setAiError(null);
+      persistAiSelection(userId, nextToolKey, nextModel);
+      void checkModelAvailability(nextToolKey, nextModel);
+    },
+    [
+      aiConnections,
+      checkModelAvailability,
+      githubModels,
+      persistAiSelection,
+      resolveDefaultModelForTool,
+      userId,
+    ],
+  );
+
+  const handleSelectAiModel = useCallback(
+    (nextModel: string) => {
+      setSelectedModel(nextModel);
+      setAiError(null);
+      persistAiSelection(userId, selectedToolKey, nextModel);
+      void checkModelAvailability(selectedToolKey, nextModel);
+    },
+    [checkModelAvailability, persistAiSelection, selectedToolKey, userId],
+  );
+
+  const handleAiConnectionSaved = useCallback(
+    (savedConn: AiConnectionSummary, isUpdate: boolean, preferredModel?: string) => {
+      setAiConnections((prev) => {
+        const exists = prev.some((c) => c.id === savedConn.id);
+        return exists
+          ? prev.map((c) => (c.id === savedConn.id ? savedConn : c))
+          : [savedConn, ...prev];
+      });
+      const nextToolKey = `conn:${savedConn.id}`;
+      const hasPreferred =
+        Boolean(preferredModel) && savedConn.availableModels.some((m) => m.id === preferredModel);
+      const nextModel =
+        (hasPreferred ? preferredModel : savedConn.availableModels[0]?.id) || 'gemini-2.5-flash';
+      setSelectedToolKey(nextToolKey);
+      setSelectedModel(nextModel);
+      setAiError(null);
+      persistAiSelection(userId, nextToolKey, nextModel);
+      void checkModelAvailability(nextToolKey, nextModel);
+      showToast({
+        title: t(isUpdate ? 'toasts.aiUpdated' : 'toasts.aiConnected', { label: savedConn.label }),
+        variant: 'success',
+      });
+    },
+    [checkModelAvailability, persistAiSelection, showToast, t, userId],
+  );
+
+  const handleRefreshAiConnection = useCallback(
+    async (connectionId: string) => {
+      setIsRefreshingModels(true);
+      try {
+        const refreshed = await api.ai.refreshConnectionModels(connectionId);
+        setAiConnections((prev) => prev.map((c) => (c.id === connectionId ? refreshed : c)));
+
+        if (selectedToolKey === `conn:${connectionId}`) {
+          const stillExists = refreshed.availableModels.some((m) => m.id === selectedModel);
+          const nextModel = stillExists
+            ? selectedModel
+            : refreshed.availableModels[0]?.id || 'gemini-2.5-flash';
+          if (nextModel !== selectedModel) {
+            setSelectedModel(nextModel);
+            persistAiSelection(userId, selectedToolKey, nextModel);
+          }
+          void checkModelAvailability(selectedToolKey, nextModel);
+        }
+
+        showToast({
+          title: t('toasts.aiModelsRefreshed', { count: refreshed.availableModels.length }),
+          variant: 'success',
+        });
+      } catch (err) {
+        setAiConnections((prev) =>
+          prev.map((c) => (c.id === connectionId ? { ...c, status: 'REVOKED' } : c)),
+        );
+        showToast({
+          title: (err as Error).message || dict.toasts.aiModelsRefreshError,
+          variant: 'error',
+        });
+        if (selectedToolKey === `conn:${connectionId}`) {
+          void checkModelAvailability(selectedToolKey, selectedModel);
+        }
+        throw err;
+      } finally {
+        setIsRefreshingModels(false);
+      }
+    },
+    [
+      checkModelAvailability,
+      dict.toasts.aiModelsRefreshError,
+      persistAiSelection,
+      selectedModel,
+      selectedToolKey,
+      showToast,
+      t,
+      userId,
+    ],
+  );
+
+  const handleRefreshActiveModels = useCallback(async () => {
+    if (selectedToolKey.startsWith('conn:')) {
+      const connId = selectedToolKey.slice(5);
+      await handleRefreshAiConnection(connId).catch(() => {
+        // Error toast & availability update already handled inside handleRefreshAiConnection
+      });
+      return;
+    }
+
+    setIsRefreshingModels(true);
+    try {
+      const result = await checkModelAvailability(BUILTIN_GITHUB_TOOL_KEY, selectedModel);
+      if (result?.availableModels && result.availableModels.length > 0) {
+        showToast({
+          title: t('toasts.aiModelsRefreshed', { count: result.availableModels.length }),
+          variant: 'success',
+        });
+      }
+    } finally {
+      setIsRefreshingModels(false);
+    }
+  }, [
+    checkModelAvailability,
+    handleRefreshAiConnection,
+    selectedModel,
+    selectedToolKey,
+    showToast,
+    t,
+  ]);
+
+  const handleDeleteAiConnection = useCallback(
+    async (connectionId: string) => {
+      await api.ai.deleteConnection(connectionId);
+      const remaining = aiConnections.filter((c) => c.id !== connectionId);
+      setAiConnections(remaining);
+      showToast({ title: dict.toasts.aiDeleted, variant: 'info' });
+
+      if (selectedToolKey === `conn:${connectionId}`) {
+        const fallback = remaining[0];
+        const nextToolKey = fallback ? `conn:${fallback.id}` : BUILTIN_GITHUB_TOOL_KEY;
+        const nextModel = resolveDefaultModelForTool(nextToolKey, remaining, githubModels);
+        setSelectedToolKey(nextToolKey);
+        setSelectedModel(nextModel);
+        persistAiSelection(userId, nextToolKey, nextModel);
+        void checkModelAvailability(nextToolKey, nextModel);
+      }
+    },
+    [
+      aiConnections,
+      checkModelAvailability,
+      dict.toasts.aiDeleted,
+      githubModels,
+      persistAiSelection,
+      resolveDefaultModelForTool,
+      selectedToolKey,
+      showToast,
+      userId,
+    ],
+  );
+
   const handleGenerateSummary = useCallback(async () => {
     if (activities.length === 0) {
       setAiError(dict.aiConsole.noActivitiesError);
@@ -526,65 +888,41 @@ export default function HomePage() {
       return;
     }
 
+    if (selectedCommitCount === 0) {
+      setAiError(dict.aiConsole.noSelectedCommitsError);
+      return;
+    }
+
+    const isConn = selectedToolKey.startsWith('conn:');
+    const engine: AiEngine = isConn ? 'GOOGLE_GEMINI' : 'GITHUB_MODELS';
+    const connectionId = isConn ? selectedToolKey.slice(5) : undefined;
+    const activeConn = connectionId ? aiConnections.find((c) => c.id === connectionId) : undefined;
+
     setAiError(null);
     setIsGenerating(true);
     setBullets([]);
 
     try {
-      if (aiEngine === 'GITHUB_MODELS') {
-        const res = await api.ai.summarizeWithGitHubModels({
-          prs: selectedActivities.map((a) => ({
-            repo: a.repo,
-            title: a.title,
-            commits: a.commits,
-          })),
-          model: selectedModel,
-          language: reportLanguage,
-        });
-        setBullets(res.bullets);
-        setModelUsed(`GitHub Models (${res.modelUsed})`);
-        setGeneratedLanguage(reportLanguage);
-        showToast({ title: dict.toasts.standupReady, variant: 'success' });
-      } else {
-        // Dynamically load WebLLM runtime only on explicit WebGPU execution
-        const { runWebLLMSummary, isWebGPUSupported } = await import('../lib/webllm');
+      const res = await api.ai.summarize({
+        prs: selectedActivities.map((a) => ({
+          repo: a.repo,
+          title: a.title,
+          commits: a.commits,
+        })),
+        engine,
+        connectionId,
+        model: selectedModel,
+        language: reportLanguage,
+        customPrompt: customPrompt.trim() || undefined,
+      });
 
-        const supported = await isWebGPUSupported();
-        if (!supported) {
-          setAiError(dict.aiConsole.webgpuUnsupported);
-          setIsGenerating(false);
-          return;
-        }
-
-        const lines = await runWebLLMSummary(
-          selectedModel,
-          selectedActivities.map((a) => ({
-            repo: a.repo,
-            title: a.title,
-            commits: a.commits,
-          })),
-          reportLanguage,
-          (prog) => {
-            setWebLlmProgressText(prog.text);
-            setWebLlmProgressPercent(prog.progress);
-          },
-        );
-
-        setBullets(lines);
-        setModelUsed(`WebGPU (${selectedModel.split('-')[0]})`);
-        setGeneratedLanguage(reportLanguage);
-        showToast({ title: dict.toasts.standupReady, variant: 'success' });
-
-        const totalCommits = selectedActivities.reduce((sum, pr) => sum + pr.commits.length, 0);
-        await api.ai.saveClientSummary({
-          summary: lines,
-          modelName: selectedModel,
-          prCount: selectedActivities.length,
-          commitCount: totalCommits,
-          engine: 'WEB_LLM',
-          metadata: { prs: selectedActivities },
-        });
-      }
+      setBullets(res.bullets);
+      setModelUsed(
+        engine === 'GOOGLE_GEMINI' && activeConn
+          ? `${dict.aiConsole.geminiProviderLabel} (${activeConn.label}) • ${res.modelUsed}`
+          : `${dict.aiConsole.githubModelsLabel} • ${res.modelUsed}`,
+      );
+      showToast({ title: dict.toasts.standupReady, variant: 'success' });
     } catch (err) {
       setAiError((err as Error).message || dict.aiConsole.generateFailed);
     } finally {
@@ -593,9 +931,12 @@ export default function HomePage() {
   }, [
     activities.length,
     selectedActivities,
-    aiEngine,
+    selectedCommitCount,
+    selectedToolKey,
+    aiConnections,
     selectedModel,
     reportLanguage,
+    customPrompt,
     dict,
     showToast,
   ]);
@@ -614,7 +955,9 @@ export default function HomePage() {
         e.preventDefault();
         setIsPaletteOpen((prev) => !prev);
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        if (selectedActivities.length > 0 && !isGenerating) {
+        const blockedByAvailability =
+          availability.status === 'checking' || availability.status === 'unavailable';
+        if (selectedActivities.length > 0 && !isGenerating && !blockedByAvailability) {
           e.preventDefault();
           void generateRef.current();
         }
@@ -623,7 +966,7 @@ export default function HomePage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [user, gitStatus.connected, selectedActivities.length, isGenerating]);
+  }, [user, gitStatus.connected, selectedActivities.length, isGenerating, availability.status]);
 
   const handleTogglePrSelection = (key: string) => {
     setAiError(null);
@@ -821,28 +1164,39 @@ export default function HomePage() {
 
                 <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-6 min-w-0">
                   <CockpitAiConsole
-                    engine={aiEngine}
-                    onEngineChange={(next) => {
-                      setAiEngine(next);
-                      setAiError(null);
-                    }}
+                    selectedToolKey={selectedToolKey}
+                    onSelectToolKey={handleSelectAiTool}
+                    connections={aiConnections}
+                    githubModels={githubModels}
                     selectedModel={selectedModel}
-                    onModelChange={setSelectedModel}
-                    language={reportLanguage}
-                    onLanguageChange={setReportLanguage}
+                    onModelChange={handleSelectAiModel}
+                    hasCustomPrompt={Boolean(customPrompt.trim())}
+                    onOpenAiSettings={() => setIsAiSettingsModalOpen(true)}
+                    availability={availability}
+                    onRecheckAvailability={() =>
+                      void checkModelAvailability(selectedToolKey, selectedModel)
+                    }
+                    onRefreshModels={() => void handleRefreshActiveModels()}
+                    isRefreshingModels={isRefreshingModels}
+                    onOpenAddAiModal={() => {
+                      setEditingAiConnection(null);
+                      setIsAiModalOpen(true);
+                    }}
+                    onOpenUpdateAiModal={(conn) => {
+                      setEditingAiConnection(conn);
+                      setIsAiModalOpen(true);
+                    }}
                     onGenerate={handleGenerateSummary}
                     isGenerating={isGenerating}
                     error={aiError}
-                    webLlmProgressText={webLlmProgressText}
-                    webLlmProgressPercent={webLlmProgressPercent}
                     selectedPrCount={selectedActivities.length}
+                    selectedCommitCount={selectedCommitCount}
                   />
 
                   <StandupOutputDock
                     bullets={bullets}
                     isGenerating={isGenerating}
                     modelUsed={modelUsed}
-                    reportLanguage={generatedLanguage}
                     onUpdateBullets={setBullets}
                   />
                 </div>
@@ -862,6 +1216,17 @@ export default function HomePage() {
         onDisconnect={handleDisconnectGit}
       />
 
+      <AiConnectModal
+        isOpen={isAiModalOpen}
+        onClose={() => {
+          setIsAiModalOpen(false);
+          setEditingAiConnection(null);
+        }}
+        defaultUsername={user.username}
+        editingConnection={editingAiConnection}
+        onSaved={handleAiConnectionSaved}
+      />
+
       <ReportHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
@@ -872,27 +1237,50 @@ export default function HomePage() {
         initialTab={settingsModalTab}
         onClose={() => setIsSettingsModalOpen(false)}
         accounts={gitStatus.accounts ?? []}
+        aiConnections={aiConnections}
         workspaces={workspaces}
         preferences={fetchPrefs}
         onSavePreferences={handleSaveFetchPreferences}
         onSwitchAccount={handleSelectGitAccount}
         onDisconnectAccount={handleDisconnectGit}
         onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
+        onOpenAddAi={() => {
+          setEditingAiConnection(null);
+          setIsAiModalOpen(true);
+        }}
+        onOpenUpdateAi={(conn) => {
+          setEditingAiConnection(conn);
+          setIsAiModalOpen(true);
+        }}
+        onRefreshAiModels={handleRefreshAiConnection}
+        onDeleteAiConnection={handleDeleteAiConnection}
+      />
+
+      <AiSettingsModal
+        isOpen={isAiSettingsModalOpen}
+        onClose={() => setIsAiSettingsModalOpen(false)}
+        language={reportLanguage}
+        customPrompt={customPrompt}
+        onSave={handleSaveAiSettings}
       />
 
       {gitStatus.connected && (
         <CommandPalette
           isOpen={isPaletteOpen}
           onClose={() => setIsPaletteOpen(false)}
-          canGenerate={selectedActivities.length > 0 && !isGenerating}
+          canGenerate={
+            selectedActivities.length > 0 &&
+            !isGenerating &&
+            availability.status !== 'checking' &&
+            availability.status !== 'unavailable'
+          }
+          aiConnections={aiConnections}
           onSyncRange={(range) => void handleScanActivity(range, true, undefined, false)}
           onGenerate={() => void handleGenerateSummary()}
-          onSwitchEngine={(eng) => {
-            setAiEngine(eng);
-            setSelectedModel(
-              eng === 'WEB_LLM' ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC' : 'gpt-4o-mini',
-            );
-            setAiError(null);
+          onSelectAiTool={handleSelectAiTool}
+          onOpenAddAiModal={() => {
+            setEditingAiConnection(null);
+            setIsAiModalOpen(true);
           }}
           onOpenHistory={() => setIsHistoryModalOpen(true)}
           onOpenGitModal={() => openGitConnectModal('manage')}

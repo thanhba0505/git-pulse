@@ -70,55 +70,67 @@
    ======================================================== */
 
 .custom-scrollbar,
-.gp-scroll-area {
+.gp-scroll-area,
+.overflow-y-auto {
   --scrollbar-thumb: #64748b;
-  --scrollbar-track: #0f172a;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  --scrollbar-track: transparent;
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (prefers-contrast: more) {
+  .custom-scrollbar,
+  .gp-scroll-area,
+  .overflow-y-auto {
+    --scrollbar-thumb: #ffffff;
+    --scrollbar-track: #000000;
+  }
 }
 
 .gp-scroll-area {
-  scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
-/* Legacy fallback for browsers without standard scrollbar-color support */
-@supports not (scrollbar-color: auto) {
+/* Ultra-slim 5px scrollbar for WebKit/Chromium */
+.custom-scrollbar::-webkit-scrollbar,
+.gp-scroll-area::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.gp-scroll-area::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.gp-scroll-area::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.9), rgba(56, 189, 248, 0.65));
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.gp-scroll-area::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #38bdf8, #818cf8);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active,
+.gp-scroll-area::-webkit-scrollbar-thumb:active,
+.overflow-y-auto::-webkit-scrollbar-thumb:active {
+  background: #7dd3fc;
+}
+
+/* Standard fallback for engines without ::-webkit-scrollbar (Firefox) */
+@supports not selector(::-webkit-scrollbar) {
   .custom-scrollbar,
-  .gp-scroll-area {
-    scrollbar-width: auto;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar,
-  .gp-scroll-area::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track,
-  .gp-scroll-area::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.85);
-    border-radius: 9999px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb,
-  .gp-scroll-area::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(100, 116, 139, 0.9), rgba(56, 189, 248, 0.65));
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
-  .gp-scroll-area::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #38bdf8, #818cf8);
-    border: 1.5px solid transparent;
-    background-clip: padding-box;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:active,
-  .gp-scroll-area::-webkit-scrollbar-thumb:active {
-    background: #7dd3fc;
+  .gp-scroll-area,
+  .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 }
 
@@ -437,9 +449,16 @@ html[data-gp-motion='paused'] .gp-showcase-tilt:hover {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
 }
 
-.gp-scroll-area {
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
+.gp-menu-surface {
+  background: linear-gradient(180deg, rgba(30, 42, 64, 0.97) 0%, rgba(20, 30, 48, 0.98) 100%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  backdrop-filter: blur(28px) saturate(165%);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow:
+    0 22px 50px -12px rgba(2, 6, 23, 0.85),
+    0 8px 20px -6px rgba(2, 6, 23, 0.55),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.35);
 }
 
 /* ========================================================
@@ -533,6 +552,43 @@ dialog.gp-top-dialog:modal {
   }
 }
 
+@keyframes gp-menu-enter {
+  from {
+    opacity: 0;
+    translate: 0 var(--gp-pop-y, -6px);
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes gp-menu-exit {
+  from {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    translate: 0 var(--gp-pop-y, -6px);
+    scale: 0.965;
+  }
+}
+
+@keyframes gp-menu-item-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @keyframes gp-stagger-enter {
   from {
     opacity: 0;
@@ -589,6 +645,24 @@ dialog.gp-top-dialog:modal {
   animation-timing-function: var(--ease-spring);
 }
 
+.gp-menu-panel[data-open-upward='false'] {
+  --gp-pop-y: -6px;
+}
+
+.gp-menu-panel[data-open-upward='true'] {
+  --gp-pop-y: 6px;
+}
+
+.gp-menu-panel[data-state='open'] {
+  animation: gp-menu-enter 210ms ease-out both;
+  animation-timing-function: linear(0, 0.45 15%, 1.04 42%, 0.99 72%, 1);
+}
+
+.gp-menu-panel[data-state='closing'] {
+  pointer-events: none;
+  animation: gp-menu-exit 125ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
 .gp-toast-enter {
   animation: gp-toast-in 260ms var(--ease-smooth-out) both;
   animation-timing-function: var(--ease-spring);
@@ -602,6 +676,11 @@ dialog.gp-top-dialog:modal {
   .gp-stagger-item {
     animation: gp-stagger-enter 280ms var(--ease-smooth-out) both;
     animation-delay: calc(min(var(--stagger-idx, 0), 6) * 45ms);
+  }
+
+  .gp-menu-option-in {
+    animation: gp-menu-item-in 150ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(min(var(--opt-idx, 0), 8) * 14ms);
   }
 }
 
@@ -768,8 +847,17 @@ dialog.gp-top-dialog:modal {
   .gp-popover-in,
   .gp-toast-enter,
   .gp-completion-once,
-  .gp-stagger-item {
+  .gp-stagger-item,
+  .gp-menu-option-in {
     animation: none !important;
+  }
+
+  .gp-menu-panel[data-state='open'] {
+    animation: gp-fade-in 90ms ease-out both;
+  }
+
+  .gp-menu-panel[data-state='closing'] {
+    animation: gp-fade-in 80ms ease-in reverse both;
   }
 
   .gp-accordion-grid {
