@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PrActivity, TaskColor, TrackingTask } from '../../types';
+import { CommitItem, PrActivity, TaskColor, TrackingTask } from '../../types';
 import { useTranslation } from '../../i18n';
 import { formatRelativeTime, getPrKey } from '../../lib/activity-utils';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
@@ -52,6 +52,52 @@ const TASK_COLOR_DOT: Record<TaskColor, string> = {
   rose: 'bg-rose-400',
 };
 
+function CommitTimelineList({
+  commits,
+  repo,
+  fallbackUrl,
+  extraClass = '',
+}: {
+  commits: CommitItem[];
+  repo: string;
+  fallbackUrl: string;
+  extraClass?: string;
+}) {
+  return (
+    <ul role="list" className={`space-y-1.5 pl-3 border-l border-slate-800 ${extraClass}`}>
+      {commits.map((commit, idx) => {
+        const commitUrl = commit.sha
+          ? `https://github.com/${repo}/commit/${encodeURIComponent(commit.sha)}`
+          : fallbackUrl;
+        return (
+          <li key={`${commit.sha}-${idx}`} className="min-w-0">
+            <a
+              href={commitUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group/commit flex items-start gap-2 text-xs text-slate-300 hover:text-sky-200 leading-relaxed min-w-0 transition-colors"
+            >
+              {commit.sha ? (
+                <span className="font-mono text-xs text-slate-400 group-hover/commit:text-sky-300 bg-white/[0.04] group-hover/commit:bg-sky-500/15 border border-transparent group-hover/commit:border-sky-400/30 px-1.5 py-0.5 rounded shrink-0 transition-colors">
+                  {commit.sha}
+                </span>
+              ) : (
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-slate-500 group-hover/commit:bg-sky-400 shrink-0 mt-2 transition-colors"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="break-words min-w-0 group-hover/commit:underline">
+                {commit.message}
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function PrActivityCard({
   pr,
   index,
@@ -70,7 +116,7 @@ export function PrActivityCard({
   const prKey = getPrKey(pr);
   const isDirectCommits = pr.activityType === 'direct_commits';
 
-  const commitRows =
+  const commitRows: CommitItem[] =
     pr.commitDetails && pr.commitDetails.length > 0
       ? pr.commitDetails
       : pr.commits.map((msg, i) => ({ sha: '', message: msg, date: `${i}` }));
@@ -80,9 +126,11 @@ export function PrActivityCard({
   const hiddenCommits = commitRows.slice(previewLimit);
   const hasCollapsibleCommits = hiddenCommits.length > 0;
 
-  const assignedTasks = tasks.filter((task) =>
-    task.items.some((item) => item.repo === pr.repo && item.prNumber === pr.number),
-  );
+  const assignedTasks = isDirectCommits
+    ? []
+    : tasks.filter((task) =>
+        task.items.some((item) => item.repo === pr.repo && item.prNumber === pr.number),
+      );
 
   const getStateBadge = () => {
     const normalized = pr.state.toLowerCase();
@@ -130,9 +178,14 @@ export function PrActivityCard({
   const StateIcon = stateInfo.Icon;
   const relativeUpdated = formatRelativeTime(pr.updatedAt, locale);
   const shortRepo = pr.repo.includes('/') ? pr.repo.split('/')[1] || pr.repo : pr.repo;
-  const displayTitle = isDirectCommits
-    ? t('scanner.directCommitsTitle', { branch: pr.headBranch || pr.title })
+  const accessibleTitle = isDirectCommits
+    ? `${shortRepo} (${pr.headBranch || pr.title})`
     : pr.title;
+  const ownerUrl = `https://github.com/${encodeURIComponent(pr.owner)}`;
+  const repoUrl = `https://github.com/${pr.repo}`;
+  const branchUrl = pr.headBranch
+    ? `https://github.com/${pr.repo}/tree/${encodeURIComponent(pr.headBranch)}`
+    : undefined;
 
   const handleQuickCreate = async (close: () => void) => {
     const clean = quickTaskTitle.trim();
@@ -161,7 +214,7 @@ export function PrActivityCard({
             type="button"
             role="checkbox"
             aria-checked={isSelected}
-            aria-label={t('scanner.selectPrAria', { title: displayTitle })}
+            aria-label={t('scanner.selectPrAria', { title: accessibleTitle })}
             onClick={() => onToggleSelect(prKey)}
             className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               isSelected
@@ -180,13 +233,16 @@ export function PrActivityCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            {/* Compact Context Metadata Row */}
+            {/* Row 1: Workspace + Repo + PR ID + State Badge + Time */}
             <div className="flex items-center gap-1.5 flex-wrap text-xs">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium border ${
+              <a
+                href={ownerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium border transition-colors ${
                   pr.ownerType === 'organization'
-                    ? 'bg-indigo-500/10 text-indigo-300 border-indigo-400/25'
-                    : 'bg-sky-500/10 text-sky-300 border-sky-400/25'
+                    ? 'bg-indigo-500/10 text-indigo-300 border-indigo-400/25 hover:bg-indigo-500/20 hover:border-indigo-400/45'
+                    : 'bg-sky-500/10 text-sky-300 border-sky-400/25 hover:bg-sky-500/20 hover:border-sky-400/45'
                 }`}
               >
                 {pr.ownerType === 'organization' ? (
@@ -197,18 +253,31 @@ export function PrActivityCard({
                 <span>
                   {pr.ownerType === 'organization' ? pr.owner : dict.scanner.personalSpace}
                 </span>
-              </span>
+              </a>
 
-              <span className="font-mono font-medium text-slate-200 truncate" title={pr.repo}>
+              <a
+                href={repoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={pr.repo}
+                className="font-mono font-medium text-slate-200 hover:text-sky-300 hover:underline truncate transition-colors"
+              >
                 {shortRepo}
-              </span>
+              </a>
 
               {pr.repoPrivate && (
                 <Lock className="w-3 h-3 text-slate-500 shrink-0" aria-hidden="true" />
               )}
 
               {!isDirectCommits && (
-                <span className="font-mono text-slate-400 tabular-nums">#{pr.number}</span>
+                <a
+                  href={pr.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-slate-300 hover:text-sky-300 hover:underline tabular-nums transition-colors"
+                >
+                  #{pr.number}
+                </a>
               )}
 
               <span
@@ -217,29 +286,44 @@ export function PrActivityCard({
                 {stateInfo.label}
               </span>
 
-              {pr.headBranch && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] font-mono text-xs text-slate-400 max-w-[200px] truncate"
-                  title={pr.headBranch}
-                >
-                  <GitBranch className="w-3 h-3 shrink-0 text-slate-500" aria-hidden="true" />
-                  <span className="truncate">{pr.headBranch}</span>
-                </span>
-              )}
-
               {relativeUpdated && (
-                <span className="text-xs text-slate-500 font-mono tabular-nums">
+                <span className="text-xs text-slate-500 font-mono tabular-nums whitespace-nowrap">
                   • {relativeUpdated}
                 </span>
               )}
             </div>
 
-            {/* PR Title */}
-            <h3 className="text-sm font-semibold text-slate-100 mt-1.5 leading-snug break-words">
-              {displayTitle}
-            </h3>
+            {/* Row 2: Branch Badge (clickable) */}
+            {pr.headBranch && branchUrl && (
+              <div className="mt-1.5 flex items-center flex-wrap gap-1.5">
+                <a
+                  href={branchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={pr.headBranch}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-sky-500/10 border border-white/[0.08] hover:border-sky-400/35 font-mono text-xs text-slate-300 hover:text-sky-300 max-w-full transition-colors"
+                >
+                  <GitBranch className="w-3 h-3 shrink-0 text-slate-400" aria-hidden="true" />
+                  <span className="truncate">{pr.headBranch}</span>
+                </a>
+              </div>
+            )}
 
-            {/* Assigned Manual Task Tags */}
+            {/* Row 3: PR Title (clickable; omitted for direct commits) */}
+            {!isDirectCommits && (
+              <h3 className="mt-2 leading-snug break-words">
+                <a
+                  href={pr.prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-slate-100 hover:text-sky-300 hover:underline transition-colors"
+                >
+                  {pr.title}
+                </a>
+              </h3>
+            )}
+
+            {/* Assigned Manual Task Tags (PRs only) */}
             {assignedTasks.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 {assignedTasks.map((task) => {
@@ -260,124 +344,126 @@ export function PrActivityCard({
           </div>
         </div>
 
-        {/* Right Actions: Manual Task Assign Dropdown + External Link */}
+        {/* Right Actions: Manual Task Assign (PRs only) + External Link */}
         <div className="flex items-center gap-1 shrink-0">
-          <DropdownMenu
-            align="end"
-            widthClass="w-64"
-            trigger={({ id, isOpen, onClick, onKeyDown, ariaProps }) => (
-              <button
-                id={id}
-                type="button"
-                onClick={onClick}
-                onKeyDown={onKeyDown}
-                {...ariaProps}
-                title={dict.scanner.assignToTaskHeading}
-                className={`inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-                  isOpen || assignedTasks.length > 0
-                    ? 'bg-sky-500/10 text-sky-300 border-sky-400/30 hover:bg-sky-500/15'
-                    : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:text-white hover:border-white/[0.18]'
-                }`}
-              >
-                <FolderKanban className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span className="hidden sm:inline">{dict.scanner.assignTaskBtn}</span>
-                {assignedTasks.length > 0 && (
-                  <span className="font-mono text-xs tabular-nums">({assignedTasks.length})</span>
-                )}
-              </button>
-            )}
-          >
-            {({ close }) => (
-              <div className="space-y-2 p-2">
-                <p className="px-1.5 text-xs font-medium text-slate-400">
-                  {dict.scanner.assignToTaskHeading}
-                </p>
+          {!isDirectCommits && (
+            <DropdownMenu
+              align="end"
+              widthClass="w-64"
+              trigger={({ id, isOpen, onClick, onKeyDown, ariaProps }) => (
+                <button
+                  id={id}
+                  type="button"
+                  onClick={onClick}
+                  onKeyDown={onKeyDown}
+                  {...ariaProps}
+                  title={dict.scanner.assignToTaskHeading}
+                  className={`inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+                    isOpen || assignedTasks.length > 0
+                      ? 'bg-sky-500/10 text-sky-300 border-sky-400/30 hover:bg-sky-500/15'
+                      : 'bg-white/[0.04] text-slate-300 border-white/[0.08] hover:text-white hover:border-white/[0.18]'
+                  }`}
+                >
+                  <FolderKanban className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span className="hidden sm:inline">{dict.scanner.assignTaskBtn}</span>
+                  {assignedTasks.length > 0 && (
+                    <span className="font-mono text-xs tabular-nums">({assignedTasks.length})</span>
+                  )}
+                </button>
+              )}
+            >
+              {({ close }) => (
+                <div className="space-y-2 p-2">
+                  <p className="px-1.5 text-xs font-medium text-slate-400">
+                    {dict.scanner.assignToTaskHeading}
+                  </p>
 
-                {tasks.length === 0 ? (
-                  <p className="px-1.5 py-1 text-xs text-slate-500">{dict.scanner.noTasksHint}</p>
-                ) : (
-                  <div className="max-h-44 overflow-y-auto custom-scrollbar space-y-1">
-                    {tasks.map((task) => {
-                      const isAssigned = task.items.some(
-                        (item) => item.repo === pr.repo && item.prNumber === pr.number,
-                      );
-                      const dot = TASK_COLOR_DOT[task.color] || TASK_COLOR_DOT.sky;
-                      const isBusy = busyTaskId === task.id;
-                      return (
-                        <button
-                          key={task.id}
-                          type="button"
-                          role="menuitem"
-                          disabled={isBusy}
-                          onClick={async () => {
-                            setBusyTaskId(task.id);
-                            try {
-                              await onToggleTaskAssignment(task.id, pr, isAssigned);
-                            } finally {
-                              setBusyTaskId(null);
-                            }
-                          }}
-                          className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50 ${
-                            isAssigned
-                              ? 'bg-sky-500/15 text-sky-200 border border-sky-400/25'
-                              : 'text-slate-200 hover:bg-white/[0.06] border border-transparent'
-                          }`}
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={`w-2 h-2 rounded-full shrink-0 ${dot}`}
-                              aria-hidden="true"
-                            />
-                            <span className="truncate">{task.title}</span>
-                          </span>
-                          {isAssigned && (
-                            <Check
-                              className="w-3.5 h-3.5 text-sky-400 shrink-0"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                  {tasks.length === 0 ? (
+                    <p className="px-1.5 py-1 text-xs text-slate-500">{dict.scanner.noTasksHint}</p>
+                  ) : (
+                    <div className="max-h-44 overflow-y-auto custom-scrollbar space-y-1">
+                      {tasks.map((task) => {
+                        const isAssigned = task.items.some(
+                          (item) => item.repo === pr.repo && item.prNumber === pr.number,
+                        );
+                        const dot = TASK_COLOR_DOT[task.color] || TASK_COLOR_DOT.sky;
+                        const isBusy = busyTaskId === task.id;
+                        return (
+                          <button
+                            key={task.id}
+                            type="button"
+                            role="menuitem"
+                            disabled={isBusy}
+                            onClick={async () => {
+                              setBusyTaskId(task.id);
+                              try {
+                                await onToggleTaskAssignment(task.id, pr, isAssigned);
+                              } finally {
+                                setBusyTaskId(null);
+                              }
+                            }}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50 ${
+                              isAssigned
+                                ? 'bg-sky-500/15 text-sky-200 border border-sky-400/25'
+                                : 'text-slate-200 hover:bg-white/[0.06] border border-transparent'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${dot}`}
+                                aria-hidden="true"
+                              />
+                              <span className="truncate">{task.title}</span>
+                            </span>
+                            {isAssigned && (
+                              <Check
+                                className="w-3.5 h-3.5 text-sky-400 shrink-0"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                <div className="pt-2 border-t border-white/[0.08] space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={quickTaskTitle}
-                      onChange={(e) => setQuickTaskTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void handleQuickCreate(close);
-                        }
-                      }}
-                      placeholder={dict.scanner.createTaskQuickPlaceholder}
-                      className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
-                    />
-                    <button
-                      type="button"
-                      disabled={!quickTaskTitle.trim() || busyTaskId === '__new__'}
-                      onClick={() => void handleQuickCreate(close)}
-                      title={dict.scanner.createTaskQuickBtn}
-                      className="inline-flex items-center justify-center min-h-[30px] px-2.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                    </button>
+                  <div className="pt-2 border-t border-white/[0.08] space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={quickTaskTitle}
+                        onChange={(e) => setQuickTaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void handleQuickCreate(close);
+                          }
+                        }}
+                        placeholder={dict.scanner.createTaskQuickPlaceholder}
+                        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-[#0C0E14] border border-white/[0.12] text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-sky-400/50"
+                      />
+                      <button
+                        type="button"
+                        disabled={!quickTaskTitle.trim() || busyTaskId === '__new__'}
+                        onClick={() => void handleQuickCreate(close)}
+                        title={dict.scanner.createTaskQuickBtn}
+                        className="inline-flex items-center justify-center min-h-[30px] px-2.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 disabled:opacity-40 cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </DropdownMenu>
+              )}
+            </DropdownMenu>
+          )}
 
           <a
             href={pr.prUrl}
             target="_blank"
             rel="noopener noreferrer"
             title={dict.scanner.openPrExternal}
-            aria-label={`${dict.scanner.openPrExternal}: ${displayTitle}`}
+            aria-label={`${dict.scanner.openPrExternal}: ${accessibleTitle}`}
             className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-white/[0.08] transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
@@ -387,7 +473,7 @@ export function PrActivityCard({
 
       {/* Commits Timeline */}
       {commitRows.length > 0 && (
-        <div className="mt-3.5 pt-3 border-t border-slate-800/80 space-y-2">
+        <div className="mt-3 pt-3 border-t border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-mono text-slate-400 flex items-center gap-2 tabular-nums">
               <GitCommit className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
@@ -419,51 +505,18 @@ export function PrActivityCard({
           </div>
 
           {previewCommits.length > 0 && (
-            <ul role="list" className="space-y-1.5 pl-3 border-l border-slate-800">
-              {previewCommits.map((commit, idx) => (
-                <li
-                  key={`${commit.sha}-${idx}`}
-                  className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed min-w-0"
-                >
-                  {commit.sha ? (
-                    <span className="font-mono text-xs text-slate-500 bg-white/[0.04] px-1.5 py-0.5 rounded shrink-0">
-                      {commit.sha}
-                    </span>
-                  ) : (
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0 mt-2"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span className="break-words min-w-0">{commit.message}</span>
-                </li>
-              ))}
-            </ul>
+            <CommitTimelineList commits={previewCommits} repo={pr.repo} fallbackUrl={pr.prUrl} />
           )}
 
           {hasCollapsibleCommits && (
             <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
               <div className="gp-accordion-inner">
-                <ul role="list" className="space-y-1.5 pl-3 border-l border-slate-800 pt-1">
-                  {hiddenCommits.map((commit, idx) => (
-                    <li
-                      key={`${commit.sha}-hidden-${idx}`}
-                      className="flex items-start gap-2 text-xs text-slate-300 leading-relaxed min-w-0"
-                    >
-                      {commit.sha ? (
-                        <span className="font-mono text-xs text-slate-500 bg-white/[0.04] px-1.5 py-0.5 rounded shrink-0">
-                          {commit.sha}
-                        </span>
-                      ) : (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0 mt-2"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <span className="break-words min-w-0">{commit.message}</span>
-                    </li>
-                  ))}
-                </ul>
+                <CommitTimelineList
+                  commits={hiddenCommits}
+                  repo={pr.repo}
+                  fallbackUrl={pr.prUrl}
+                  extraClass="pt-1"
+                />
               </div>
             </div>
           )}

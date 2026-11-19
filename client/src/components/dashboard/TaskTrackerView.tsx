@@ -68,13 +68,18 @@ export function TaskTrackerView({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
 
+  const prOnlyActivities = useMemo(
+    () => activities.filter((act) => act.activityType !== 'direct_commits'),
+    [activities],
+  );
+
   const liveActivityByLookup = useMemo(() => {
     const map = new Map<string, PrActivity>();
-    for (const act of activities) {
+    for (const act of prOnlyActivities) {
       map.set(`${act.repo}#${act.number}`, act);
     }
     return map;
-  }, [activities]);
+  }, [prOnlyActivities]);
 
   const unassignedActivities = useMemo(() => {
     const assignedSet = new Set<string>();
@@ -83,15 +88,15 @@ export function TaskTrackerView({
         assignedSet.add(`${item.repo}#${item.prNumber}`);
       }
     }
-    return activities.filter((act) => !assignedSet.has(`${act.repo}#${act.number}`));
-  }, [tasks, activities]);
+    return prOnlyActivities.filter((act) => !assignedSet.has(`${act.repo}#${act.number}`));
+  }, [tasks, prOnlyActivities]);
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newTitle.trim();
     if (!clean) return;
 
-    const chosenPrs = activities.filter((act) => pickedKeysForNew.has(getPrKey(act)));
+    const chosenPrs = prOnlyActivities.filter((act) => pickedKeysForNew.has(getPrKey(act)));
     setIsSavingNew(true);
     try {
       await onCreateTask(clean, newColor, chosenPrs);
@@ -226,11 +231,11 @@ export function TaskTrackerView({
                 </span>
               </div>
 
-              {activities.length === 0 ? (
+              {prOnlyActivities.length === 0 ? (
                 <p className="text-xs text-slate-500 py-2">{dict.tasks.noAvailablePrs}</p>
               ) : (
                 <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#0C0E14]/80 border border-white/[0.08] p-2.5">
-                  {activities.map((pr) => {
+                  {prOnlyActivities.map((pr) => {
                     const key = getPrKey(pr);
                     const checked = pickedKeysForNew.has(key);
                     const chip = getStateChip(pr.state);
@@ -498,11 +503,11 @@ export function TaskTrackerView({
                     <p className="text-xs font-medium text-slate-300">
                       {dict.tasks.selectPrsLabel}
                     </p>
-                    {activities.length === 0 ? (
+                    {prOnlyActivities.length === 0 ? (
                       <p className="text-xs text-slate-500">{dict.tasks.noAvailablePrs}</p>
                     ) : (
                       <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1">
-                        {activities.map((pr) => {
+                        {prOnlyActivities.map((pr) => {
                           const assigned = task.items.some(
                             (it) => it.repo === pr.repo && it.prNumber === pr.number,
                           );

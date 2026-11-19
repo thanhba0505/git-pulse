@@ -91,7 +91,6 @@ export interface ScannerDictionary {
   personalSpace: string;
   orgSpace: string;
   directCommitsBadge: string;
-  directCommitsTitle: string;
   selectGroup: string;
   clearGroup: string;
   groupCount: string;
