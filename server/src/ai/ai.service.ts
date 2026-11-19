@@ -19,7 +19,7 @@ export class AiService {
       throw new BadRequestException('Không có Pull Request hoặc Commit nào để tóm tắt.');
     }
 
-    const { token } = await this.githubService.getDecryptedToken(userId, 'AI_SUMMARIZE');
+    const { token, accountId } = await this.githubService.getDecryptedToken(userId, 'AI_SUMMARIZE');
     const model = dto.model || 'gpt-4o-mini';
     const lang = dto.language === 'en' ? 'English' : 'Vietnamese';
 
@@ -62,7 +62,7 @@ export class AiService {
     if (!response.ok) {
       if (response.status === 401) {
         await this.prisma.gitAccount.updateMany({
-          where: { userId },
+          where: { id: accountId, userId },
           data: { tokenStatus: 'REVOKED' },
         });
         throw new BadRequestException(

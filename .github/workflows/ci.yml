@@ -107,11 +107,17 @@ jobs:
     steps:
       - name: Send CI status to Central Gateway
         env:
+          GATEWAY_URL: ${{ secrets.GATEWAY_URL || 'https://central-gateway-server.vercel.app/api/v1' }}
           GATEWAY_SECRET_KEY: ${{ secrets.GATEWAY_SECRET_KEY }}
           QUALITY_STATUS: ${{ needs.quality.result }}
           UNIT_STATUS: ${{ needs.unit-tests.result }}
           BUILD_STATUS: ${{ needs.build.result }}
         run: |
+          if [ -z "$GATEWAY_SECRET_KEY" ]; then
+            echo "GATEWAY_SECRET_KEY not configured; skipping CI notification."
+            exit 0
+          fi
+
           OVERALL_STATUS="FAIL"
           if [ "$QUALITY_STATUS" = "success" ] && [ "$UNIT_STATUS" = "success" ] && [ "$BUILD_STATUS" = "success" ]; then
             OVERALL_STATUS="SUCCESS"
@@ -128,19 +134,41 @@ jobs:
           U_UP=$(echo "$UNIT_STATUS" | tr "[:lower:]" "[:upper:]")
           B_UP=$(echo "$BUILD_STATUS" | tr "[:lower:]" "[:upper:]")
 
-          curl -s -X POST "https://central-gateway-server.vercel.app/api/v1/notifications/slack/ci" \
+          PAYLOAD=$(jq -n \
+            --arg project "git-pulse" \
+            --arg status "$OVERALL_STATUS" \
+            --arg branch "$REF" \
+            --arg commit "$COMMIT" \
+            --arg trigger "$EVENT by @$AUTHOR" \
+            --arg quality "$Q_UP" \
+            --arg unit "$U_UP" \
+            --arg build "$B_UP" \
+            --arg runUrl "$RUN_URL" \
+            '{
+              project: $project,
+              status: $status,
+              branch: $branch,
+              commit: $commit,
+              trigger: $trigger,
+              pipeline: {
+                "Quality & Types": $quality,
+                "Unit Tests": $unit,
+                "Production Build": $build
+              },
+              runUrl: $runUrl
+            }')
+
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$GATEWAY_URL/notifications/slack/ci" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $GATEWAY_SECRET_KEY" \
-            -d '{
-              "project": "git-pulse",
-              "status": "'"$OVERALL_STATUS"'",
-              "branch": "'"$REF"'",
-              "commit": "'"$COMMIT"'",
-              "trigger": "'"$EVENT"' by @"'"$AUTHOR"'",
-              "pipeline": {
-                "Quality & Types": "'"$Q_UP"'",
-                "Unit Tests": "'"$U_UP"'",
-                "Production Build": "'"$B_UP"'"
-              },
-              "runUrl": "'"$RUN_URL"'"
-            }' || echo "CI notification skipped or failed"
+            -d "$PAYLOAD") || {
+              echo "::warning::CI notification request to Central Gateway failed."
+              exit 0
+            }
+
+          HTTP_CODE=$(printf '%s\n' "$RESPONSE" | tail -n1)
+          BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
+          echo "Central Gateway CI notification response: HTTP $HTTP_CODE $BODY"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::warning::Central Gateway CI notification returned HTTP $HTTP_CODE"
+          fi

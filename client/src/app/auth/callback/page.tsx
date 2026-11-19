@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { CheckCircle2, AlertCircle, Loader2, Orbit } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
+import { useTranslation } from '../../../i18n';
+import { Footer } from '../../../components/layout/Footer';
 
 function SsoCallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithSso } = useAuth();
+  const { dict } = useTranslation();
 
   const code = searchParams.get('code');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +23,7 @@ function SsoCallbackHandler() {
     async function handleExchange() {
       if (!code) {
         if (mounted) {
-          setError('Không tìm thấy mã xác thực SSO (authorization code).');
+          setError(dict.auth.callback.missingCode);
           setStatus('failed');
         }
         return;
@@ -40,7 +43,7 @@ function SsoCallbackHandler() {
             router.push('/');
           }, 800);
         } else {
-          setError(result.error || 'Xác thực Single Sign-On qua Central Gateway thất bại.');
+          setError(result.error || dict.auth.callback.failedDefault);
           setStatus('failed');
         }
       }
@@ -51,57 +54,63 @@ function SsoCallbackHandler() {
     return () => {
       mounted = false;
     };
-  }, [code, loginWithSso, router]);
+  }, [code, loginWithSso, router, dict]);
 
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="w-full max-w-md astral-card rounded-3xl p-8 border border-pulsar-cyan/30 shadow-[0_0_50px_rgba(6,182,212,0.15)]">
-        {status === 'verifying' && (
-          <div className="space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
-              <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+        <div className="w-full max-w-md gp-card rounded-xl p-8">
+          {status === 'verifying' && (
+            <div className="space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400">
+                <Loader2 className="w-6 h-6 animate-spin" aria-hidden="true" />
+              </div>
+              <h1 className="text-base font-semibold text-slate-100 tracking-tight">
+                {dict.auth.callback.verifyingTitle}
+              </h1>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {dict.auth.callback.verifyingDesc}
+              </p>
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Đang đồng bộ phiên đăng nhập...
-            </h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Git Pulse đang xác thực danh tính của bạn thông qua Central Gateway SSO Hub.
-            </p>
-          </div>
-        )}
+          )}
 
-        {status === 'success' && (
-          <div className="space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+          {status === 'success' && (
+            <div className="space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
+              </div>
+              <h1 className="text-base font-semibold text-slate-100 tracking-tight">
+                {dict.auth.callback.successTitle}
+              </h1>
+              <p className="text-xs text-slate-400">{dict.auth.callback.successDesc}</p>
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              Xác thực SSO thành công!
-            </h2>
-            <p className="text-xs text-slate-400">
-              Đang chuyển bạn về phòng điều khiển Git Pulse...
-            </p>
-          </div>
-        )}
+          )}
 
-        {status === 'failed' && (
-          <div className="space-y-4">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/10 border border-rose-400/30 flex items-center justify-center text-rose-300">
-              <AlertCircle className="w-8 h-8 text-rose-400" />
+          {status === 'failed' && (
+            <div className="space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400">
+                <AlertCircle className="w-6 h-6" aria-hidden="true" />
+              </div>
+              <h1 className="text-base font-semibold text-slate-100 tracking-tight">
+                {dict.auth.callback.failedTitle}
+              </h1>
+              <p role="alert" className="text-xs text-rose-400 font-medium leading-relaxed">
+                {error}
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => router.push('/')}
+                  className="min-h-[38px] px-5 py-2 rounded-lg text-xs font-medium text-slate-100 bg-[#253349] hover:bg-[#2E3E58] border border-slate-600 transition-colors cursor-pointer"
+                >
+                  {dict.common.backHome}
+                </button>
+              </div>
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Xác thực SSO thất bại</h2>
-            <p className="text-xs text-rose-400 font-medium">{error}</p>
-            <div className="pt-2">
-              <button
-                onClick={() => router.push('/')}
-                className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
-              >
-                Quay lại trang chủ
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
@@ -110,8 +119,8 @@ export default function SsoCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Orbit className="h-8 w-8 animate-spin text-cyan-400" />
+        <div className="flex flex-1 min-h-0 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-sky-400" aria-hidden="true" />
         </div>
       }
     >

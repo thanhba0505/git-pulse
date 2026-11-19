@@ -8,13 +8,15 @@ describe('GitHubService', () => {
   let prismaMock: {
     gitAccount: {
       upsert: jest.Mock;
-      findUnique: jest.Mock;
+      findFirst: jest.Mock;
+      findMany: jest.Mock;
       updateMany: jest.Mock;
       deleteMany: jest.Mock;
     };
     tokenAuditLog: {
       create: jest.Mock;
     };
+    $transaction: jest.Mock;
   };
   let cryptoMock: {
     encrypt: jest.Mock;
@@ -25,13 +27,15 @@ describe('GitHubService', () => {
     prismaMock = {
       gitAccount: {
         upsert: jest.fn(),
-        findUnique: jest.fn(),
-        updateMany: jest.fn(),
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         deleteMany: jest.fn(),
       },
       tokenAuditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
       },
+      $transaction: jest.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(prismaMock)),
     };
 
     cryptoMock = {
@@ -61,7 +65,7 @@ describe('GitHubService', () => {
       );
     });
 
-    it('should detect excessive dangerous scopes and record audit log', async () => {
+    it('should deactivate previous active account, detect scopes, and save new active account', async () => {
       const mockGhUser = {
         login: 'octocat',
         id: 1,
@@ -82,12 +86,14 @@ describe('GitHubService', () => {
       } as unknown as Response);
 
       prismaMock.gitAccount.upsert.mockResolvedValue({
+        id: 'acc-1',
         gitUsername: 'octocat',
         gitAvatar: 'https://avatar.url',
         authType: 'PAT',
         scopes: ['repo', 'delete_repo', 'admin:org'],
         hasExcessiveScopes: true,
         tokenStatus: 'ACTIVE',
+        isActive: true,
         expiresAt: new Date('2026-12-31 00:00:00 UTC'),
       });
 
@@ -95,19 +101,75 @@ describe('GitHubService', () => {
 
       expect(result.hasExcessiveScopes).toBe(true);
       expect(result.expiresAt).toBeDefined();
+      expect(result.isActive).toBe(true);
+      expect(prismaMock.gitAccount.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        data: { isActive: false },
+      });
       expect(cryptoMock.encrypt).toHaveBeenCalledWith('ghp_token_with_admin_scopes', 'user-1');
       expect(prismaMock.tokenAuditLog.create).toHaveBeenCalled();
     });
   });
 
+  describe('switchActiveAccount', () => {
+    it('should throw NotFoundException if account does not belong to user', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue(null);
+      await expect(service.switchActiveAccount('user-1', 'acc-missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should switch active account and return updated status with all accounts', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-2',
+        userId: 'user-1',
+        gitUsername: 'work-dev',
+      });
+      prismaMock.gitAccount.findMany.mockResolvedValue([
+        {
+          id: 'acc-2',
+          gitUsername: 'work-dev',
+          gitAvatar: 'https://work.avatar',
+          authType: 'PAT',
+          scopes: ['repo'],
+          hasExcessiveScopes: false,
+          tokenStatus: 'ACTIVE',
+          expiresAt: null,
+          lastSyncAt: null,
+          isActive: true,
+        },
+        {
+          id: 'acc-1',
+          gitUsername: 'octocat',
+          gitAvatar: 'https://octo.avatar',
+          authType: 'OAUTH',
+          scopes: ['repo'],
+          hasExcessiveScopes: false,
+          tokenStatus: 'ACTIVE',
+          expiresAt: null,
+          lastSyncAt: null,
+          isActive: false,
+        },
+      ]);
+
+      const status = await service.switchActiveAccount('user-1', 'acc-2');
+
+      expect(status.connected).toBe(true);
+      expect(status.activeAccountId).toBe('acc-2');
+      expect(status.gitUsername).toBe('work-dev');
+      expect(status.accounts).toHaveLength(2);
+    });
+  });
+
   describe('getDecryptedToken', () => {
     it('should throw NotFoundException if account not connected', async () => {
-      prismaMock.gitAccount.findUnique.mockResolvedValue(null);
+      prismaMock.gitAccount.findFirst.mockResolvedValue(null);
       await expect(service.getDecryptedToken('user-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if token is REVOKED', async () => {
-      prismaMock.gitAccount.findUnique.mockResolvedValue({
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
         tokenStatus: 'REVOKED',
         encryptedToken: 'enc',
         tokenIv: 'iv',
@@ -119,8 +181,9 @@ describe('GitHubService', () => {
       );
     });
 
-    it('should decrypt successfully using per-user derived key and audit log', async () => {
-      prismaMock.gitAccount.findUnique.mockResolvedValue({
+    it('should decrypt active account using per-user derived key and audit log', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
         tokenStatus: 'ACTIVE',
         encryptedToken: 'enc_data',
         tokenIv: 'iv_data',
@@ -132,6 +195,7 @@ describe('GitHubService', () => {
 
       expect(res.token).toBe('ghp_decrypted_token');
       expect(res.username).toBe('octocat');
+      expect(res.accountId).toBe('acc-1');
       expect(cryptoMock.decrypt).toHaveBeenCalledWith('enc_data', 'iv_data', 'tag_data', 'user-1');
       expect(prismaMock.tokenAuditLog.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -146,12 +210,60 @@ describe('GitHubService', () => {
   });
 
   describe('disconnect', () => {
-    it('should purge account and record audit log', async () => {
+    it('should selectively remove a single account and promote remaining active account', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
+        userId: 'user-1',
+        gitUsername: 'octocat',
+      });
+      prismaMock.gitAccount.deleteMany.mockResolvedValue({ count: 1 });
+      prismaMock.gitAccount.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'acc-2',
+            gitUsername: 'work-dev',
+            isActive: false,
+            authType: 'PAT',
+            scopes: [],
+            hasExcessiveScopes: false,
+            tokenStatus: 'ACTIVE',
+            expiresAt: null,
+            lastSyncAt: null,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'acc-2',
+            gitUsername: 'work-dev',
+            isActive: true,
+            authType: 'PAT',
+            scopes: [],
+            hasExcessiveScopes: false,
+            tokenStatus: 'ACTIVE',
+            expiresAt: null,
+            lastSyncAt: null,
+          },
+        ]);
+
+      const res = await service.disconnect('user-1', undefined, 'acc-1');
+
+      expect(prismaMock.gitAccount.deleteMany).toHaveBeenCalledWith({
+        where: { id: 'acc-1', userId: 'user-1' },
+      });
+      expect(prismaMock.gitAccount.updateMany).toHaveBeenCalledWith({
+        where: { id: 'acc-2', userId: 'user-1' },
+        data: { isActive: true },
+      });
+      expect(res.connected).toBe(true);
+      expect(res.gitUsername).toBe('work-dev');
+    });
+
+    it('should purge all accounts when accountId is omitted', async () => {
       prismaMock.gitAccount.deleteMany.mockResolvedValue({ count: 1 });
 
       const res = await service.disconnect('user-1');
 
-      expect(res.success).toBe(true);
+      expect(res.connected).toBe(false);
       expect(prismaMock.gitAccount.deleteMany).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
       });

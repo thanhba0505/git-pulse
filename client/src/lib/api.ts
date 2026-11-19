@@ -1,4 +1,15 @@
-import { User, GitStatus, PrActivity, ReportItem, AiEngine } from '../types';
+import {
+  AiEngine,
+  FetchPreferences,
+  GitHubWorkspacesResponse,
+  GitStatus,
+  PrActivity,
+  ReportItem,
+  TaskColor,
+  TrackingTask,
+  User,
+  UserSettingsResponse,
+} from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api/v1';
 
@@ -72,6 +83,7 @@ export const api = {
     savePat: (token: string) =>
       fetchJson<{
         success: boolean;
+        id?: string;
         username: string;
         avatarUrl: string;
         authType: string;
@@ -79,14 +91,84 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       }),
-    disconnect: () =>
-      fetchJson<{ success: boolean }>('/github/disconnect', {
-        method: 'DELETE',
+    switchAccount: (accountId: string) =>
+      fetchJson<GitStatus>(`/github/accounts/${encodeURIComponent(accountId)}/active`, {
+        method: 'PATCH',
       }),
+    disconnect: (accountId?: string) =>
+      fetchJson<GitStatus>(
+        accountId ? `/github/accounts/${encodeURIComponent(accountId)}` : '/github/disconnect',
+        {
+          method: 'DELETE',
+        },
+      ),
+    getWorkspaces: () => fetchJson<GitHubWorkspacesResponse>('/github/workspaces'),
     getActivity: (since?: string) => {
       const q = since ? `?since=${encodeURIComponent(since)}` : '';
       return fetchJson<PrActivity[]>(`/github/activity${q}`);
     },
+  },
+  settings: {
+    get: () => fetchJson<UserSettingsResponse>('/settings'),
+    update: (dto: {
+      language?: 'vi' | 'en';
+      autoCopyToClipboard?: boolean;
+      fetchPreferences?: Partial<FetchPreferences>;
+    }) =>
+      fetchJson<UserSettingsResponse>('/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      }),
+  },
+  tasks: {
+    list: () => fetchJson<TrackingTask[]>('/tasks'),
+    create: (dto: {
+      title: string;
+      color?: TaskColor;
+      items?: Array<{
+        repo: string;
+        prNumber: number;
+        title: string;
+        prUrl: string;
+        state?: string;
+        ownerType?: string;
+      }>;
+    }) =>
+      fetchJson<TrackingTask>('/tasks', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
+    update: (id: string, dto: { title?: string; color?: TaskColor; isCompleted?: boolean }) =>
+      fetchJson<TrackingTask>(`/tasks/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      }),
+    delete: (id: string) =>
+      fetchJson<{ success: boolean }>(`/tasks/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    addItems: (
+      id: string,
+      items: Array<{
+        repo: string;
+        prNumber: number;
+        title: string;
+        prUrl: string;
+        state?: string;
+        ownerType?: string;
+      }>,
+    ) =>
+      fetchJson<TrackingTask>(`/tasks/${encodeURIComponent(id)}/items`, {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }),
+    removeItem: (id: string, repo: string, prNumber: number) =>
+      fetchJson<TrackingTask>(
+        `/tasks/${encodeURIComponent(id)}/items?repo=${encodeURIComponent(repo)}&prNumber=${prNumber}`,
+        {
+          method: 'DELETE',
+        },
+      ),
   },
   ai: {
     summarizeWithGitHubModels: (dto: {

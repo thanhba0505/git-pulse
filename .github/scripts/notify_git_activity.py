@@ -89,13 +89,16 @@ elif event_name == "push":
     }
 
 if payload:
+    if not gateway_secret:
+        print("GATEWAY_SECRET_KEY not configured; skipping git activity notification.")
+        sys.exit(0)
+
     target_endpoint = f"{gateway_url}/notifications/slack/git"
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "Authorization": f"Bearer {gateway_secret}",
     }
-    if gateway_secret:
-        headers["Authorization"] = f"Bearer {gateway_secret}"
 
     req = urllib.request.Request(
         target_endpoint,

@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Delete, Body, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
@@ -43,18 +54,55 @@ export class GitHubController {
     return this.gitHubService.getStatus(req.user.id);
   }
 
-  @Delete('disconnect')
-  @ApiOperation({ summary: 'Disconnect GitHub account' })
-  async disconnect(@Req() req: Request & { user: AuthenticatedUser }) {
+  @Patch('accounts/:id/active')
+  @ApiOperation({ summary: 'Switch active linked GitHub account' })
+  async switchActiveAccount(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Param('id') id: string,
+  ) {
     const meta = {
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     };
-    return this.gitHubService.disconnect(req.user.id, meta);
+    return this.gitHubService.switchActiveAccount(req.user.id, id, meta);
+  }
+
+  @Delete('accounts/:id')
+  @ApiOperation({ summary: 'Disconnect a specific linked GitHub account' })
+  async disconnectAccount(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Param('id') id: string,
+  ) {
+    const meta = {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
+    return this.gitHubService.disconnect(req.user.id, meta, id);
+  }
+
+  @Delete('disconnect')
+  @ApiOperation({ summary: 'Disconnect GitHub account(s)' })
+  async disconnect(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Query('accountId') accountId?: string,
+  ) {
+    const meta = {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    };
+    return this.gitHubService.disconnect(req.user.id, meta, accountId);
+  }
+
+  @Get('workspaces')
+  @ApiOperation({
+    summary: 'List accessible personal and organization workspaces for active GitHub account',
+  })
+  async getWorkspaces(@Req() req: Request & { user: AuthenticatedUser }) {
+    return this.gitHubService.getWorkspaces(req.user.id);
   }
 
   @Get('activity')
-  @ApiOperation({ summary: 'Fetch Pull Requests and Commits updated today' })
+  @ApiOperation({ summary: 'Fetch Pull Requests and Direct Commits matching user preferences' })
   async getActivity(
     @Req() req: Request & { user: AuthenticatedUser },
     @Query('since') since?: string,

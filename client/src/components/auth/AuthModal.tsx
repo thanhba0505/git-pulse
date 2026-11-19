@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   Lock,
@@ -12,10 +12,15 @@ import {
   AlertCircle,
   CheckCircle2,
   Database,
-  Orbit,
+  Activity,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
-import { BorderBeam } from '../cosmic/BorderBeam';
+import { useTranslation } from '../../i18n';
+import { ModalDialog } from '../ui/ModalDialog';
+import { Input } from '../ui/Input';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 export type AuthMode = 'login' | 'register' | 'forgot';
@@ -24,15 +29,20 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: AuthMode;
+  variant?: 'modal' | 'inline';
   onOpenGoogleChooser?: () => void;
+  externalError?: string | null;
 }
 
 export function AuthModal({
   isOpen,
   onClose,
   defaultMode = 'login',
+  variant = 'modal',
   onOpenGoogleChooser,
+  externalError,
 }: AuthModalProps) {
+  const { locale, setLocale, dict } = useTranslation();
   const { login, register, forgotPassword, loginWithGoogle } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>(defaultMode);
@@ -45,25 +55,44 @@ export function AuthModal({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const isClientDev = process.env.NODE_ENV !== 'production';
+
+  useEffect(() => {
+    if (externalError) {
+      setError(externalError);
+    }
+  }, [externalError]);
+
   const handleGoogleSuccess = async (credential: string) => {
     setError(null);
     setSuccessMessage(null);
     const result = await loginWithGoogle({ credential });
     if (!result.success) {
-      setError(result.error || 'Đăng nhập Google thất bại.');
+      setError(result.error || dict.auth.googleAuthFailed);
     } else {
       onClose();
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && variant === 'modal') return null;
+
+  const switchMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setError(null);
+    setSuccessMessage(null);
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) {
-      setError('Vui lòng nhập tên đăng nhập hoặc email.');
+      setError(dict.auth.errors.usernameRequired);
       return;
     }
+    if (!password) {
+      setError(dict.auth.errors.passwordRequired);
+      return;
+    }
+
     setError(null);
     setSuccessMessage(null);
     setIsSubmitting(true);
@@ -71,7 +100,7 @@ export function AuthModal({
     try {
       const result = await login(username.trim(), password);
       if (!result.success) {
-        setError(result.error || 'Tên đăng nhập hoặc mật khẩu không chính xác.');
+        setError(result.error || dict.auth.errors.loginFailed);
       } else {
         onClose();
       }
@@ -83,9 +112,10 @@ export function AuthModal({
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !email.trim() || !password) {
-      setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      setError(dict.auth.errors.registerFieldsRequired);
       return;
     }
+
     setError(null);
     setSuccessMessage(null);
     setIsSubmitting(true);
@@ -93,9 +123,9 @@ export function AuthModal({
     try {
       const result = await register(username.trim(), email.trim(), password);
       if (!result.success) {
-        setError(result.error || 'Đăng ký tài khoản thất bại.');
+        setError(result.error || dict.auth.errors.registerFailed);
       } else {
-        setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển hướng...');
+        setSuccessMessage(dict.auth.registerSuccess);
         setTimeout(() => {
           onClose();
         }, 600);
@@ -108,355 +138,395 @@ export function AuthModal({
   const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setError('Vui lòng nhập địa chỉ email của bạn.');
+      setError(dict.auth.errors.emailRequired);
       return;
     }
+
     setError(null);
+    setSuccessMessage(null);
     setIsSubmitting(true);
     try {
       const result = await forgotPassword(email.trim());
       if (result.success) {
-        setSuccessMessage(result.message || 'Yêu cầu khôi phục mật khẩu đã được gửi.');
+        setSuccessMessage(result.message || dict.auth.forgotSuccess);
       } else {
-        setError(result.error || 'Có lỗi xảy ra.');
+        setError(result.error || dict.auth.errors.forgotFailed);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-[440px] overflow-hidden rounded-3xl cosmic-modal-card animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Kinetic Border Beam */}
-        <BorderBeam colorFrom="#06b6d4" colorTo="#3b82f6" duration={6} />
+  const HeadingTag = variant === 'inline' ? 'h1' : 'h2';
+  const titleText =
+    mode === 'login'
+      ? dict.auth.loginTitle
+      : mode === 'register'
+        ? dict.auth.registerTitle
+        : dict.auth.forgotTitle;
 
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] px-7 py-5 bg-white/[0.02]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-500 text-[#030712] shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-              <Orbit className="h-4 w-4 animate-orbit-spin" />
-            </div>
-            <span className="text-base font-bold text-white tracking-tight">
-              {mode === 'login' && 'Đăng nhập Git Pulse'}
-              {mode === 'register' && 'Đăng ký tài khoản Git Pulse'}
-              {mode === 'forgot' && 'Khôi phục mật khẩu'}
-            </span>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white transition cursor-pointer"
-            aria-label="Đóng cửa sổ"
+  const cardContent = (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 px-6 py-5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 text-sky-400 shrink-0"
+            aria-hidden="true"
           >
-            <X className="h-4 w-4" />
-          </button>
+            <Activity className="h-4 w-4" />
+          </div>
+          <HeadingTag
+            id="auth-modal-title"
+            className="text-base font-semibold text-slate-100 tracking-tight truncate"
+          >
+            {titleText}
+          </HeadingTag>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-7">
-          {/* Error Alert */}
-          {error && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3.5 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-              <div className="font-medium leading-relaxed">{error}</div>
-            </div>
-          )}
+        <div className="flex items-center gap-2 shrink-0">
+          <SegmentedControl
+            value={locale}
+            onChange={setLocale}
+            ariaLabel={dict.header.languageSwitchLabel}
+            size="sm"
+            options={[
+              { value: 'vi', label: 'VI' },
+              { value: 'en', label: 'EN' },
+            ]}
+          />
 
-          {/* Success Alert */}
-          {successMessage && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-3.5 text-xs text-emerald-300">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
-              <div className="font-medium leading-relaxed">{successMessage}</div>
-            </div>
-          )}
-
-          {/* 1. VIEW: LOGIN */}
-          {mode === 'login' && (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {/* Field 1: Username or Email */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Tên đăng nhập hoặc Email <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="VD: admin hoặc user@domain.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Field 2: Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-slate-300">
-                    Mật khẩu <span className="text-rose-400">*</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('forgot');
-                      setError(null);
-                      setSuccessMessage(null);
-                    }}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition cursor-pointer"
-                  >
-                    Quên mật khẩu?
-                  </button>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu..."
-                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer transition"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
-              >
-                <ArrowRight className="h-4 w-4" />
-                <span>{isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}</span>
-              </button>
-
-              {/* Divider: HOẶC TIẾP TỤC VỚI */}
-              <div className="relative my-5 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
-                </div>
-                <span className="relative bg-[#080e1c] px-3 text-xs font-mono uppercase tracking-wider text-slate-500">
-                  Hoặc tiếp tục với
-                </span>
-              </div>
-
-              {/* Google Sign-In Button */}
-              <GoogleSignInButton
-                onSuccess={handleGoogleSuccess}
-                onError={(err) => setError(err)}
-                disabled={isSubmitting}
-                onDevChooserClick={onOpenGoogleChooser}
-                isClientDev={process.env.NODE_ENV !== 'production'}
-                mode="signin"
-              />
-
-              {/* Footer */}
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Chưa có tài khoản Git Pulse?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
-                >
-                  Đăng ký ngay
-                </button>
-              </div>
-
-              {/* Discrete Dev Mode Helper */}
-              {onOpenGoogleChooser && (
-                <div className="pt-3 text-center">
-                  <button
-                    type="button"
-                    onClick={onOpenGoogleChooser}
-                    className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-300/90 transition cursor-pointer"
-                  >
-                    <Database className="h-3 w-3" />
-                    <span>Chọn tài khoản trong DB để test (Dev Mode)</span>
-                  </button>
-                </div>
-              )}
-            </form>
-          )}
-
-          {/* 2. VIEW: REGISTER */}
-          {mode === 'register' && (
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Tên đăng nhập (Username) <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="VD: developer_2026"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Địa chỉ Email <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="VD: developer@domain.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Mật khẩu <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="h-4 w-4" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu an toàn..."
-                    className="w-full pl-10 pr-11 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer transition"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
-              >
-                <ArrowRight className="h-4 w-4" />
-                <span>{isSubmitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
-              </button>
-
-              {/* Divider: HOẶC TIẾP TỤC VỚI */}
-              <div className="relative my-5 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
-                </div>
-                <span className="relative bg-[#080e1c] px-3 text-xs font-mono uppercase tracking-wider text-slate-500">
-                  Hoặc tiếp tục với
-                </span>
-              </div>
-
-              {/* Google Sign-In Button */}
-              <GoogleSignInButton
-                onSuccess={handleGoogleSuccess}
-                onError={(err) => setError(err)}
-                disabled={isSubmitting}
-                onDevChooserClick={onOpenGoogleChooser}
-                isClientDev={process.env.NODE_ENV !== 'production'}
-                mode="signup"
-              />
-
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Đã có tài khoản Git Pulse?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
-                >
-                  Đăng nhập ngay
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* 3. VIEW: FORGOT PASSWORD */}
-          {mode === 'forgot' && (
-            <form onSubmit={handleForgotSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Nhập địa chỉ Email tài khoản của bạn <span className="text-rose-400">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="VD: user@domain.com"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/15 text-sm text-white placeholder-slate-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-[#030712] font-bold py-3.5 text-sm shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
-              >
-                <ArrowRight className="h-4 w-4" />
-                <span>{isSubmitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu khôi phục'}</span>
-              </button>
-
-              <div className="pt-2 text-center text-xs text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="font-semibold text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer"
-                >
-                  Quay lại đăng nhập
-                </button>
-              </div>
-            </form>
+          {variant === 'modal' && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={dict.common.close}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-700/80 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Body */}
+      <div className="p-6 sm:p-7">
+        {error && (
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-2.5 rounded-lg border border-rose-500/25 bg-rose-500/10 p-3.5 text-xs text-rose-300"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" aria-hidden="true" />
+            <div className="font-medium leading-relaxed">{error}</div>
+          </div>
+        )}
+
+        {successMessage && (
+          <div
+            role="status"
+            className="mb-5 flex items-start gap-2.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3.5 text-xs text-emerald-300"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" aria-hidden="true" />
+            <div className="font-medium leading-relaxed">{successMessage}</div>
+          </div>
+        )}
+
+        {/* VIEW: LOGIN */}
+        {mode === 'login' && (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <Input
+              label={dict.auth.usernameOrEmailLabel}
+              requiredMark
+              type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.usernameOrEmailPlaceholder}
+              leftIcon={<User className="h-4 w-4" />}
+              autoComplete="username"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="next"
+            />
+
+            <Input
+              label={dict.auth.passwordLabel}
+              requiredMark
+              labelAction={
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="text-xs text-sky-400 hover:text-sky-300 font-medium transition-colors cursor-pointer"
+                >
+                  {dict.auth.forgotPasswordLink}
+                </button>
+              }
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.passwordPlaceholder}
+              leftIcon={<Lock className="h-4 w-4" />}
+              autoComplete="current-password"
+              enterKeyHint="done"
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? dict.auth.hidePassword : dict.auth.showPassword}
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              }
+            />
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{isSubmitting ? dict.auth.signingInBtn : dict.auth.signInBtn}</span>
+            </button>
+
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+              <span className="text-xs font-mono uppercase tracking-wider text-slate-400 shrink-0">
+                {dict.auth.orSeparator}
+              </span>
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+            </div>
+
+            <GoogleSignInButton
+              onSuccess={handleGoogleSuccess}
+              onError={(err) => setError(err)}
+              disabled={isSubmitting}
+              onDevChooserClick={onOpenGoogleChooser}
+              isClientDev={isClientDev}
+              mode="signin"
+            />
+
+            <div className="pt-2 text-center text-xs text-slate-400">
+              {dict.auth.noAccount}{' '}
+              <button
+                type="button"
+                onClick={() => switchMode('register')}
+                className="font-semibold text-sky-400 hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                {dict.auth.registerNow}
+              </button>
+            </div>
+
+            {isClientDev && onOpenGoogleChooser && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={onOpenGoogleChooser}
+                  className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
+                >
+                  <Database className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>{dict.auth.devAccountHelper}</span>
+                </button>
+              </div>
+            )}
+          </form>
+        )}
+
+        {/* VIEW: REGISTER */}
+        {mode === 'register' && (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <Input
+              label={dict.auth.usernameLabel}
+              requiredMark
+              type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.usernamePlaceholder}
+              leftIcon={<User className="h-4 w-4" />}
+              autoComplete="username"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="next"
+            />
+
+            <Input
+              label={dict.auth.emailLabel}
+              requiredMark
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.emailPlaceholder}
+              leftIcon={<Mail className="h-4 w-4" />}
+              autoComplete="email"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="next"
+            />
+
+            <Input
+              label={dict.auth.passwordLabel}
+              requiredMark
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.registerPasswordPlaceholder}
+              leftIcon={<Lock className="h-4 w-4" />}
+              autoComplete="new-password"
+              enterKeyHint="done"
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? dict.auth.hidePassword : dict.auth.showPassword}
+                  className="p-2 rounded-md text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              }
+            />
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer mt-2"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{isSubmitting ? dict.auth.registeringBtn : dict.auth.registerBtn}</span>
+            </button>
+
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+              <span className="text-xs font-mono uppercase tracking-wider text-slate-400 shrink-0">
+                {dict.auth.orSeparator}
+              </span>
+              <div className="h-px flex-1 bg-slate-700/80" aria-hidden="true" />
+            </div>
+
+            <GoogleSignInButton
+              onSuccess={handleGoogleSuccess}
+              onError={(err) => setError(err)}
+              disabled={isSubmitting}
+              onDevChooserClick={onOpenGoogleChooser}
+              isClientDev={isClientDev}
+              mode="signup"
+            />
+
+            <div className="pt-2 text-center text-xs text-slate-400">
+              {dict.auth.hasAccount}{' '}
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="font-semibold text-sky-400 hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                {dict.auth.signInNow}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* VIEW: FORGOT PASSWORD */}
+        {mode === 'forgot' && (
+          <form onSubmit={handleForgotSubmit} className="space-y-4">
+            <Input
+              label={dict.auth.forgotEmailLabel}
+              requiredMark
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder={dict.auth.emailPlaceholder}
+              leftIcon={<Mail className="h-4 w-4" />}
+              autoComplete="email"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              enterKeyHint="done"
+            />
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold py-2.5 text-sm active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{isSubmitting ? dict.auth.sendingResetBtn : dict.auth.sendResetBtn}</span>
+            </button>
+
+            <div className="pt-2 text-center text-xs text-slate-400">
+              <button
+                type="button"
+                onClick={() => switchMode('login')}
+                className="font-semibold text-sky-400 hover:text-sky-300 hover:underline cursor-pointer"
+              >
+                {dict.auth.backToLogin}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </>
+  );
+
+  if (variant === 'inline') {
+    return (
+      <ShowcaseCard
+        tiltStrength={0.75}
+        className="w-full max-w-[440px] gp-modal-surface gp-dialog-in"
+      >
+        {cardContent}
+      </ShowcaseCard>
+    );
+  }
+
+  return (
+    <ModalDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      labelledBy="auth-modal-title"
+      maxWidthClass="max-w-[440px]"
+    >
+      {cardContent}
+    </ModalDialog>
   );
 }

@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AiEngine } from '../../types';
-import { Sparkles, Cpu, Globe, Zap, Languages } from 'lucide-react';
-import { BorderBeam } from '../cosmic/BorderBeam';
+import { useTranslation } from '../../i18n';
+import { Select, SelectOption } from '../ui/Select';
+import { ShowcaseCard } from '../ui/ShowcaseCard';
+import { Sparkles, Cpu, Globe, Loader2, AlertCircle, HardDrive, CheckCircle2 } from 'lucide-react';
 
 interface CockpitAiConsoleProps {
   engine: AiEngine;
@@ -14,9 +16,10 @@ interface CockpitAiConsoleProps {
   onLanguageChange: (lang: 'vi' | 'en') => void;
   onGenerate: () => void;
   isGenerating: boolean;
+  error?: string | null;
   webLlmProgressText?: string;
   webLlmProgressPercent?: number;
-  hasPrs: boolean;
+  selectedPrCount: number;
 }
 
 export function CockpitAiConsole({
@@ -28,181 +31,273 @@ export function CockpitAiConsole({
   onLanguageChange,
   onGenerate,
   isGenerating,
+  error,
   webLlmProgressText,
   webLlmProgressPercent,
-  hasPrs,
+  selectedPrCount,
 }: CockpitAiConsoleProps) {
+  const { dict, t } = useTranslation();
   const isWebLLM = engine === 'WEB_LLM';
+  const [hasWebGpuCache, setHasWebGpuCache] = useState(false);
+
+  useEffect(() => {
+    if (!isWebLLM || typeof window === 'undefined' || !('caches' in window)) return;
+
+    let mounted = true;
+    window.caches
+      .keys()
+      .then((keys) => {
+        if (mounted) {
+          setHasWebGpuCache(keys.some((k) => k.toLowerCase().includes('webllm')));
+        }
+      })
+      .catch(() => {
+        if (mounted) setHasWebGpuCache(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isWebLLM]);
+
+  const preloadWebLlm = () => {
+    void import('../../lib/webllm');
+  };
+
+  const modelOptions = useMemo<readonly SelectOption<string>[]>(() => {
+    if (isWebLLM) {
+      return [
+        {
+          value: 'Llama-3.2-1B-Instruct-q4f16_1-MLC',
+          label: dict.aiConsole.models.llama32LocalLabel,
+          description: dict.aiConsole.models.llama32LocalDesc,
+        },
+        {
+          value: 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC',
+          label: dict.aiConsole.models.qwenLocalLabel,
+          description: dict.aiConsole.models.qwenLocalDesc,
+        },
+      ];
+    }
+
+    return [
+      {
+        value: 'gpt-4o-mini',
+        label: dict.aiConsole.models.gpt4oMiniLabel,
+        description: dict.aiConsole.models.gpt4oMiniDesc,
+      },
+      {
+        value: 'meta-llama-3.3-70b-instruct',
+        label: dict.aiConsole.models.llama33Label,
+        description: dict.aiConsole.models.llama33Desc,
+      },
+    ];
+  }, [isWebLLM, dict]);
+
+  const outputLanguageOptions = useMemo<readonly SelectOption<'vi' | 'en'>[]>(
+    () => [
+      { value: 'vi', label: dict.aiConsole.outputLangVi },
+      { value: 'en', label: dict.aiConsole.outputLangEn },
+    ],
+    [dict],
+  );
+
+  const progressPct = Math.max(0, Math.min(100, Math.round((webLlmProgressPercent || 0) * 100)));
+  const hasSelection = selectedPrCount > 0;
+  const ctaText = isGenerating
+    ? dict.aiConsole.generatingBtn
+    : hasSelection
+      ? t('aiConsole.generateSelectedBtn', { count: selectedPrCount })
+      : dict.aiConsole.generateBtn;
 
   return (
-    <div className="relative astral-card rounded-2xl p-6 sm:p-7 border border-pulsar-violet/30 shadow-[0_0_35px_rgba(139,92,246,0.15)] space-y-5 overflow-hidden">
-      {/* Kinetic Border Beam */}
-      <BorderBeam
-        colorFrom={isWebLLM ? '#8b5cf6' : '#06b6d4'}
-        colorTo={isWebLLM ? '#ec4899' : '#3b82f6'}
-        duration={5}
-      />
-
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/25 shadow-[0_0_15px_rgba(139,92,246,0.25)]">
-            <Sparkles className="w-4 h-4 animate-pulse" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-              Bảng Điều Khiển AI Kép
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Chọn lõi xử lý AI để chuyển đổi các PR & commit thành bản Standup ngắn gọn.
-            </p>
-          </div>
+    <ShowcaseCard as="section" aria-labelledby="ai-console-heading" className="p-5 sm:p-6">
+      <div className="space-y-5">
+        {/* Header */}
+        <div className="border-b border-slate-700/80 pb-4">
+          <h2
+            id="ai-console-heading"
+            className="text-base font-semibold text-slate-100 tracking-tight"
+          >
+            {dict.aiConsole.title}
+          </h2>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            {dict.aiConsole.description}
+          </p>
         </div>
 
-        {/* Language selector */}
-        <div className="flex items-center gap-1.5 bg-void-subtle px-3 py-1.5 rounded-xl border border-slate-700/80 text-xs">
-          <Languages className="w-3.5 h-3.5 text-slate-400" />
+        {/* Engine Radio Selection */}
+        <div
+          role="radiogroup"
+          aria-label={dict.aiConsole.engineGroupLabel}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+        >
+          {/* Cloud Engine */}
           <button
-            onClick={() => onLanguageChange('vi')}
-            className={`px-1.5 py-0.5 rounded font-medium ${
-              language === 'vi' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
+            type="button"
+            role="radio"
+            aria-checked={engine === 'GITHUB_MODELS'}
+            onClick={() => {
+              onEngineChange('GITHUB_MODELS');
+              onModelChange('gpt-4o-mini');
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+              engine === 'GITHUB_MODELS'
+                ? 'bg-sky-500/[0.14] border-sky-400/60 text-slate-50 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
+                : 'bg-[#253349]/65 border-slate-600/80 hover:border-sky-400/50 hover:bg-[#2A3A53]/85 text-slate-200'
             }`}
           >
-            VI
+            <div className="flex items-center justify-between gap-2 mb-2 w-full">
+              <div className="flex items-center gap-2 min-w-0">
+                <Globe
+                  className={`w-4 h-4 shrink-0 ${
+                    engine === 'GITHUB_MODELS' ? 'text-sky-400' : 'text-slate-400'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="text-xs font-semibold text-slate-100 truncate">
+                  {dict.aiConsole.cloudTitle}
+                </span>
+              </div>
+              <span
+                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                  engine === 'GITHUB_MODELS'
+                    ? 'border-sky-400 bg-sky-500/20'
+                    : 'border-slate-500 bg-[#152033]'
+                }`}
+                aria-hidden="true"
+              >
+                {engine === 'GITHUB_MODELS' && <span className="w-2 h-2 rounded-full bg-sky-400" />}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">{dict.aiConsole.cloudDesc}</p>
           </button>
-          <span className="text-slate-600">|</span>
+
+          {/* Browser WebGPU Engine with Predictive Chunk Preload */}
           <button
-            onClick={() => onLanguageChange('en')}
-            className={`px-1.5 py-0.5 rounded font-medium ${
-              language === 'en' ? 'text-cyan-300 font-bold' : 'text-slate-400 hover:text-white'
+            type="button"
+            role="radio"
+            aria-checked={engine === 'WEB_LLM'}
+            onPointerEnter={preloadWebLlm}
+            onFocus={preloadWebLlm}
+            onClick={() => {
+              preloadWebLlm();
+              onEngineChange('WEB_LLM');
+              onModelChange('Llama-3.2-1B-Instruct-q4f16_1-MLC');
+            }}
+            className={`flex flex-col justify-between p-4 rounded-xl text-left border transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.985] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+              engine === 'WEB_LLM'
+                ? 'bg-sky-500/[0.14] border-sky-400/60 text-slate-50 shadow-[0_6px_20px_-8px_rgba(14,165,233,0.28)]'
+                : 'bg-[#253349]/65 border-slate-600/80 hover:border-sky-400/50 hover:bg-[#2A3A53]/85 text-slate-200'
             }`}
           >
-            EN
+            <div className="flex items-center justify-between gap-2 mb-2 w-full">
+              <div className="flex items-center gap-2 min-w-0">
+                <Cpu
+                  className={`w-4 h-4 shrink-0 ${
+                    engine === 'WEB_LLM' ? 'text-sky-400' : 'text-slate-400'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="text-xs font-semibold text-slate-100 truncate">
+                  {dict.aiConsole.localTitle}
+                </span>
+              </div>
+              <span
+                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                  engine === 'WEB_LLM'
+                    ? 'border-sky-400 bg-sky-500/20'
+                    : 'border-slate-500 bg-[#152033]'
+                }`}
+                aria-hidden="true"
+              >
+                {engine === 'WEB_LLM' && <span className="w-2 h-2 rounded-full bg-sky-400" />}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">{dict.aiConsole.localDesc}</p>
           </button>
         </div>
-      </div>
 
-      {/* Engine Switcher */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        {/* Core 1: GitHub Models */}
-        <button
-          type="button"
-          onClick={() => {
-            onEngineChange('GITHUB_MODELS');
-            onModelChange('gpt-4o-mini');
-          }}
-          className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
-            engine === 'GITHUB_MODELS'
-              ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.3)] ring-1 ring-cyan-400/40'
-              : 'bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle'
-          }`}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className={`p-1.5 rounded-lg ${
-                engine === 'GITHUB_MODELS'
-                  ? 'bg-cyan-500/20 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
-                  : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              <Globe className="w-4 h-4 animate-pulse" />
-            </div>
-            <span className="text-xs font-bold text-white">GitHub Models Warp-Drive</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Dùng chính token GitHub của bạn gọi endpoint Azure AI. Siêu nhanh, thông minh & không
-            tốn key.
-          </p>
-        </button>
-
-        {/* Core 2: WebLLM In-Browser */}
-        <button
-          type="button"
-          onClick={() => {
-            onEngineChange('WEB_LLM');
-            onModelChange('Llama-3.2-1B-Instruct-q4f16_1-MLC');
-          }}
-          className={`relative p-4 sm:p-5 rounded-xl text-left border transition-all ${
-            engine === 'WEB_LLM'
-              ? 'bg-violet-950/40 border-violet-400 shadow-[0_0_25px_rgba(139,92,246,0.3)] ring-1 ring-violet-400/40'
-              : 'bg-void-subtle/60 border-slate-800 hover:border-slate-700 hover:bg-void-subtle'
-          }`}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className={`p-1.5 rounded-lg ${
-                engine === 'WEB_LLM'
-                  ? 'bg-violet-500/20 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.5)]'
-                  : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              <Cpu className="w-4 h-4 animate-pulse" />
-            </div>
-            <span className="text-xs font-bold text-white">WebGPU Sub-Light Core</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Chạy mô hình trực tiếp trong trình duyệt qua WebGPU. 100% riêng tư, offline và zero
-            token.
-          </p>
-        </button>
-      </div>
-
-      {/* Model Selection Row */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs text-slate-400 font-mono">Model:</span>
-          <select
+        {/* Model & Report Language Select Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Select
+            label={dict.aiConsole.modelLabel}
             value={selectedModel}
-            onChange={(e) => onModelChange(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-void-subtle border border-slate-700 text-xs text-slate-200 outline-none focus:border-cyan-400 font-mono"
-          >
-            {isWebLLM ? (
-              <>
-                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama 3.2 1B (Nhẹ ~600MB)</option>
-                <option value="Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC">
-                  Qwen 2.5 Coder 1.5B (Code Spec)
-                </option>
-              </>
-            ) : (
-              <>
-                <option value="gpt-4o-mini">gpt-4o-mini (Cực nhanh & sắc nét)</option>
-                <option value="meta-llama-3.3-70b-instruct">Llama 3.3 70B (Siêu mạnh mẽ)</option>
-              </>
-            )}
-          </select>
+            options={modelOptions}
+            onChange={onModelChange}
+            disabled={isGenerating}
+          />
+
+          <Select
+            label={dict.aiConsole.outputLangLabel}
+            value={language}
+            options={outputLanguageOptions}
+            onChange={onLanguageChange}
+            disabled={isGenerating}
+          />
         </div>
 
-        {/* Generate Button */}
-        <button
-          onClick={onGenerate}
-          disabled={!hasPrs || isGenerating}
-          className="w-full sm:w-auto relative group overflow-hidden flex items-center justify-center gap-2.5 px-7 py-3 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Zap className={`w-4 h-4 ${isGenerating ? 'animate-bounce' : 'animate-pulse'}`} />
-          <span>{isGenerating ? 'Đang tóm tắt...' : 'Kích Hoạt Tóm Tắt Standup'}</span>
-        </button>
-      </div>
-
-      {/* WebLLM Loading Progress Indicator */}
-      {isGenerating && isWebLLM && (
-        <div className="p-3 rounded-xl bg-violet-950/40 border border-violet-500/30 space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-violet-300 font-mono">
-            <span>{webLlmProgressText || 'Đang nạp mô hình vào WebGPU...'}</span>
-            <span>
-              {webLlmProgressPercent ? `${Math.round(webLlmProgressPercent * 100)}%` : '100%'}
+        {/* WebGPU Local Cache Indicator */}
+        {isWebLLM && (
+          <div className="flex items-center gap-2 text-xs text-slate-300 px-3 py-2 rounded-lg bg-[#152033] border border-slate-700/80">
+            {hasWebGpuCache ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-hidden="true" />
+            ) : (
+              <HardDrive className="w-3.5 h-3.5 text-sky-400 shrink-0" aria-hidden="true" />
+            )}
+            <span className="leading-snug">
+              {hasWebGpuCache ? dict.aiConsole.webgpuCachedHint : dict.aiConsole.webgpuDownloadHint}
             </span>
           </div>
-          <div className="w-full h-1.5 rounded-full bg-void overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-300"
-              style={{
-                width: `${Math.round((webLlmProgressPercent || 0) * 100)}%`,
-              }}
-            />
+        )}
+
+        {/* Inline Error Alert */}
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-xs text-rose-300"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
+            <span className="leading-relaxed">{error}</span>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Primary Generate Button */}
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!hasSelection || isGenerating}
+          className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:bg-slate-700/70 disabled:text-slate-300 disabled:border disabled:border-slate-600/80 disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+        >
+          {isGenerating ? (
+            <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+          ) : (
+            <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
+          )}
+          <span>{ctaText}</span>
+          {!isGenerating && hasSelection && (
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950/20 text-xs font-mono font-semibold text-slate-950/80 ml-1">
+              ⌘↵
+            </kbd>
+          )}
+        </button>
+
+        {/* WebGPU Download / Init Progress */}
+        {isGenerating && isWebLLM && (
+          <div className="p-3.5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-2">
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-200 font-mono">
+              <span className="truncate">{webLlmProgressText || dict.aiConsole.loadingModel}</span>
+              <span className="tabular-nums text-sky-400 shrink-0">{progressPct}%</span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-slate-700 overflow-hidden">
+              <div
+                className="h-full bg-sky-500 transition-all duration-200"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </ShowcaseCard>
   );
 }

@@ -2,7 +2,7 @@
 
 # Git Pulse
 
-**Developer Intelligence & Git Workspace with Dual-Core AI and Activity Radar — part of the Prism Hub ecosystem.**
+**Developer Intelligence & Git Standup Workspace — part of the Prism Hub ecosystem.**
 
 [![CI Pipeline](https://github.com/thanhba0505/git-pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/thanhba0505/git-pulse/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/thanhba0505/git-pulse?color=06b6d4&style=flat-square&label=Release)](https://github.com/thanhba0505/git-pulse/releases)
@@ -20,16 +20,16 @@
 
 ## 📌 Project Overview
 
-**Git Pulse** aggregates daily GitHub pull requests, commits, and issue activities to synthesize high-precision standup reports using an innovative **Dual-Core AI** engine. It visualizes developer momentum through cosmic radar HUDs and real-time pulsar waveforms, keeping engineering teams aligned with zero cognitive friction.
+**Git Pulse** aggregates daily GitHub pull requests and commits to synthesize concise standup reports using a **Dual-Engine AI** architecture (GitHub Models & In-Browser WebGPU). Built with a clean Carbon-Slate precision UI and full bilingual (`vi` / `en`) support, it keeps engineering teams aligned with zero cognitive clutter.
 
 ### Core Capabilities:
 
-- **Dual-Core AI Synthesis (Zero Server Cost)**:
-  - **Warp-Drive Core (Cloud AI)**: Dispatches inference calls to GitHub Models (Azure Inference) directly using the user's decrypted GitHub token (`gpt-4o-mini`, `meta-llama-3.3-70b-instruct`).
-  - **Sub-Light Core (In-Browser WebGPU)**: Runs quantized models (`Llama-3.2-1B`, `Qwen2.5-Coder-1.5B`) directly inside the developer's browser via WebGPU using `@mlc-ai/web-llm` — 100% private, offline, and zero API quota consumed.
-- **Developer Radar & Activity Scanner**: Live sonar radar mapping commit frequency, open PRs, and repository contributions across time windows.
-- **Live Pulsar Waveform**: Oscillating visualizer reflecting coding rhythm and velocity.
-- **Multi-Format Export Dock**: 1-click clipboard formatting for Parabol standups, Slack bullet lists, Markdown tables, and Jira tickets.
+- **Dual-Engine AI Synthesis (Zero Server Cost)**:
+  - **GitHub Models (Cloud)**: Dispatches inference calls to GitHub Models (Azure Inference) directly using the user's decrypted GitHub token (`gpt-4o-mini`, `meta-llama-3.3-70b-instruct`).
+  - **WebLLM (In-Browser WebGPU)**: Runs quantized models (`Llama-3.2-1B`, `Qwen2.5-Coder-1.5B`) directly inside the developer's browser via WebGPU using `@mlc-ai/web-llm` — 100% private, offline, and zero API quota consumed.
+- **Git Activity Scanner**: Fetches pull requests, commit timelines, and repository contributions across configurable time windows (`Today`, `24h`, `7d`).
+- **Bilingual Workspace (`vi` / `en`)**: Full interface internationalization decoupled cleanly from AI report generation language.
+- **Multi-Format Export Dock**: 1-click clipboard formatting for Parabol standups, Slack bullet lists, and plain bullets.
 - **Central Gateway SSO & S2S**: Seamless single sign-on powered by Central Gateway with cryptographic HMAC-SHA256 signature verification.
 - **Enterprise-Grade Token Security**: GitHub credentials encrypted at rest with **AES-256-GCM** using **Per-User HKDF Key Derivation**, backed by automated regex log sanitization.
 
@@ -41,7 +41,7 @@ Git Pulse is a developer intelligence layer within the **Prism Hub** engineering
 
 | Application         | Role & Mission                                        | Standard Local Port | Live Production                                            | Interactive Docs                                                      |
 | :------------------ | :---------------------------------------------------- | :-----------------: | :--------------------------------------------------------- | :-------------------------------------------------------------------- |
-| **Git Pulse**       | Developer Intelligence, Dual-Core AI & Activity Radar |   `6100` / `6101`   | [Developer Workspace](https://git-pulse-app.vercel.app)    | [Swagger OpenAPI](https://git-pulse-server.vercel.app/api/docs)       |
+| **Git Pulse**       | Developer Intelligence & AI Standup Workspace         |   `6100` / `6101`   | [Developer Workspace](https://git-pulse-app.vercel.app)    | [Swagger OpenAPI](https://git-pulse-server.vercel.app/api/docs)       |
 | **Wonderlab**       | Interactive Science, Probability & Paradox Laboratory |   `4100` / `4101`   | [Live Experience](https://wonderlab.io.vn)                 | [Swagger OpenAPI](https://wonderlab-server.vercel.app/api/docs)       |
 | **Central Gateway** | Centralized IAM Master, OAuth2 SSO & Notification Hub |   `5100` / `5101`   | [Control Plane](https://central-gateway-client.vercel.app) | [Swagger OpenAPI](https://central-gateway-server.vercel.app/api/docs) |
 
@@ -68,7 +68,7 @@ graph TD
 
 ```text
 git-pulse/
-├── client/          # Next.js 15 App Router, React 19, Tailwind CSS v4, WebLLM
+├── client/          # Next.js 15 App Router, React 19, Tailwind CSS, WebLLM
 ├── server/          # NestJS 10 REST API, Prisma ORM, AES-256-GCM Token Vault
 ├── docs/            # Architecture specifications, deployment, and security guides
 ├── .github/         # Parallel CI/CD workflows, release automation, PR & issue templates
@@ -77,7 +77,7 @@ git-pulse/
 
 | Workspace    | Technology Stack                                      | Local Port | Role & Responsibility                                                      |
 | :----------- | :---------------------------------------------------- | :--------: | :------------------------------------------------------------------------- |
-| **`client`** | Next.js 15 App Router, React 19, WebLLM, Tailwind CSS |   `6100`   | Radar HUD cockpit, WebGPU local AI synthesizer, and standup export dock.   |
+| **`client`** | Next.js 15 App Router, React 19, WebLLM, Tailwind CSS |   `6100`   | Precision Carbon-Slate workspace, i18n, WebGPU AI, and export dock.        |
 | **`server`** | NestJS 10, Prisma ORM, AES-256-GCM Vault              |   `6101`   | REST API (`/api/v1`), token encryption, GitHub Models proxy, and S2S auth. |
 
 ---

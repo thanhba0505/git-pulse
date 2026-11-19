@@ -1,187 +1,591 @@
 'use client';
 
-import React from 'react';
-import { PrActivity } from '../../types';
-import { Radar, GitPullRequest, GitCommit, ExternalLink } from 'lucide-react';
-import { SpotlightCard } from '../cosmic/SpotlightCard';
-import { RadarSonarHUD } from '../cosmic/RadarSonarHUD';
+import React, { useMemo, useState } from 'react';
+import {
+  GitHubWorkspacesResponse,
+  GroupingMode,
+  PrActivity,
+  PrState,
+  TaskColor,
+  TrackingTask,
+} from '../../types';
+import { useTranslation } from '../../i18n';
+import { getPrKey as computePrKey, getPrStateStyle } from '../../lib/activity-utils';
+import { SegmentedControl } from '../ui/SegmentedControl';
+import { ShowcaseCard } from '../ui/ShowcaseCard';
+import { ActivityListSkeleton } from '../ui/Skeleton';
+import { PrActivityCard } from './PrActivityCard';
+import { TaskTrackerView } from './TaskTrackerView';
+import {
+  AlertCircle,
+  Building2,
+  ChevronDown,
+  FolderGit2,
+  GitPullRequest,
+  Info,
+  RefreshCw,
+  SlidersHorizontal,
+  User,
+} from 'lucide-react';
+
+export const getPrKey = computePrKey;
 
 interface ActivityScannerProps {
   activities: PrActivity[];
   isLoading: boolean;
+  error?: string | null;
   onScan: () => void;
   sinceOption: 'today' | '24h' | '7d';
   onSinceOptionChange: (opt: 'today' | '24h' | '7d') => void;
+  repoFilter: string;
+  onRepoFilterChange: (repo: string) => void;
+  groupBy: GroupingMode;
+  onGroupByChange: (mode: GroupingMode) => void;
+  compactCommits: boolean;
+  workspaces: GitHubWorkspacesResponse | null;
+  includePersonalEnabled: boolean;
+  onOpenFetchSettings: () => void;
+  selectedPrKeys: ReadonlySet<string>;
+  onTogglePrSelection: (key: string) => void;
+  onSelectKeysBatch: (keys: string[], select: boolean) => void;
+  onSelectAllPrs: () => void;
+  onClearPrSelection: () => void;
+  tasks: TrackingTask[];
+  onCreateTask: (title: string, color: TaskColor, prs: PrActivity[]) => Promise<void>;
+  onRenameTask: (taskId: string, title: string, color: TaskColor) => Promise<void>;
+  onToggleTaskComplete: (taskId: string, isCompleted: boolean) => Promise<void>;
+  onDeleteTask: (taskId: string) => Promise<void>;
+  onToggleTaskAssignment: (taskId: string, pr: PrActivity, isAssigned: boolean) => Promise<void>;
+  onRemoveTaskItem: (taskId: string, repo: string, prNumber: number) => Promise<void>;
+}
+
+type StateFilter = 'ALL' | PrState;
+
+interface OwnerGroupSection {
+  key: string;
+  ownerType: 'personal' | 'organization';
+  label: string;
+  avatarUrl?: string;
+  items: PrActivity[];
 }
 
 export function ActivityScanner({
   activities,
   isLoading,
+  error,
   onScan,
   sinceOption,
   onSinceOptionChange,
+  repoFilter,
+  onRepoFilterChange,
+  groupBy,
+  onGroupByChange,
+  compactCommits,
+  workspaces,
+  includePersonalEnabled,
+  onOpenFetchSettings,
+  selectedPrKeys,
+  onTogglePrSelection,
+  onSelectKeysBatch,
+  onSelectAllPrs,
+  onClearPrSelection,
+  tasks,
+  onCreateTask,
+  onRenameTask,
+  onToggleTaskComplete,
+  onDeleteTask,
+  onToggleTaskAssignment,
+  onRemoveTaskItem,
 }: ActivityScannerProps) {
-  const totalCommits = activities.reduce((sum, pr) => sum + pr.commits.length, 0);
+  const { dict, t } = useTranslation();
+  const [stateFilter, setStateFilter] = useState<StateFilter>('ALL');
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => new Set());
 
-  return (
-    <div className="space-y-5">
-      {/* Scanner Control Deck */}
-      <div className="astral-card rounded-2xl p-6 sm:p-7 flex flex-col sm:flex-row items-center justify-between gap-5 border border-pulsar-cyan/25">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/25 text-cyan-300">
-            <Radar className={`w-5 h-5 ${isLoading ? 'animate-spin text-pulsar-cyan' : ''}`} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-sm font-bold text-white tracking-wide uppercase">
-                Chòm Sao Quỹ Đạo Git
-              </h2>
-              {activities.length > 0 && (
-                <span className="text-xs font-mono text-cyan-400">
-                  ({activities.length} PRs • {totalCommits} Commits)
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Quét các Pull Request và commit bạn đã thực hiện trong khoảng thời gian đã chọn.
-            </p>
-          </div>
-        </div>
+  const uniqueRepos = useMemo(
+    () => Array.from(new Set(activities.map((a) => a.repo))).sort(),
+    [activities],
+  );
 
-        {/* Date Filter & Trigger */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-          <div className="flex items-center bg-void-subtle rounded-xl p-1 border border-slate-700/80 text-xs">
-            <button
-              onClick={() => onSinceOptionChange('today')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                sinceOption === 'today'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/30'
-                  : 'text-slate-400 hover:text-white'
+  const visibleActivities = useMemo(() => {
+    return activities.filter((act) => {
+      if (repoFilter !== 'ALL' && act.repo !== repoFilter) return false;
+      if (stateFilter !== 'ALL' && act.state !== stateFilter) return false;
+      return true;
+    });
+  }, [activities, repoFilter, stateFilter]);
+
+  const ownerSections = useMemo<OwnerGroupSection[]>(() => {
+    const personalItems: PrActivity[] = [];
+    const orgMap = new Map<string, OwnerGroupSection>();
+
+    for (const act of visibleActivities) {
+      if (act.ownerType === 'personal') {
+        personalItems.push(act);
+      } else {
+        const orgKey = `org:${act.owner}`;
+        const existing = orgMap.get(orgKey);
+        if (existing) {
+          existing.items.push(act);
+        } else {
+          orgMap.set(orgKey, {
+            key: orgKey,
+            ownerType: 'organization',
+            label: act.owner,
+            avatarUrl: act.ownerAvatar,
+            items: [act],
+          });
+        }
+      }
+    }
+
+    const sections: OwnerGroupSection[] = [];
+    if (personalItems.length > 0) {
+      sections.push({
+        key: 'personal',
+        ownerType: 'personal',
+        label: workspaces?.personal.login
+          ? `${dict.scanner.personalSpace} (@${workspaces.personal.login})`
+          : dict.scanner.personalSpace,
+        avatarUrl: workspaces?.personal.avatarUrl ?? personalItems[0]?.ownerAvatar,
+        items: personalItems,
+      });
+    }
+
+    const sortedOrgs = Array.from(orgMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+    sections.push(...sortedOrgs);
+    return sections;
+  }, [visibleActivities, workspaces, dict.scanner.personalSpace]);
+
+  const repoSections = useMemo(() => {
+    const map = new Map<string, PrActivity[]>();
+    for (const act of visibleActivities) {
+      const list = map.get(act.repo) ?? [];
+      list.push(act);
+      map.set(act.repo, list);
+    }
+    return Array.from(map.entries()).map(([repo, items]) => ({
+      key: `repo:${repo}`,
+      repo,
+      items,
+    }));
+  }, [visibleActivities]);
+
+  const totalCommits = visibleActivities.reduce((sum, pr) => sum + pr.commits.length, 0);
+  const selectedInVisible = visibleActivities.filter((pr) =>
+    selectedPrKeys.has(computePrKey(pr)),
+  ).length;
+
+  const hasPersonalActivities = activities.some((a) => a.ownerType === 'personal');
+  const shouldShowPersonalAccessHint =
+    !isLoading &&
+    includePersonalEnabled &&
+    !hasPersonalActivities &&
+    (workspaces?.personal.accessibleRepoCount === 0 || activities.length > 0);
+
+  const toggleSectionCollapse = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const renderSectionGroup = (
+    sectionKey: string,
+    icon: React.ReactNode,
+    title: string,
+    items: PrActivity[],
+  ) => {
+    const isCollapsed = collapsedSections.has(sectionKey);
+    const keys = items.map(computePrKey);
+    const allSelected = keys.length > 0 && keys.every((k) => selectedPrKeys.has(k));
+    const sectionCommits = items.reduce((sum, item) => sum + item.commits.length, 0);
+
+    return (
+      <div key={sectionKey} className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <button
+            type="button"
+            onClick={() => toggleSectionCollapse(sectionKey)}
+            aria-expanded={!isCollapsed}
+            className="inline-flex items-center gap-2 text-left group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 rounded-lg py-0.5"
+          >
+            <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.08] border border-white/[0.15] text-slate-200">
+              {icon}
+            </span>
+            <span className="text-sm font-semibold text-slate-100 group-hover:text-sky-300 transition-colors">
+              {title}
+            </span>
+            <span className="text-xs font-mono text-slate-400 tabular-nums">
+              ({t('scanner.groupCount', { prs: items.length, commits: sectionCommits })})
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                isCollapsed ? '-rotate-90' : ''
               }`}
-            >
-              Hôm nay
-            </button>
-            <button
-              onClick={() => onSinceOptionChange('24h')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                sinceOption === '24h'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              24h qua
-            </button>
-            <button
-              onClick={() => onSinceOptionChange('7d')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                sinceOption === '7d'
-                  ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-400/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              7 ngày
-            </button>
-          </div>
+              aria-hidden="true"
+            />
+          </button>
 
           <button
-            onClick={onScan}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50"
+            type="button"
+            onClick={() => onSelectKeysBatch(keys, !allSelected)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+              allSelected
+                ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 hover:bg-sky-500/20'
+                : 'bg-white/[0.07] text-slate-200 hover:text-white border-white/[0.14] hover:border-white/[0.24]'
+            }`}
           >
-            <Radar className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>{isLoading ? 'Đang quét...' : 'Quét Git'}</span>
+            {allSelected ? dict.scanner.clearGroup : dict.scanner.selectGroup}
           </button>
         </div>
-      </div>
 
-      {/* Activities Orbit Grid */}
-      {activities.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
-          {activities.map((pr) => (
-            <SpotlightCard
-              key={`${pr.repo}#${pr.number}`}
-              className="p-5 sm:p-6 border border-slate-700/60 hover:border-cyan-500/50 shadow-[0_4px_25px_rgba(0,0,0,0.5)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 mt-0.5 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
-                    <GitPullRequest className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs text-cyan-300 font-semibold tracking-wide">
-                        {pr.repo}
-                      </span>
-                      <span className="text-slate-500">•</span>
-                      <span className="font-mono text-xs text-slate-400">#{pr.number}</span>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-md text-xs font-mono font-medium ${
-                          pr.state === 'open'
-                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+        {!isCollapsed && (
+          <ul role="list" className="space-y-3">
+            {items.map((pr, idx) => (
+              <PrActivityCard
+                key={computePrKey(pr)}
+                pr={pr}
+                index={idx}
+                isSelected={selectedPrKeys.has(computePrKey(pr))}
+                compactCommits={compactCommits}
+                tasks={tasks}
+                onToggleSelect={onTogglePrSelection}
+                onToggleTaskAssignment={onToggleTaskAssignment}
+                onCreateTaskWithPr={async (taskTitle, targetPr) => {
+                  await onCreateTask(taskTitle, 'sky', [targetPr]);
+                }}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <section aria-labelledby="activity-scanner-heading" className="space-y-4">
+      {/* Scanner Control Panel */}
+      <ShowcaseCard className="p-5 sm:p-6">
+        <div className="space-y-4">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2
+                id="activity-scanner-heading"
+                className="text-base font-semibold text-slate-100 tracking-tight"
+              >
+                {dict.scanner.title}
+              </h2>
+              {visibleActivities.length > 0 && (
+                <p className="mt-1 text-xs font-mono text-sky-400 tabular-nums">
+                  {t('scanner.summaryStats', {
+                    prs: visibleActivities.length,
+                    commits: totalCommits,
+                  })}
+                </p>
+              )}
+            </div>
+
+            {/* Timeframe Filter + Fetch Settings + Refresh Trigger */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <SegmentedControl
+                value={sinceOption}
+                onChange={onSinceOptionChange}
+                ariaLabel={dict.scanner.rangeLabel}
+                size="sm"
+                disabled={isLoading}
+                options={[
+                  { value: 'today', label: dict.scanner.rangeToday },
+                  { value: '24h', label: dict.scanner.range24h },
+                  { value: '7d', label: dict.scanner.range7d },
+                ]}
+              />
+
+              <button
+                type="button"
+                onClick={onOpenFetchSettings}
+                title={dict.scanner.fetchSettingsBtn}
+                className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] hover:border-white/[0.24] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+              >
+                <SlidersHorizontal
+                  className="w-3.5 h-3.5 text-sky-400 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="hidden sm:inline">{dict.scanner.fetchSettingsBtn}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onScan}
+                disabled={isLoading}
+                className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[34px] px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`}
+                  aria-hidden="true"
+                />
+                <span>{isLoading ? dict.scanner.syncingBtn : dict.scanner.syncBtn}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Grouping Mode Switcher + Selection Toolbar */}
+          <div className="pt-3 border-t border-white/[0.12] flex flex-wrap items-center justify-between gap-3">
+            <SegmentedControl
+              value={groupBy}
+              onChange={onGroupByChange}
+              ariaLabel={dict.scanner.groupByLabel}
+              size="sm"
+              className="max-w-full overflow-x-auto"
+              options={[
+                { value: 'owner', label: dict.scanner.groupOwner },
+                { value: 'task', label: dict.scanner.groupTask },
+                { value: 'repo', label: dict.scanner.groupRepo },
+                { value: 'flat', label: dict.scanner.groupFlat },
+              ]}
+            />
+
+            {groupBy !== 'task' && activities.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs ml-auto">
+                <span className="text-slate-300 tabular-nums whitespace-nowrap">
+                  {t('scanner.selectedSummary', {
+                    selected: selectedInVisible,
+                    total: visibleActivities.length,
+                  })}
+                </span>
+                <div className="flex items-center gap-2 border-l border-slate-600/80 pl-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onSelectAllPrs}
+                    className="text-sky-400 hover:text-sky-300 font-medium cursor-pointer transition-colors whitespace-nowrap"
+                  >
+                    {dict.scanner.selectAll}
+                  </button>
+                  <span className="text-slate-400/70" aria-hidden="true">
+                    /
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onClearPrSelection}
+                    className="text-slate-300 hover:text-white font-medium cursor-pointer transition-colors whitespace-nowrap"
+                  >
+                    {dict.scanner.clearSelection}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* State & Repo Filter Bar */}
+          {groupBy !== 'task' && activities.length > 0 && (
+            <div className="pt-3 border-t border-white/[0.1] space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(
+                    [
+                      { key: 'ALL', label: dict.scanner.stateFilterAll },
+                      { key: 'draft', label: dict.scanner.stateDraft },
+                      { key: 'open', label: dict.scanner.stateOpen },
+                      { key: 'merged', label: dict.scanner.stateMerged },
+                      { key: 'closed', label: dict.scanner.stateClosed },
+                      { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
+                    ] as Array<{ key: StateFilter; label: string }>
+                  ).map((item) => {
+                    const isActive = stateFilter === item.key;
+                    const stateStyle = item.key !== 'ALL' ? getPrStateStyle(item.key) : null;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setStateFilter(item.key)}
+                        className={`inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          isActive
+                            ? stateStyle
+                              ? stateStyle.badgeClass
+                              : 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                            : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
                         }`}
                       >
-                        {pr.state.toUpperCase()}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-white mt-1.5 leading-snug">
-                      {pr.title}
-                    </h3>
-                  </div>
+                        {stateStyle && (
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${stateStyle.dotClass}`}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <a
-                  href={pr.prUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-xl text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 transition-colors"
-                  title="Mở PR trên GitHub"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                {uniqueRepos.length === 1 && (
+                  <span className="text-xs font-mono text-slate-400 truncate">
+                    {uniqueRepos[0]}
+                  </span>
+                )}
               </div>
 
-              {/* Commit Nodes Timeline */}
-              <div className="mt-4 pt-3.5 border-t border-slate-800/80 space-y-2">
-                <p className="text-xs font-mono text-slate-400 flex items-center gap-2">
-                  <GitCommit className="w-3.5 h-3.5 text-emerald-400" />
-                  {pr.commits.length} commit trong phạm vi quét:
-                </p>
-                <div className="space-y-1.5 pl-4 border-l-2 border-cyan-500/30">
-                  {pr.commits.map((commit, idx) => (
-                    <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-300">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-                      <span className="truncate">{commit}</span>
-                    </div>
-                  ))}
+              {uniqueRepos.length > 1 && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => onRepoFilterChange('ALL')}
+                    className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      repoFilter === 'ALL'
+                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                        : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
+                    }`}
+                  >
+                    {dict.scanner.allRepos}
+                  </button>
+                  {uniqueRepos.map((repo) => {
+                    const shortName = repo.includes('/') ? repo.split('/')[1] || repo : repo;
+                    const active = repoFilter === repo;
+                    return (
+                      <button
+                        key={repo}
+                        type="button"
+                        onClick={() => onRepoFilterChange(repo)}
+                        title={repo}
+                        className={`min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer max-w-[180px] truncate ${
+                          active
+                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                            : 'bg-[#152033] text-slate-200 hover:text-white border border-slate-600/80 hover:border-slate-500 hover:bg-[#253349]'
+                        }`}
+                      >
+                        {shortName}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </SpotlightCard>
-          ))}
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-xs text-rose-300"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{error}</span>
+            </div>
+          )}
         </div>
-      ) : (
-        /* Empty State with Visual Radar Sonar */
-        <div className="astral-card rounded-2xl p-8 sm:p-10 text-center border border-slate-800/80 flex flex-col items-center justify-center">
-          <RadarSonarHUD isScanning={isLoading} blipCount={0} />
+      </ShowcaseCard>
 
-          <h3 className="text-sm font-bold text-white mb-1.5 mt-2 tracking-wide uppercase">
-            {isLoading
-              ? 'Đang quét tín hiệu quỹ đạo GitHub...'
-              : 'Chưa có tín hiệu Commit/PR nào trên quỹ đạo'}
-          </h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
-            Nhấn nút &ldquo;Quét Git&rdquo; ở trên để bắt đầu đồng bộ các PR và commit bạn đã tạo
-            hôm nay trên GitHub.
-          </p>
+      {/* Diagnostic hint if personal items didn't appear */}
+      {shouldShowPersonalAccessHint && groupBy !== 'task' && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-sky-500/[0.06] border border-sky-400/20 text-xs text-slate-300">
+          <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="font-semibold text-slate-200">{dict.scanner.noPersonalNoticeTitle}</p>
+            <p className="text-slate-400 leading-relaxed">{dict.scanner.noPersonalNoticeDesc}</p>
+          </div>
           <button
-            onClick={onScan}
-            disabled={isLoading}
-            className="px-6 py-2.5 rounded-xl text-xs font-bold text-void bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] disabled:opacity-50 active:scale-[0.98]"
+            type="button"
+            onClick={onOpenFetchSettings}
+            className="shrink-0 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-sky-300 font-medium cursor-pointer"
           >
-            {isLoading ? 'Đang quét...' : 'Bắt Đầu Quét Ngay'}
+            {dict.scanner.fetchSettingsBtn}
           </button>
         </div>
       )}
-    </div>
+
+      {/* Main Content Area */}
+      {isLoading && activities.length === 0 ? (
+        <ActivityListSkeleton count={3} />
+      ) : groupBy === 'task' ? (
+        <TaskTrackerView
+          tasks={tasks}
+          activities={activities}
+          selectedPrKeys={selectedPrKeys}
+          compactCommits={compactCommits}
+          onTogglePrSelection={onTogglePrSelection}
+          onCreateTask={onCreateTask}
+          onRenameTask={onRenameTask}
+          onToggleTaskComplete={onToggleTaskComplete}
+          onDeleteTask={onDeleteTask}
+          onToggleTaskAssignment={onToggleTaskAssignment}
+          onRemoveTaskItem={onRemoveTaskItem}
+        />
+      ) : visibleActivities.length > 0 ? (
+        groupBy === 'owner' ? (
+          <div className="space-y-6">
+            {ownerSections.map((section) =>
+              renderSectionGroup(
+                section.key,
+                section.ownerType === 'organization' ? (
+                  <Building2 className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
+                ) : (
+                  <User className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
+                ),
+                section.ownerType === 'organization'
+                  ? `${dict.scanner.orgSpace}: ${section.label}`
+                  : section.label,
+                section.items,
+              ),
+            )}
+          </div>
+        ) : groupBy === 'repo' ? (
+          <div className="space-y-6">
+            {repoSections.map((section) =>
+              renderSectionGroup(
+                section.key,
+                <FolderGit2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />,
+                section.repo,
+                section.items,
+              ),
+            )}
+          </div>
+        ) : (
+          <ul role="list" className="space-y-3">
+            {visibleActivities.map((pr, index) => (
+              <PrActivityCard
+                key={computePrKey(pr)}
+                pr={pr}
+                index={index}
+                isSelected={selectedPrKeys.has(computePrKey(pr))}
+                compactCommits={compactCommits}
+                tasks={tasks}
+                onToggleSelect={onTogglePrSelection}
+                onToggleTaskAssignment={onToggleTaskAssignment}
+                onCreateTaskWithPr={async (taskTitle, targetPr) => {
+                  await onCreateTask(taskTitle, 'sky', [targetPr]);
+                }}
+              />
+            ))}
+          </ul>
+        )
+      ) : (
+        <ShowcaseCard className="p-8 sm:p-12 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <div
+              className="w-12 h-12 rounded-xl bg-[#253349] border border-slate-600/80 flex items-center justify-center text-slate-300 mb-4"
+              aria-hidden="true"
+            >
+              <GitPullRequest className="w-5 h-5 text-slate-300" />
+            </div>
+
+            <h3 className="text-sm font-semibold text-slate-100 mb-1.5">
+              {dict.scanner.emptyTitle}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5 leading-relaxed">
+              {dict.scanner.emptyDesc}
+            </p>
+
+            <button
+              type="button"
+              onClick={onScan}
+              disabled={isLoading}
+              className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            >
+              <span>{dict.scanner.emptyAction}</span>
+            </button>
+          </div>
+        </ShowcaseCard>
+      )}
+    </section>
   );
 }

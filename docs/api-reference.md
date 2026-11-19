@@ -128,7 +128,7 @@ Fetches pull requests, issues, and commit history across developer's contributed
 
 ### `POST /ai/summarize`
 
-Synthesizes daily standup bullets using the Warp-Drive Core (GitHub Models API) directly with the user's decrypted GitHub token.
+Synthesizes daily standup bullets using the GitHub Models API directly with the user's decrypted GitHub token.
 
 **Request Body**:
 
@@ -164,7 +164,7 @@ Synthesizes daily standup bullets using the Warp-Drive Core (GitHub Models API) 
 
 ### `POST /ai/save-client-summary`
 
-Persists standup report generated locally in the browser by the Sub-Light Core (WebLLM WebGPU).
+Persists standup report generated locally in the browser by WebLLM (WebGPU).
 
 ---
 
