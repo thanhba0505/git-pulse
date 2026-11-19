@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { startTransition, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AiEngine,
@@ -77,6 +77,8 @@ interface CachedActivityPayload {
   activities: PrActivity[];
 }
 
+const memoryActivityCache = new Map<string, CachedActivityPayload>();
+
 function getCacheKey(
   userId: string,
   accountKey: string,
@@ -90,13 +92,23 @@ function readCachedActivities(
   accountKey: string,
   sinceOption: 'today' | '24h' | '7d',
 ): PrActivity[] | null {
+  const key = getCacheKey(userId, accountKey, sinceOption);
+  const mem = memoryActivityCache.get(key);
+  if (mem) {
+    if (Date.now() - mem.timestamp <= ACTIVITY_CACHE_TTL_MS) {
+      return mem.activities;
+    }
+    memoryActivityCache.delete(key);
+  }
+
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.sessionStorage.getItem(getCacheKey(userId, accountKey, sinceOption));
+    const raw = window.sessionStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedActivityPayload;
     if (!parsed || !Array.isArray(parsed.activities)) return null;
     if (Date.now() - parsed.timestamp > ACTIVITY_CACHE_TTL_MS) return null;
+    memoryActivityCache.set(key, parsed);
     return parsed.activities;
   } catch {
     return null;
@@ -109,22 +121,23 @@ function writeCachedActivities(
   sinceOption: 'today' | '24h' | '7d',
   activities: PrActivity[],
 ): void {
+  const key = getCacheKey(userId, accountKey, sinceOption);
+  const payload: CachedActivityPayload = {
+    timestamp: Date.now(),
+    activities,
+  };
+  memoryActivityCache.set(key, payload);
+
   if (typeof window === 'undefined') return;
   try {
-    const payload: CachedActivityPayload = {
-      timestamp: Date.now(),
-      activities,
-    };
-    window.sessionStorage.setItem(
-      getCacheKey(userId, accountKey, sinceOption),
-      JSON.stringify(payload),
-    );
+    window.sessionStorage.setItem(key, JSON.stringify(payload));
   } catch {
     // Ignore storage quota errors
   }
 }
 
 function clearAllActivityCache(): void {
+  memoryActivityCache.clear();
   if (typeof window === 'undefined') return;
   try {
     for (let i = window.sessionStorage.length - 1; i >= 0; i--) {
@@ -201,6 +214,7 @@ export default function HomePage() {
   }, []);
 
   const gitStatusRef = useRef<GitStatus>(gitStatus);
+  const isScanningRef = useRef(false);
   useEffect(() => {
     gitStatusRef.current = gitStatus;
   }, [gitStatus]);
@@ -233,7 +247,10 @@ export default function HomePage() {
       overrideRange?: 'today' | '24h' | '7d',
       notifyToast = true,
       statusOverride?: GitStatus,
+      forceRefresh = false,
     ) => {
+      if (isScanningRef.current) return;
+
       const activeStatus = statusOverride ?? gitStatusRef.current;
       const accountKey = activeStatus.activeAccountId || activeStatus.gitUsername || 'default';
       const targetRange = overrideRange ?? sinceOption;
@@ -241,13 +258,21 @@ export default function HomePage() {
         setSinceOption(overrideRange);
       }
 
-      if (user) {
+      if (!forceRefresh && user) {
         const cached = readCachedActivities(user.id, accountKey, targetRange);
         if (cached) {
-          applyScannedActivities(cached);
+          startTransition(() => {
+            applyScannedActivities(cached);
+          });
+          return;
         }
       }
 
+      if (forceRefresh) {
+        clearAllActivityCache();
+      }
+
+      isScanningRef.current = true;
       setIsScanning(true);
       setScanError(null);
       try {
@@ -266,7 +291,9 @@ export default function HomePage() {
         }
 
         const data = await api.github.getActivity(sinceDate);
-        applyScannedActivities(data);
+        startTransition(() => {
+          applyScannedActivities(data);
+        });
 
         if (user) {
           writeCachedActivities(user.id, accountKey, targetRange, data);
@@ -282,6 +309,7 @@ export default function HomePage() {
       } catch (err) {
         setScanError((err as Error).message || dict.scanner.scanError);
       } finally {
+        isScanningRef.current = false;
         setIsScanning(false);
       }
     },
@@ -318,7 +346,7 @@ export default function HomePage() {
 
       if (status.connected) {
         void loadWorkspaces();
-        void scanRef.current(targetRange, false, status);
+        void scanRef.current(targetRange, false, status, false);
       }
     });
   }, [userId, loadGitStatus, loadWorkspaces]);
@@ -343,13 +371,14 @@ export default function HomePage() {
 
   const handleSavePat = async (token: string) => {
     await api.github.savePat(token);
+    clearAllActivityCache();
     const nextStatus = await loadGitStatus();
     setBullets([]);
     setModelUsed('');
     setScanError(null);
     setAiError(null);
     void loadWorkspaces();
-    await handleScanActivity(undefined, false, nextStatus);
+    await handleScanActivity(undefined, false, nextStatus, true);
     showToast({ title: dict.toasts.gitConnected, variant: 'success' });
   };
 
@@ -369,7 +398,7 @@ export default function HomePage() {
     }
     if (nextStatus.connected) {
       void loadWorkspaces();
-      await handleScanActivity(undefined, false, nextStatus);
+      await handleScanActivity(undefined, false, nextStatus, false);
     }
   };
 
@@ -384,7 +413,7 @@ export default function HomePage() {
     showToast({ title: dict.toasts.gitDisconnected, variant: 'info' });
     if (nextStatus.connected) {
       void loadWorkspaces();
-      await handleScanActivity(undefined, false, nextStatus);
+      await handleScanActivity(undefined, false, nextStatus, true);
     }
   };
 
@@ -401,7 +430,7 @@ export default function HomePage() {
     clearAllActivityCache();
     showToast({ title: dict.toasts.settingsSaved, variant: 'success' });
     if (gitStatus.connected) {
-      await handleScanActivity(saved.fetchPreferences.defaultTimeRange, false);
+      await handleScanActivity(saved.fetchPreferences.defaultTimeRange, false, undefined, true);
     }
   };
 
@@ -761,11 +790,11 @@ export default function HomePage() {
                     activities={activities}
                     isLoading={isScanning}
                     error={scanError}
-                    onScan={() => handleScanActivity(undefined, true)}
+                    onScan={() => handleScanActivity(undefined, true, undefined, true)}
                     sinceOption={sinceOption}
                     onSinceOptionChange={(opt) => {
                       setScanError(null);
-                      void handleScanActivity(opt, true);
+                      void handleScanActivity(opt, true, undefined, false);
                     }}
                     repoFilter={repoFilter}
                     onRepoFilterChange={setRepoFilter}
@@ -856,7 +885,7 @@ export default function HomePage() {
           isOpen={isPaletteOpen}
           onClose={() => setIsPaletteOpen(false)}
           canGenerate={selectedActivities.length > 0 && !isGenerating}
-          onSyncRange={(range) => void handleScanActivity(range, true)}
+          onSyncRange={(range) => void handleScanActivity(range, true, undefined, false)}
           onGenerate={() => void handleGenerateSummary()}
           onSwitchEngine={(eng) => {
             setAiEngine(eng);

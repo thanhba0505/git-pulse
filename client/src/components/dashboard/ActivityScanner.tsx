@@ -287,13 +287,14 @@ export function ActivityScanner({
               )}
             </div>
 
-            {/* Timeframe Filter + Fetch Settings + Sync Trigger */}
+            {/* Timeframe Filter + Fetch Settings + Refresh Trigger */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <SegmentedControl
                 value={sinceOption}
                 onChange={onSinceOptionChange}
                 ariaLabel={dict.scanner.rangeLabel}
                 size="sm"
+                disabled={isLoading}
                 options={[
                   { value: 'today', label: dict.scanner.rangeToday },
                   { value: '24h', label: dict.scanner.range24h },
@@ -439,14 +440,6 @@ export function ActivityScanner({
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Subtle SWR Revalidating Hint while cached data stays visible */}
-          {isLoading && activities.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-sky-400 font-mono">
-              <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
-              <span>{dict.scanner.revalidatingHint}</span>
             </div>
           )}
 

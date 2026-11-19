@@ -14,6 +14,7 @@ interface SegmentedControlProps<T extends string> {
   ariaLabel: string;
   size?: 'sm' | 'md';
   fullWidth?: boolean;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   size = 'md',
   fullWidth = false,
+  disabled = false,
   className = '',
 }: SegmentedControlProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,10 +89,11 @@ export function SegmentedControl<T extends string>({
       ref={containerRef}
       role="radiogroup"
       aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
       data-measured="false"
-      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#090B10]/45 backdrop-blur-md border border-white/[0.09] ${
-        fullWidth ? 'w-full' : ''
-      } ${className}`}
+      className={`group/seg relative inline-flex items-center p-1 rounded-lg bg-[#090B10]/45 backdrop-blur-md border border-white/[0.09] transition-opacity ${
+        disabled ? 'opacity-55 pointer-events-none select-none' : ''
+      } ${fullWidth ? 'w-full' : ''} ${className}`}
     >
       {/* Gliding Active Pill Indicator */}
       <span
@@ -118,10 +121,15 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={isActive}
-            onClick={() => onChange(option.value)}
+            disabled={disabled}
+            onClick={() => {
+              if (!disabled) onChange(option.value);
+            }}
             className={`relative z-10 ${paddingClass} ${
               fullWidth ? 'flex-1 justify-center' : ''
-            } inline-flex items-center rounded-md text-xs font-medium transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+            } inline-flex items-center rounded-md text-xs font-medium transition-colors duration-150 ${
+              disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+            } whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
               isActive
                 ? 'text-slate-100 font-semibold group-data-[measured=false]/seg:bg-slate-800'
                 : 'text-slate-400 hover:text-slate-200'

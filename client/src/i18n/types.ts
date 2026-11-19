@@ -82,7 +82,6 @@ export interface ScannerDictionary {
   syncBtn: string;
   syncingBtn: string;
   fetchSettingsBtn: string;
-  revalidatingHint: string;
   groupByLabel: string;
   groupOwner: string;
   groupTask: string;
