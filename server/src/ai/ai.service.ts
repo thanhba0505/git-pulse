@@ -14,6 +14,7 @@ import { SummarizeDto } from './dto/summarize.dto';
 import {
   AiModelOption,
   buildStandupPrompts,
+  classifyGeminiHttpError,
   DEFAULT_GEMINI_MODELS,
   filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
@@ -22,6 +23,7 @@ import {
   GITHUB_MODELS_CATALOG_URL,
   GITHUB_MODELS_INFERENCE_URL,
   GitHubCatalogModelEntry,
+  isAbortError,
   isJsonContentType,
   mapGitHubModelId,
   maskApiKey,
@@ -64,6 +66,7 @@ interface GeminiListModelsResponse {
 
 interface GeminiGenerateContentResponse {
   candidates?: Array<{
+    finishReason?: string;
     content?: {
       parts?: Array<{ text?: string }>;
     };
@@ -552,9 +555,9 @@ export class AiService {
         };
       }
 
-      // Zero-generation-cost probe to verify runtime access & quota
+      // Minimal 1-token generation probe catches Free Tier limit:0, 404 removals, and 503 stalls
       const probeRes = await this.fetchWithTimeout(
-        `${GEMINI_API_BASE_URL}/models/${encodeURIComponent(cleanModel)}:countTokens`,
+        `${GEMINI_API_BASE_URL}/models/${encodeURIComponent(cleanModel)}:generateContent`,
         {
           method: 'POST',
           headers: {
@@ -562,10 +565,11 @@ export class AiService {
             'x-goog-api-key': apiKey,
           },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: 'standup readiness check' }] }],
+            contents: [{ role: 'user', parts: [{ text: 'Ping' }] }],
+            generationConfig: { maxOutputTokens: 1 },
           }),
         },
-        6000,
+        8000,
       );
 
       if (!probeRes.ok) {
@@ -583,7 +587,17 @@ export class AiService {
         model: cleanModel,
         latencyMs: Date.now() - startedAt,
       };
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) {
+        return {
+          available: false,
+          engine: 'GOOGLE_GEMINI',
+          model: cleanModel,
+          latencyMs: Date.now() - startedAt,
+          reasonCode: 'TIMEOUT',
+          reason: `Mô hình ${cleanModel} phản hồi quá chậm (> 8 giây). Hãy chọn mô hình ổn định như gemini-2.5-flash.`,
+        };
+      }
       return {
         available: false,
         engine: 'GOOGLE_GEMINI',
@@ -604,42 +618,18 @@ export class AiService {
     const latencyMs = Date.now() - startedAt;
     const errBody = (await response.json().catch(() => ({}))) as GeminiGenerateContentResponse;
     const rawMsg = redactTokens(errBody.error?.message || response.statusText);
+    const classified = classifyGeminiHttpError(
+      model,
+      response.status,
+      rawMsg,
+      errBody.error?.status,
+    );
 
-    if (response.status === 400 || response.status === 401 || response.status === 403) {
+    if (classified.shouldRevoke) {
       await this.prisma.aiConnection.updateMany({
         where: { id: connectionId },
         data: { status: 'REVOKED' },
       });
-      return {
-        available: false,
-        engine: 'GOOGLE_GEMINI',
-        model,
-        latencyMs,
-        reasonCode: 'INVALID_KEY',
-        reason: `API Key Google Gemini không hợp lệ hoặc đã bị thu hồi: ${rawMsg}`,
-      };
-    }
-
-    if (response.status === 404) {
-      return {
-        available: false,
-        engine: 'GOOGLE_GEMINI',
-        model,
-        latencyMs,
-        reasonCode: 'MODEL_NOT_FOUND',
-        reason: `Mô hình ${model} không tồn tại hoặc đã ngừng hỗ trợ trên tài khoản này.`,
-      };
-    }
-
-    if (response.status === 429) {
-      return {
-        available: false,
-        engine: 'GOOGLE_GEMINI',
-        model,
-        latencyMs,
-        reasonCode: 'QUOTA_EXCEEDED',
-        reason: 'API Key Google Gemini đã tạm hết hạn mức (429 Rate Limit).',
-      };
     }
 
     return {
@@ -647,8 +637,8 @@ export class AiService {
       engine: 'GOOGLE_GEMINI',
       model,
       latencyMs,
-      reasonCode: 'SERVICE_UNAVAILABLE',
-      reason: `Google Gemini trả về lỗi (${response.status}): ${rawMsg}`,
+      reasonCode: classified.reasonCode,
+      reason: classified.reason,
     };
   }
 
@@ -710,27 +700,51 @@ export class AiService {
             contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 600,
+              maxOutputTokens: 1200,
             },
           }),
         },
-        20000,
+        45000,
       );
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) {
+        this.logger.warn(`Gemini generateContent timed out after 45s on model ${model}`);
+        await this.githubService.recordAuditLog(
+          userId,
+          'AI_SUMMARIZE',
+          'FAILED',
+          `Gemini request timed out after 45s on model ${model}`,
+          meta,
+        );
+        throw new BadRequestException(
+          `Google Gemini phản hồi quá thời gian chờ (45 giây) trên ${model}. Hãy thử lại hoặc chọn mô hình khác (VD: gemini-2.5-flash).`,
+        );
+      }
+
+      const safeErr = redactTokens(err instanceof Error ? err.message : String(err));
+      this.logger.warn(`Gemini generateContent network error on model ${model}: ${safeErr}`);
       await this.githubService.recordAuditLog(
         userId,
         'AI_SUMMARIZE',
         'FAILED',
-        `Gemini network timeout/error on model ${model}`,
+        `Gemini network error on model ${model}: ${safeErr}`,
         meta,
       );
-      throw new BadRequestException('Không thể kết nối tới Google Gemini API để tạo báo cáo.');
+      throw new BadRequestException(
+        'Không thể kết nối tới Google Gemini API để tạo báo cáo. Vui lòng thử lại hoặc chọn mô hình khác.',
+      );
     }
 
     const data = (await response.json().catch(() => ({}))) as GeminiGenerateContentResponse;
     if (!response.ok) {
       const safeMsg = redactTokens(data.error?.message || response.statusText);
-      if (response.status === 400 || response.status === 401 || response.status === 403) {
+      const classified = classifyGeminiHttpError(
+        model,
+        response.status,
+        safeMsg,
+        data.error?.status,
+      );
+      if (classified.shouldRevoke) {
         await this.prisma.aiConnection.updateMany({
           where: { id: conn.id, userId },
           data: { status: 'REVOKED' },
@@ -743,7 +757,7 @@ export class AiService {
         `Gemini error (${response.status}): ${safeMsg}`,
         meta,
       );
-      throw new BadRequestException(`Lỗi Google Gemini (${model}): ${safeMsg}`);
+      throw new BadRequestException(classified.reason);
     }
 
     const rawContent =
@@ -751,6 +765,20 @@ export class AiService {
         ?.map((part) => part.text || '')
         .join('')
         .trim() || '';
+
+    if (!rawContent) {
+      const finishReason = data.candidates?.[0]?.finishReason || 'EMPTY';
+      await this.githubService.recordAuditLog(
+        userId,
+        'AI_SUMMARIZE',
+        'FAILED',
+        `Gemini returned empty content (${finishReason}) on model ${model}`,
+        meta,
+      );
+      throw new BadRequestException(
+        `Google Gemini không trả về nội dung tóm tắt trên ${model} (${finishReason}). Hãy thử chọn mô hình khác như gemini-2.5-flash.`,
+      );
+    }
 
     const bullets = parseStandupBullets(rawContent);
     await this.saveReportAndAudit(userId, dto, 'GOOGLE_GEMINI', model, bullets, meta);

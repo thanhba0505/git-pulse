@@ -9,6 +9,7 @@ const GITHUB_TOKEN_PATTERNS = [
 
 const AI_KEY_PATTERNS = [
   /AIza[0-9A-Za-z_-]{35}/g, // Google Gemini / Google AI Studio API Key
+  /AQ\.[0-9A-Za-z_-]{25,}/g, // Google AI Studio / Vertex Express AQ. API Key
   /sk-ant-[a-zA-Z0-9_-]{20,}/g, // Anthropic API Key
   /sk-or-[a-zA-Z0-9_-]{20,}/g, // OpenRouter API Key
   /sk-[a-zA-Z0-9_-]{20,}/g, // OpenAI / compatible API Key

@@ -157,7 +157,7 @@ describe('AiService', () => {
     expect(result.reasonCode).toBe('SERVICE_UNAVAILABLE');
   });
 
-  it('marks Gemini connection available when model metadata and countTokens succeed', async () => {
+  it('marks Gemini connection available when model metadata and 1-token generateContent probe succeed', async () => {
     const encrypted = cryptoService.encrypt(syntheticGeminiKey, userId);
     mockPrisma.aiConnection.findFirst.mockResolvedValue({
       id: 'conn-1',
@@ -184,10 +184,15 @@ describe('AiService', () => {
         ),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ totalTokens: 5 }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
+        new Response(
+          JSON.stringify({
+            candidates: [{ finishReason: 'MAX_TOKENS' }],
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        ),
       );
 
     const result = await aiService.checkAvailability(userId, {
@@ -198,12 +203,113 @@ describe('AiService', () => {
 
     expect(result.available).toBe(true);
     expect(result.model).toBe('gemini-2.5-flash');
+    expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain(':generateContent');
     expect(mockPrisma.aiConnection.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'conn-1', userId },
         data: expect.objectContaining({ status: 'ACTIVE' }),
       }),
     );
+  });
+
+  it('flags Free Tier limit:0 quota models unavailable without revoking the Gemini key', async () => {
+    const encrypted = cryptoService.encrypt(syntheticGeminiKey, userId);
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-1',
+      userId,
+      provider: 'GOOGLE_GEMINI',
+      label: 'lethanhba',
+      encryptedKey: encrypted.encryptedText,
+      keyIv: encrypted.iv,
+      keyTag: encrypted.tag,
+      keyVersion: encrypted.keyVersion,
+      maskedKey: 'AIza••••hijk',
+      status: 'ACTIVE',
+    });
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            name: 'models/gemini-4-argon',
+            supportedGenerationMethods: ['generateContent', 'countTokens'],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              message:
+                'Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-4-argon',
+            },
+          }),
+          { status: 429, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+
+    const result = await aiService.checkAvailability(userId, {
+      engine: 'GOOGLE_GEMINI',
+      connectionId: 'conn-1',
+      model: 'gemini-4-argon',
+    });
+
+    expect(result.available).toBe(false);
+    expect(result.reasonCode).toBe('QUOTA_EXCEEDED');
+    expect(result.reason).toContain('limit = 0');
+    expect(mockPrisma.aiConnection.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('surfaces timeout classification cleanly when Gemini probe or summarize aborts', async () => {
+    const encrypted = cryptoService.encrypt(syntheticGeminiKey, userId);
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-1',
+      userId,
+      provider: 'GOOGLE_GEMINI',
+      label: 'lethanhba',
+      encryptedKey: encrypted.encryptedText,
+      keyIv: encrypted.iv,
+      keyTag: encrypted.tag,
+      keyVersion: encrypted.keyVersion,
+      maskedKey: 'AIza••••hijk',
+      status: 'ACTIVE',
+    });
+
+    const abortErr = new Error('The operation was aborted.');
+    abortErr.name = 'AbortError';
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            name: 'models/gemini-3.5-flash',
+            supportedGenerationMethods: ['generateContent'],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockRejectedValueOnce(abortErr);
+
+    const avail = await aiService.checkAvailability(userId, {
+      engine: 'GOOGLE_GEMINI',
+      connectionId: 'conn-1',
+      model: 'gemini-3.5-flash',
+    });
+    expect(avail.available).toBe(false);
+    expect(avail.reasonCode).toBe('TIMEOUT');
+
+    global.fetch = jest.fn().mockRejectedValueOnce(abortErr);
+    await expect(
+      aiService.summarize(userId, {
+        engine: 'GOOGLE_GEMINI',
+        connectionId: 'conn-1',
+        model: 'gemini-3.5-flash',
+        prs: [{ repo: 'org/repo', title: 'feat: test', commits: ['c1'] }],
+      }),
+    ).rejects.toThrow(/quá thời gian chờ/i);
   });
 
   it('summarizes PRs with Google Gemini and persists ReportHistory', async () => {

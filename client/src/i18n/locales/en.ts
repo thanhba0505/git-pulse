@@ -199,7 +199,7 @@ export const en: TranslationDictionary = {
     labelHint: 'Optional — displayed as Google Gemini ({username}) in the AI provider selector.',
     apiKeyLabel: 'API Key',
     getGeminiKeyLink: 'Get API Key on AI Studio',
-    apiKeyPlaceholder: 'AIza...',
+    apiKeyPlaceholder: 'AIza... or AQ...',
     apiKeyHint: 'Verified live and encrypted securely before storage.',
     apiKeyRequired: 'Please enter an API Key.',
     previewModelsBtn: 'Verify key & load models',

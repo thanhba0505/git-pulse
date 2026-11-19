@@ -36,5 +36,10 @@ describe('token-redactor.util', () => {
     const redacted = redactTokens(raw);
     expect(redacted).toBe('Gemini request failed with key=[REDACTED_AI_KEY]');
     expect(redacted).not.toContain(syntheticGeminiKey);
+
+    const syntheticAqKey = 'AQ.' + 'Ab8TestKey1234567890abcdefghijklmnop';
+    const aqRedacted = redactTokens(`Failed authenticating ${syntheticAqKey}.`);
+    expect(aqRedacted).toBe('Failed authenticating [REDACTED_AI_KEY].');
+    expect(aqRedacted).not.toContain(syntheticAqKey);
   });
 });

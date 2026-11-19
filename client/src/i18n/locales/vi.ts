@@ -199,7 +199,7 @@ export const vi: TranslationDictionary = {
     labelHint: 'Tùy chọn — sẽ hiển thị thành Google Gemini ({username}) trong danh sách chọn.',
     apiKeyLabel: 'API Key',
     getGeminiKeyLink: 'Lấy API Key trên AI Studio',
-    apiKeyPlaceholder: 'AIza...',
+    apiKeyPlaceholder: 'AIza... hoặc AQ...',
     apiKeyHint: 'Key được kiểm tra trực tiếp và mã hóa an toàn trước khi lưu trữ.',
     apiKeyRequired: 'Vui lòng nhập API Key.',
     previewModelsBtn: 'Kiểm tra & tải danh sách mô hình',

@@ -1,5 +1,6 @@
 import {
   buildStandupPrompts,
+  classifyGeminiHttpError,
   filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
   isJsonContentType,
@@ -115,5 +116,78 @@ describe('ai-provider.helpers', () => {
         description: 'Reasoning model',
       },
     ]);
+  });
+
+  it('filters out specialized non-standup models and prioritizes stable GA Flash above codenames', () => {
+    const models = filterAndSortGeminiModels([
+      {
+        name: 'models/gemini-4-argon',
+        displayName: 'Gemini 4 Argon',
+        description: 'Gemini 4 Argon',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-3.5-transcribe',
+        displayName: 'Gemini 3.5 Transcribe',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-3.1-pro-preview-customtools',
+        displayName: 'Gemini 3.1 Pro Custom Tools',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-nano-banana-2.1',
+        displayName: 'Nano Banana 2.1',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash-lite',
+        displayName: 'Gemini 2.5 Flash-Lite',
+        description: 'Stable version of Gemini 2.5 Flash-Lite',
+        supportedGenerationMethods: ['generateContent'],
+      },
+      {
+        name: 'models/gemini-2.5-flash',
+        displayName: 'Gemini 2.5 Flash',
+        description: 'Stable version of Gemini 2.5 Flash',
+        supportedGenerationMethods: ['generateContent'],
+      },
+    ]);
+
+    expect(models.map((m) => m.id)).toEqual([
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-4-argon',
+    ]);
+  });
+
+  it('classifies Gemini quota-zero vs invalid-key vs model-argument HTTP errors accurately', () => {
+    const quotaZero = classifyGeminiHttpError(
+      'gemini-4-argon',
+      429,
+      'Quota exceeded for metric: generate_content_free_tier_requests, limit: 0, model: gemini-4-argon',
+    );
+    expect(quotaZero.reasonCode).toBe('QUOTA_EXCEEDED');
+    expect(quotaZero.shouldRevoke).toBe(false);
+    expect(quotaZero.reason).toContain('limit = 0');
+
+    const badArg = classifyGeminiHttpError(
+      'gemini-2.5-pro',
+      400,
+      'Thinking budget is not supported for this request.',
+      'INVALID_ARGUMENT',
+    );
+    expect(badArg.reasonCode).toBe('MODEL_UNSUPPORTED');
+    expect(badArg.shouldRevoke).toBe(false);
+
+    const badKey = classifyGeminiHttpError(
+      'gemini-2.5-flash',
+      400,
+      'API key not valid. Please pass a valid API key.',
+      'INVALID_ARGUMENT',
+    );
+    expect(badKey.reasonCode).toBe('INVALID_KEY');
+    expect(badKey.shouldRevoke).toBe(true);
   });
 });

@@ -47,9 +47,9 @@ export const DEFAULT_GEMINI_MODELS: readonly AiModelOption[] = [
     description: 'Fast • Standup optimized',
   },
   {
-    id: 'gemini-2.5-pro',
-    label: 'Gemini 2.5 Pro',
-    description: 'Deep reasoning • Detailed',
+    id: 'gemini-2.5-flash-lite',
+    label: 'Gemini 2.5 Flash-Lite',
+    description: 'Lightweight • Fast Free Tier response',
   },
 ];
 
@@ -59,6 +59,9 @@ const EXCLUDED_GEMINI_KEYWORDS = [
   'veo',
   'tts',
   'audio',
+  'transcribe',
+  'customtools',
+  'nano-banana',
   'robotics',
   'computer-use',
   'image',
@@ -67,6 +70,19 @@ const EXCLUDED_GEMINI_KEYWORDS = [
   'bisheng',
   'tuning',
 ];
+
+const GEMINI_CODENAME_RE = /\b(argon|carbon|hydrogen|neon)\b/i;
+
+export interface GeminiClassifiedError {
+  reasonCode:
+    | 'INVALID_KEY'
+    | 'MODEL_UNSUPPORTED'
+    | 'MODEL_NOT_FOUND'
+    | 'QUOTA_EXCEEDED'
+    | 'SERVICE_UNAVAILABLE';
+  reason: string;
+  shouldRevoke: boolean;
+}
 
 const GITHUB_MODEL_ID_MAP: Record<string, string> = {
   'gpt-4o-mini': 'openai/gpt-4o-mini',
@@ -106,18 +122,32 @@ export function isJsonContentType(contentType: string | null): boolean {
   return contentType.toLowerCase().includes('application/json');
 }
 
-function extractGeminiSortScore(id: string): number {
-  const versionMatch = id.match(/^gemini-(\d+)(?:\.(\d+))?/i);
+function extractGeminiSortScore(id: string, description?: string): number {
+  const lowerId = id.toLowerCase();
+  const lowerDesc = (description || '').trim().toLowerCase();
+  const versionMatch = lowerId.match(/^gemini-(\d+)(?:\.(\d+))?/);
   const major = versionMatch ? Number.parseInt(versionMatch[1] ?? '0', 10) : 0;
   const minor = versionMatch && versionMatch[2] ? Number.parseInt(versionMatch[2], 10) : 0;
-  let score = major * 1000 + minor * 100;
 
-  if (id.includes('flash') && !id.includes('lite')) score += 40;
-  else if (id.includes('pro')) score += 30;
-  else if (id.includes('flash-lite')) score += 20;
+  const isPreviewOrExp = lowerId.includes('preview') || lowerId.includes('exp');
+  const isLatestAlias = lowerId.includes('latest');
+  const isCodename = major >= 4 && GEMINI_CODENAME_RE.test(lowerId);
+  const isStableGa =
+    !isPreviewOrExp &&
+    !isLatestAlias &&
+    !isCodename &&
+    (lowerDesc.startsWith('stable') || (major >= 2 && major < 3));
 
-  if (!id.includes('exp') && !id.includes('preview')) score += 10;
-  if (id.includes('latest')) score -= 5;
+  // Prioritize verified GA stable models before preview/experimental and tier-gated codenames
+  let score = isStableGa ? 30000 : !isCodename && !lowerId.includes('omni') ? 20000 : 10000;
+  score += major * 1000 + minor * 100;
+
+  if (lowerId.includes('flash') && !lowerId.includes('lite')) score += 40;
+  else if (lowerId.includes('flash-lite')) score += 35;
+  else if (lowerId.includes('pro')) score += 30;
+
+  if (!isPreviewOrExp) score += 10;
+  if (isLatestAlias) score -= 5;
   return score;
 }
 
@@ -153,8 +183,92 @@ export function filterAndSortGeminiModels(
     });
   }
 
-  filtered.sort((a, b) => extractGeminiSortScore(b.id) - extractGeminiSortScore(a.id));
-  return filtered.slice(0, 15);
+  filtered.sort(
+    (a, b) =>
+      extractGeminiSortScore(b.id, b.description) - extractGeminiSortScore(a.id, a.description),
+  );
+  return filtered.slice(0, 30);
+}
+
+/**
+ * Returns true if an error is an AbortController timeout error.
+ */
+export function isAbortError(err: unknown): boolean {
+  if (err instanceof Error && err.name === 'AbortError') {
+    return true;
+  }
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'name' in err &&
+    (err as { name?: unknown }).name === 'AbortError'
+  );
+}
+
+/**
+ * Classifies Gemini API HTTP errors consistently for availability probes and summarization.
+ */
+export function classifyGeminiHttpError(
+  model: string,
+  status: number,
+  safeMsg: string,
+  errorStatus?: string,
+): GeminiClassifiedError {
+  const isInvalidKey =
+    status === 401 ||
+    status === 403 ||
+    (status === 400 &&
+      (errorStatus === 'API_KEY_INVALID' ||
+        /api[ _-]?key.*(invalid|not valid|expired)/i.test(safeMsg)));
+
+  if (isInvalidKey) {
+    return {
+      reasonCode: 'INVALID_KEY',
+      reason: `API Key Google Gemini không hợp lệ hoặc đã bị thu hồi: ${safeMsg}`,
+      shouldRevoke: true,
+    };
+  }
+
+  if (status === 400) {
+    return {
+      reasonCode: 'MODEL_UNSUPPORTED',
+      reason: `Mô hình ${model} không hỗ trợ yêu cầu hiện tại (400): ${safeMsg}`,
+      shouldRevoke: false,
+    };
+  }
+
+  if (status === 404) {
+    return {
+      reasonCode: 'MODEL_NOT_FOUND',
+      reason: `Mô hình ${model} không tồn tại hoặc không còn cấp cho tài khoản này: ${safeMsg}`,
+      shouldRevoke: false,
+    };
+  }
+
+  if (status === 429) {
+    const isQuotaZero = /limit:\s*0\b/i.test(safeMsg);
+    return {
+      reasonCode: 'QUOTA_EXCEEDED',
+      reason: isQuotaZero
+        ? `Mô hình ${model} có hạn mức miễn phí bằng 0 (Free Tier limit = 0). Vui lòng chọn dòng Flash / Flash-Lite (VD: gemini-2.5-flash) hoặc nâng cấp Billing.`
+        : `API Key Google Gemini đã tạm chạm giới hạn tần suất (429 Rate Limit) trên ${model}. Vui lòng thử lại sau ít phút hoặc chọn mô hình khác.`,
+      shouldRevoke: false,
+    };
+  }
+
+  if (status >= 500) {
+    return {
+      reasonCode: 'SERVICE_UNAVAILABLE',
+      reason: `Máy chủ Google Gemini đang quá tải hoặc tạm bảo trì trên ${model} (HTTP ${status}). Hãy thử lại hoặc chọn mô hình khác.`,
+      shouldRevoke: false,
+    };
+  }
+
+  return {
+    reasonCode: 'SERVICE_UNAVAILABLE',
+    reason: `Google Gemini trả về lỗi (${status}) trên ${model}: ${safeMsg}`,
+    shouldRevoke: false,
+  };
 }
 
 /**
