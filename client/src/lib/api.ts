@@ -1,5 +1,7 @@
 import {
+  AiConnectionSummary,
   AiEngine,
+  AiProviderType,
   FetchPreferences,
   GitHubWorkspacesResponse,
   GitStatus,
@@ -171,8 +173,40 @@ export const api = {
       ),
   },
   ai: {
-    summarizeWithGitHubModels: (dto: {
+    listConnections: () => fetchJson<AiConnectionSummary[]>('/ai/connections'),
+    createConnection: (dto: { provider: AiProviderType; apiKey: string; label?: string }) =>
+      fetchJson<AiConnectionSummary>('/ai/connections', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
+    updateConnection: (
+      id: string,
+      dto: { provider: AiProviderType; apiKey: string; label?: string },
+    ) =>
+      fetchJson<AiConnectionSummary>(`/ai/connections/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dto),
+      }),
+    deleteConnection: (id: string) =>
+      fetchJson<{ success: boolean }>(`/ai/connections/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    checkAvailability: (dto: { engine: AiEngine; connectionId?: string; model: string }) =>
+      fetchJson<{
+        available: boolean;
+        engine: AiEngine;
+        model: string;
+        latencyMs: number;
+        reasonCode?: string;
+        reason?: string;
+      }>('/ai/check-availability', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
+    summarize: (dto: {
       prs: Array<{ repo: string; title: string; commits: string[] }>;
+      engine: AiEngine;
+      connectionId?: string;
       model?: string;
       language?: string;
       tone?: string;
@@ -182,22 +216,10 @@ export const api = {
         bullets: string[];
         rawText: string;
         modelUsed: string;
-        engine: string;
+        engine: AiEngine;
       }>('/ai/summarize', {
         method: 'POST',
         body: JSON.stringify(dto),
-      }),
-    saveClientSummary: (body: {
-      summary: string[];
-      modelName: string;
-      prCount: number;
-      commitCount: number;
-      engine: AiEngine;
-      metadata?: Record<string, unknown>;
-    }) =>
-      fetchJson<ReportItem>('/ai/save-client-summary', {
-        method: 'POST',
-        body: JSON.stringify(body),
       }),
   },
   reports: {

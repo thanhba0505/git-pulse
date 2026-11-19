@@ -29,4 +29,12 @@ describe('token-redactor.util', () => {
     expect(redacted).toContain('[REDACTED_GITHUB_TOKEN]');
     expect(redacted).not.toContain('ghp_1234567890abcdef1234567890abcdef1234');
   });
+
+  it('should redact Google Gemini API keys', () => {
+    const syntheticGeminiKey = 'AIza' + 'B1cD2eF3gH4iJ5kL6mN7oP8qR9sT0uV1wX2';
+    const raw = `Gemini request failed with key=${syntheticGeminiKey}`;
+    const redacted = redactTokens(raw);
+    expect(redacted).toBe('Gemini request failed with key=[REDACTED_AI_KEY]');
+    expect(redacted).not.toContain(syntheticGeminiKey);
+  });
 });

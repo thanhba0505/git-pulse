@@ -161,35 +161,57 @@ export interface AiModelsDictionary {
   gpt4oMiniDesc: string;
   llama33Label: string;
   llama33Desc: string;
-  llama32LocalLabel: string;
-  llama32LocalDesc: string;
-  qwenLocalLabel: string;
-  qwenLocalDesc: string;
 }
 
 export interface AiConsoleDictionary {
   title: string;
   description: string;
-  engineGroupLabel: string;
-  cloudTitle: string;
-  cloudDesc: string;
-  localTitle: string;
-  localDesc: string;
+  providerLabel: string;
+  githubModelsLabel: string;
+  githubModelsDesc: string;
+  geminiProviderLabel: string;
+  addProviderOptionLabel: string;
+  addProviderOptionDesc: string;
+  revokedBadge: string;
   modelLabel: string;
   outputLangLabel: string;
   outputLangVi: string;
   outputLangEn: string;
-  webgpuCachedHint: string;
-  webgpuDownloadHint: string;
+  checkingAvailability: string;
+  availableStatus: string;
+  unavailablePrefix: string;
+  recheckBtn: string;
+  addGeminiQuickBtn: string;
+  updateKeyQuickBtn: string;
   generateBtn: string;
   generateSelectedBtn: string;
   generatingBtn: string;
   noActivitiesError: string;
   noSelectedPrsError: string;
-  webgpuUnsupported: string;
   generateFailed: string;
-  loadingModel: string;
   models: AiModelsDictionary;
+}
+
+export interface AiModalDictionary {
+  titleAdd: string;
+  titleUpdate: string;
+  subtitle: string;
+  providerLabel: string;
+  providerGeminiLabel: string;
+  providerGeminiDesc: string;
+  providerScopeNote: string;
+  labelField: string;
+  labelPlaceholder: string;
+  labelHint: string;
+  apiKeyLabel: string;
+  getGeminiKeyLink: string;
+  apiKeyPlaceholder: string;
+  apiKeyHint: string;
+  apiKeyRequired: string;
+  saveError: string;
+  saveBtn: string;
+  savingBtn: string;
+  updateBtn: string;
 }
 
 export interface StandupDockDictionary {
@@ -228,7 +250,7 @@ export interface CommandPaletteDictionary {
     sync7d: string;
     generateStandup: string;
     switchCloudAi: string;
-    switchWebGpuAi: string;
+    addGeminiAi: string;
     openHistory: string;
     openGitModal: string;
     toggleLanguage: string;
@@ -243,6 +265,9 @@ export interface ToastsDictionary {
   gitConnected: string;
   gitSwitched: string;
   gitDisconnected: string;
+  aiConnected: string;
+  aiUpdated: string;
+  aiDeleted: string;
   reportDeleted: string;
   settingsSaved: string;
   taskCreated: string;
@@ -402,6 +427,13 @@ export interface SettingsModalDictionary {
   switchToBtn: string;
   disconnectAccountBtn: string;
   confirmDisconnectBtn: string;
+  aiConnectionsSection: string;
+  addAiBtn: string;
+  noAiConnections: string;
+  updateAiKeyBtn: string;
+  deleteAiBtn: string;
+  confirmDeleteAiBtn: string;
+  aiModelsCount: string;
 }
 
 export interface TranslationDictionary {
@@ -415,6 +447,7 @@ export interface TranslationDictionary {
   scanner: ScannerDictionary;
   tasks: TasksDictionary;
   aiConsole: AiConsoleDictionary;
+  aiModal: AiModalDictionary;
   standupDock: StandupDockDictionary;
   commandPalette: CommandPaletteDictionary;
   toasts: ToastsDictionary;

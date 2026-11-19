@@ -20,13 +20,13 @@
 
 ## 📌 Project Overview
 
-**Git Pulse** aggregates daily GitHub pull requests and commits to synthesize concise standup reports using a **Dual-Engine AI** architecture (GitHub Models & In-Browser WebGPU). Built with a clean Carbon-Slate precision UI and full bilingual (`vi` / `en`) support, it keeps engineering teams aligned with zero cognitive clutter.
+**Git Pulse** aggregates daily GitHub pull requests and commits to synthesize concise standup reports using a **Personal BYOK AI Vault & Provider Console** (GitHub Models & per-user encrypted Google Gemini API keys with live model availability verification). Built with a clean Carbon-Slate precision UI and full bilingual (`vi` / `en`) support, it keeps engineering teams aligned with zero cognitive clutter.
 
 ### Core Capabilities:
 
-- **Dual-Engine AI Synthesis (Zero Server Cost)**:
-  - **GitHub Models (Cloud)**: Dispatches inference calls to GitHub Models (Azure Inference) directly using the user's decrypted GitHub token (`gpt-4o-mini`, `meta-llama-3.3-70b-instruct`).
-  - **WebLLM (In-Browser WebGPU)**: Runs quantized models (`Llama-3.2-1B`, `Qwen2.5-Coder-1.5B`) directly inside the developer's browser via WebGPU using `@mlc-ai/web-llm` — 100% private, offline, and zero API quota consumed.
+- **Configurable AI Providers & Live Availability Checks**:
+  - **GitHub Models**: Uses the user's active GitHub token with live endpoint & model availability probing.
+  - **Personal Google Gemini (BYOK Vault)**: Each developer can connect their own Google AI Studio API key (`AIza...`), encrypted per-user with **AES-256-GCM + HKDF-SHA256**, automatically discovering live Gemini models (`Gemini 2.5 Flash`, `Gemini 2.5 Pro`, etc.) and probing runtime availability/quota before summarization.
 - **Git Activity Scanner**: Fetches pull requests, commit timelines, and repository contributions across configurable time windows (`Today`, `24h`, `7d`).
 - **Bilingual Workspace (`vi` / `en`)**: Full interface internationalization decoupled cleanly from AI report generation language.
 - **Multi-Format Export Dock**: 1-click clipboard formatting for Parabol standups, Slack bullet lists, and plain bullets.
@@ -58,8 +58,8 @@ graph TD
     VercelEdge --> ServerAPI["git-pulse-server (NestJS 10 Serverless)"]
     ServerAPI -->|Pooled Connection| NeonDB["Neon Lakebase PostgreSQL 16 (AWS Oregon)"]
     ServerAPI -->|HMAC-SHA256 S2S| Gateway["Central Gateway (IAM Master & SSO)"]
-    ClientApp -->|In-Browser WebGPU| WebLLM["Local WebLLM Core (Llama-3.2-1B)"]
     ServerAPI -->|Decrypted Token| GitHubAPI["GitHub REST & Models API"]
+    ServerAPI -->|Decrypted BYOK Key| GeminiAPI["Google Gemini API (generativelanguage.googleapis.com)"]
 ```
 
 ---
@@ -68,18 +68,18 @@ graph TD
 
 ```text
 git-pulse/
-├── client/          # Next.js 15 App Router, React 19, Tailwind CSS, WebLLM
-├── server/          # NestJS 10 REST API, Prisma ORM, AES-256-GCM Token Vault
+├── client/          # Next.js 15 App Router, React 19, Tailwind CSS
+├── server/          # NestJS 10 REST API, Prisma ORM, AES-256-GCM Token & AI Key Vault
 ├── .github/         # Parallel CI/CD workflows, release automation, PR & issue templates
 └── scripts/         # Automated release version synchronization and verification scripts
 ```
 
 > Architectural documentation, API contracts, AI rules (`AGENTS.md`), and shared local Docker PostgreSQL orchestration are centralized in [`thanhba0505/prism-hub`](https://github.com/thanhba0505/prism-hub).
 
-| Workspace    | Technology Stack                                      | Local Port | Role & Responsibility                                                      |
-| :----------- | :---------------------------------------------------- | :--------: | :------------------------------------------------------------------------- |
-| **`client`** | Next.js 15 App Router, React 19, WebLLM, Tailwind CSS |   `6100`   | Precision Carbon-Slate workspace, i18n, WebGPU AI, and export dock.        |
-| **`server`** | NestJS 10, Prisma ORM, AES-256-GCM Vault              |   `6101`   | REST API (`/api/v1`), token encryption, GitHub Models proxy, and S2S auth. |
+| Workspace    | Technology Stack                              | Local Port | Role & Responsibility                                                      |
+| :----------- | :-------------------------------------------- | :--------: | :------------------------------------------------------------------------- |
+| **`client`** | Next.js 15 App Router, React 19, Tailwind CSS |   `6100`   | Precision Carbon-Slate workspace, i18n, AI provider selector, export dock. |
+| **`server`** | NestJS 10, Prisma ORM, AES-256-GCM Vault      |   `6101`   | REST API (`/api/v1`), token/AI-key encryption, AI proxy, and S2S auth.     |
 
 ---
 

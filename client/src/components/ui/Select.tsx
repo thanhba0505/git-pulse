@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Plus } from 'lucide-react';
 import { useFloatingPosition } from '../../lib/use-floating-position';
 
 export interface SelectOption<T extends string> {
@@ -10,6 +10,9 @@ export interface SelectOption<T extends string> {
   label: string;
   description?: string;
   disabled?: boolean;
+  badge?: string;
+  badgeTone?: 'emerald' | 'amber' | 'rose' | 'sky';
+  isAction?: boolean;
 }
 
 interface SelectProps<T extends string> {
@@ -233,8 +236,16 @@ export function Select<T extends string>({
             className="gp-glass-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl p-1.5 gp-popover-in"
           >
             {options.map((option, idx) => {
-              const isSelected = option.value === value;
+              const isSelected = !option.isAction && option.value === value;
               const isHighlighted = idx === highlightedIndex;
+              const badgeToneClass =
+                option.badgeTone === 'rose'
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  : option.badgeTone === 'amber'
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                    : option.badgeTone === 'emerald'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-sky-500/15 text-sky-300 border-sky-500/30';
 
               return (
                 <li
@@ -251,28 +262,50 @@ export function Select<T extends string>({
                   }}
                   onClick={() => handleSelectOption(option)}
                   className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-colors select-none ${
-                    option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
-                  } ${
+                    option.isAction ? 'mt-1 pt-2.5 border-t border-slate-700/80 rounded-t-none' : ''
+                  } ${option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'} ${
                     isSelected
                       ? 'bg-sky-500/15 text-slate-50'
                       : isHighlighted
-                        ? 'bg-slate-700/80 text-slate-50'
-                        : 'text-slate-200 hover:bg-slate-700/60'
+                        ? option.isAction
+                          ? 'bg-sky-500/15 text-sky-200'
+                          : 'bg-slate-700/80 text-slate-50'
+                        : option.isAction
+                          ? 'text-sky-300 hover:bg-sky-500/15'
+                          : 'text-slate-200 hover:bg-slate-700/60'
                   }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className={`text-xs font-semibold truncate ${
-                        isSelected ? 'text-sky-300' : 'text-slate-100'
-                      }`}
-                    >
-                      {option.label}
-                    </div>
-                    {option.description && (
-                      <div className="text-xs text-slate-400 mt-0.5 truncate">
-                        {option.description}
-                      </div>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {option.isAction && (
+                      <Plus className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
                     )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`text-xs font-semibold truncate ${
+                            option.isAction
+                              ? 'text-sky-300'
+                              : isSelected
+                                ? 'text-sky-300'
+                                : 'text-slate-100'
+                          }`}
+                        >
+                          {option.label}
+                        </span>
+                        {option.badge && (
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border shrink-0 ${badgeToneClass}`}
+                          >
+                            {option.badge}
+                          </span>
+                        )}
+                      </div>
+                      {option.description && (
+                        <div className="text-xs text-slate-400 mt-0.5 truncate">
+                          {option.description}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {isSelected && (

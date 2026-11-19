@@ -19,7 +19,12 @@ enum GitAuthType {
 
 enum AiEngineType {
   GITHUB_MODELS
+  GOOGLE_GEMINI
   WEB_LLM
+}
+
+enum AiProviderType {
+  GOOGLE_GEMINI
 }
 
 enum TokenStatus {
@@ -40,12 +45,35 @@ model User {
   updatedAt  DateTime          @updatedAt
 
   gitAccounts   GitAccount[]
+  aiConnections AiConnection[]
   settings      UserSettings?
   reports       ReportHistory[]
   bookmarks     GitRepoBookmark[]
   trackingTasks TrackingTask[]
 
   @@map("users")
+}
+
+model AiConnection {
+  id              String         @id @default(uuid())
+  userId          String         @map("user_id")
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        AiProviderType @default(GOOGLE_GEMINI)
+  label           String         @db.VarChar(80)
+  encryptedKey    String         @map("encrypted_key")
+  keyIv           String         @map("key_iv")
+  keyTag          String         @map("key_tag")
+  keyVersion      Int            @default(1) @map("key_version")
+  maskedKey       String         @map("masked_key") @db.VarChar(32)
+  availableModels Json?          @map("available_models")
+  status          TokenStatus    @default(ACTIVE)
+  isActive        Boolean        @default(true) @map("is_active")
+  lastVerifiedAt  DateTime?      @map("last_verified_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([userId, provider])
+  @@map("ai_connections")
 }
 
 model GitAccount {
