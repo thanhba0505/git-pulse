@@ -123,6 +123,8 @@ export interface TrackingTask {
   id: string;
   title: string;
   color: TaskColor;
+  isCompleted: boolean;
+  completedAt: string | null;
   items: TrackingTaskItem[];
   createdAt: string;
   updatedAt: string;

@@ -53,6 +53,7 @@ interface ActivityScannerProps {
   tasks: TrackingTask[];
   onCreateTask: (title: string, color: TaskColor, prs: PrActivity[]) => Promise<void>;
   onRenameTask: (taskId: string, title: string, color: TaskColor) => Promise<void>;
+  onToggleTaskComplete: (taskId: string, isCompleted: boolean) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onToggleTaskAssignment: (taskId: string, pr: PrActivity, isAssigned: boolean) => Promise<void>;
   onRemoveTaskItem: (taskId: string, repo: string, prNumber: number) => Promise<void>;
@@ -91,6 +92,7 @@ export function ActivityScanner({
   tasks,
   onCreateTask,
   onRenameTask,
+  onToggleTaskComplete,
   onDeleteTask,
   onToggleTaskAssignment,
   onRemoveTaskItem,
@@ -488,9 +490,9 @@ export function ActivityScanner({
           selectedPrKeys={selectedPrKeys}
           compactCommits={compactCommits}
           onTogglePrSelection={onTogglePrSelection}
-          onSelectKeysBatch={onSelectKeysBatch}
           onCreateTask={onCreateTask}
           onRenameTask={onRenameTask}
+          onToggleTaskComplete={onToggleTaskComplete}
           onDeleteTask={onDeleteTask}
           onToggleTaskAssignment={onToggleTaskAssignment}
           onRemoveTaskItem={onRemoveTaskItem}

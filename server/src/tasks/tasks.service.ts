@@ -14,7 +14,7 @@ export class TasksService {
           orderBy: { addedAt: 'asc' },
         },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ isCompleted: 'asc' }, { updatedAt: 'desc' }],
     });
   }
 
@@ -67,12 +67,27 @@ export class TasksService {
       throw new BadRequestException('Tên Task không được để trống.');
     }
 
+    const updateData: {
+      title?: string;
+      color?: string;
+      isCompleted?: boolean;
+      completedAt?: Date | null;
+    } = {};
+
+    if (cleanTitle) {
+      updateData.title = cleanTitle;
+    }
+    if (dto.color !== undefined) {
+      updateData.color = dto.color;
+    }
+    if (dto.isCompleted !== undefined) {
+      updateData.isCompleted = dto.isCompleted;
+      updateData.completedAt = dto.isCompleted ? new Date() : null;
+    }
+
     return this.prisma.trackingTask.update({
       where: { id: taskId },
-      data: {
-        ...(cleanTitle ? { title: cleanTitle } : {}),
-        ...(dto.color !== undefined ? { color: dto.color } : {}),
-      },
+      data: updateData,
       include: {
         items: {
           orderBy: { addedAt: 'asc' },

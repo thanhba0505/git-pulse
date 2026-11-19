@@ -125,6 +125,7 @@ export interface ScannerDictionary {
 
 export interface TasksDictionary {
   createBtn: string;
+  showCompletedBtn: string;
   createTitle: string;
   titleLabel: string;
   titlePlaceholder: string;
@@ -136,15 +137,21 @@ export interface TasksDictionary {
   savingBtn: string;
   emptyTitle: string;
   emptyDesc: string;
+  allCompletedTitle: string;
+  allCompletedDesc: string;
   unassignedTitle: string;
   addPrsBtn: string;
   doneAddPrsBtn: string;
-  selectAllInTask: string;
+  markCompleteBtn: string;
+  completedBadge: string;
+  markCompleteAria: string;
+  reopenTaskAria: string;
   outOfWindowTag: string;
   renameTooltip: string;
   saveRenameBtn: string;
   deleteTooltip: string;
   confirmDeleteBtn: string;
+  activeCompletedSummary: string;
   progressSummary: string;
   removeItemAria: string;
 }
@@ -240,6 +247,9 @@ export interface ToastsDictionary {
   settingsSaved: string;
   taskCreated: string;
   taskUpdated: string;
+  taskCompleted: string;
+  taskReopened: string;
+  taskUpdateError: string;
   taskDeleted: string;
   taskItemUpdated: string;
 }

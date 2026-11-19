@@ -121,4 +121,45 @@ describe('TasksService', () => {
     expect(prismaMock.trackingTaskItem.upsert).toHaveBeenCalledTimes(1);
     expect(prismaMock.trackingTask.update).toHaveBeenCalled();
   });
+
+  it('marks a task completed with completedAt timestamp and clears completedAt when reopened', async () => {
+    prismaMock.trackingTask.findFirst.mockResolvedValue({ id: 'task-1', userId: 'user-1' });
+    prismaMock.trackingTask.update.mockResolvedValue({
+      id: 'task-1',
+      isCompleted: true,
+      items: [],
+    });
+
+    await service.updateTask('user-1', 'task-1', { isCompleted: true });
+
+    expect(prismaMock.trackingTask.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'task-1' },
+        data: expect.objectContaining({
+          isCompleted: true,
+          completedAt: expect.any(Date),
+        }),
+      }),
+    );
+
+    prismaMock.trackingTask.update.mockClear();
+    await service.updateTask('user-1', 'task-1', { isCompleted: false });
+
+    expect(prismaMock.trackingTask.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'task-1' },
+        data: expect.objectContaining({
+          isCompleted: false,
+          completedAt: null,
+        }),
+      }),
+    );
+  });
+
+  it('throws NotFoundException when updating another user task', async () => {
+    prismaMock.trackingTask.findFirst.mockResolvedValue(null);
+    await expect(service.updateTask('user-1', 'task-other', { isCompleted: true })).rejects.toThrow(
+      NotFoundException,
+    );
+  });
 });

@@ -21,17 +21,25 @@ import {
   Lock,
   Plus,
   User,
+  X,
 } from 'lucide-react';
 
 interface PrActivityCardProps {
   pr: PrActivity;
-  index: number;
+  index?: number;
   isSelected: boolean;
   compactCommits: boolean;
   tasks: TrackingTask[];
   onToggleSelect: (key: string) => void;
   onToggleTaskAssignment: (taskId: string, pr: PrActivity, isAssigned: boolean) => Promise<void>;
   onCreateTaskWithPr: (title: string, pr: PrActivity) => Promise<void>;
+  variant?: 'card' | 'embedded';
+  disableStandupSelection?: boolean;
+  statusNoteTag?: string;
+  excludeTaskId?: string;
+  hideTaskAssignMenu?: boolean;
+  onRemoveFromTask?: () => void;
+  removeFromTaskAriaLabel?: string;
 }
 
 const COMMITS_PREVIEW_LIMIT = 3;
@@ -107,6 +115,13 @@ export function PrActivityCard({
   onToggleSelect,
   onToggleTaskAssignment,
   onCreateTaskWithPr,
+  variant = 'card',
+  disableStandupSelection = false,
+  statusNoteTag,
+  excludeTaskId,
+  hideTaskAssignMenu = false,
+  onRemoveFromTask,
+  removeFromTaskAriaLabel,
 }: PrActivityCardProps) {
   const { locale, dict, t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -128,9 +143,17 @@ export function PrActivityCard({
 
   const assignedTasks = isDirectCommits
     ? []
-    : tasks.filter((task) =>
-        task.items.some((item) => item.repo === pr.repo && item.prNumber === pr.number),
+    : tasks.filter(
+        (task) =>
+          task.id !== excludeTaskId &&
+          task.items.some((item) => item.repo === pr.repo && item.prNumber === pr.number),
       );
+
+  const assignableTasks = tasks.filter(
+    (task) =>
+      !task.isCompleted ||
+      task.items.some((item) => item.repo === pr.repo && item.prNumber === pr.number),
+  );
 
   const getStateBadge = () => {
     const normalized = pr.state.toLowerCase();
@@ -200,30 +223,32 @@ export function PrActivityCard({
     }
   };
 
-  return (
-    <ShowcaseCard
-      as="li"
-      staggerIndex={index}
-      className={`p-4 sm:p-5 min-w-0 transition-opacity ${
-        isSelected ? 'opacity-100' : 'opacity-65'
-      }`}
-    >
+  const opacityClass = disableStandupSelection
+    ? 'opacity-90'
+    : isSelected
+      ? 'opacity-100'
+      : 'opacity-65';
+
+  const cardBody = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-label={t('scanner.selectPrAria', { title: accessibleTitle })}
-            onClick={() => onToggleSelect(prKey)}
-            className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-              isSelected
-                ? 'bg-sky-500 border-sky-400 text-slate-950'
-                : 'bg-white/[0.04] border-white/[0.15] hover:border-white/[0.3] text-transparent'
-            }`}
-          >
-            <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
-          </button>
+          {!disableStandupSelection && (
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-label={t('scanner.selectPrAria', { title: accessibleTitle })}
+              onClick={() => onToggleSelect(prKey)}
+              className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+                isSelected
+                  ? 'bg-sky-500 border-sky-400 text-slate-950'
+                  : 'bg-white/[0.04] border-white/[0.15] hover:border-white/[0.3] text-transparent'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
+            </button>
+          )}
 
           <div
             className={`w-9 h-9 rounded-lg bg-white/[0.05] border border-white/[0.09] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
@@ -286,6 +311,12 @@ export function PrActivityCard({
                 {stateInfo.label}
               </span>
 
+              {statusNoteTag && (
+                <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-slate-400 text-xs">
+                  {statusNoteTag}
+                </span>
+              )}
+
               {relativeUpdated && (
                 <span className="text-xs text-slate-500 font-mono tabular-nums whitespace-nowrap">
                   • {relativeUpdated}
@@ -344,9 +375,9 @@ export function PrActivityCard({
           </div>
         </div>
 
-        {/* Right Actions: Manual Task Assign (PRs only) + External Link */}
+        {/* Right Actions: Manual Task Assign (optional) + External Link + Optional Remove */}
         <div className="flex items-center gap-1 shrink-0">
-          {!isDirectCommits && (
+          {!isDirectCommits && !hideTaskAssignMenu && (
             <DropdownMenu
               align="end"
               widthClass="w-64"
@@ -378,11 +409,11 @@ export function PrActivityCard({
                     {dict.scanner.assignToTaskHeading}
                   </p>
 
-                  {tasks.length === 0 ? (
+                  {assignableTasks.length === 0 ? (
                     <p className="px-1.5 py-1 text-xs text-slate-500">{dict.scanner.noTasksHint}</p>
                   ) : (
                     <div className="max-h-44 overflow-y-auto custom-scrollbar space-y-1">
-                      {tasks.map((task) => {
+                      {assignableTasks.map((task) => {
                         const isAssigned = task.items.some(
                           (item) => item.repo === pr.repo && item.prNumber === pr.number,
                         );
@@ -468,6 +499,18 @@ export function PrActivityCard({
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
           </a>
+
+          {onRemoveFromTask && (
+            <button
+              type="button"
+              onClick={onRemoveFromTask}
+              title={removeFromTaskAriaLabel}
+              aria-label={removeFromTaskAriaLabel}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-rose-300 hover:bg-rose-500/15 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -522,6 +565,26 @@ export function PrActivityCard({
           )}
         </div>
       )}
+    </>
+  );
+
+  if (variant === 'embedded') {
+    return (
+      <li
+        className={`rounded-xl bg-[#0B0E15]/85 border border-white/[0.08] hover:border-white/[0.16] p-3.5 sm:p-4 min-w-0 transition-[border-color,opacity] duration-200 ${opacityClass}`}
+      >
+        {cardBody}
+      </li>
+    );
+  }
+
+  return (
+    <ShowcaseCard
+      as="li"
+      staggerIndex={index}
+      className={`p-4 sm:p-5 min-w-0 transition-opacity ${opacityClass}`}
+    >
+      {cardBody}
     </ShowcaseCard>
   );
 }

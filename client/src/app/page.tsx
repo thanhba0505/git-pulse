@@ -421,6 +421,37 @@ export default function HomePage() {
     showToast({ title: t('toasts.taskUpdated', { title: updated.title }), variant: 'info' });
   };
 
+  const handleToggleTaskComplete = async (taskId: string, isCompleted: boolean) => {
+    const previous = tasks.find((tk) => tk.id === taskId);
+    setTasks((prev) =>
+      prev.map((tk) =>
+        tk.id === taskId
+          ? {
+              ...tk,
+              isCompleted,
+              completedAt: isCompleted ? new Date().toISOString() : null,
+            }
+          : tk,
+      ),
+    );
+    try {
+      const updated = await api.tasks.update(taskId, { isCompleted });
+      setTasks((prev) => prev.map((tk) => (tk.id === taskId ? updated : tk)));
+      showToast({
+        title: t(isCompleted ? 'toasts.taskCompleted' : 'toasts.taskReopened', {
+          title: updated.title,
+        }),
+        variant: isCompleted ? 'success' : 'info',
+      });
+    } catch (err) {
+      if (previous) {
+        setTasks((prev) => prev.map((tk) => (tk.id === taskId ? previous : tk)));
+      }
+      showToast({ title: dict.toasts.taskUpdateError, variant: 'error' });
+      throw err;
+    }
+  };
+
   const handleDeleteTask = async (taskId: string) => {
     await api.tasks.delete(taskId);
     setTasks((prev) => prev.filter((tk) => tk.id !== taskId));
@@ -752,6 +783,7 @@ export default function HomePage() {
                     tasks={tasks}
                     onCreateTask={handleCreateTask}
                     onRenameTask={handleRenameTask}
+                    onToggleTaskComplete={handleToggleTaskComplete}
                     onDeleteTask={handleDeleteTask}
                     onToggleTaskAssignment={handleToggleTaskAssignment}
                     onRemoveTaskItem={handleRemoveTaskItem}

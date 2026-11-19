@@ -664,6 +664,51 @@ dialog.gp-top-dialog:modal {
   overflow: hidden;
 }
 
+/* Task Card Collapse / Reveal Transition (Zero Layout Flash) */
+.gp-task-slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  margin-bottom: 16px;
+  transform-origin: top center;
+  transition:
+    grid-template-rows 280ms var(--ease-smooth-out),
+    opacity 200ms var(--ease-smooth-out),
+    translate 240ms var(--ease-smooth-out),
+    scale 240ms var(--ease-smooth-out),
+    margin-bottom 280ms var(--ease-smooth-out);
+}
+
+@starting-style {
+  .gp-task-slot[data-reveal-enter='true'] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    translate: 0 -6px;
+    scale: 0.985;
+    margin-bottom: 0;
+  }
+}
+
+.gp-task-slot[data-collapsing='true'] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  translate: 0 -6px;
+  scale: 0.985;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.gp-task-slot-inner {
+  min-height: 0;
+  overflow: visible;
+}
+
+.gp-task-slot:is([data-collapsing='true'], [data-reveal-enter='true']) > .gp-task-slot-inner {
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   dialog.gp-top-dialog,
   dialog.gp-top-dialog::backdrop {
@@ -680,5 +725,25 @@ dialog.gp-top-dialog:modal {
 
   .gp-accordion-grid {
     transition: none !important;
+  }
+
+  .gp-task-slot {
+    translate: none !important;
+    scale: none !important;
+    transition: opacity 100ms ease-out;
+  }
+
+  @starting-style {
+    .gp-task-slot[data-reveal-enter='true'] {
+      grid-template-rows: 1fr;
+      opacity: 0;
+      margin-bottom: 16px;
+    }
+  }
+
+  .gp-task-slot[data-collapsing='true'] {
+    grid-template-rows: 1fr;
+    opacity: 0;
+    margin-bottom: 16px;
   }
 }

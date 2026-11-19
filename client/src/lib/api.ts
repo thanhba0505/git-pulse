@@ -138,7 +138,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(dto),
       }),
-    update: (id: string, dto: { title?: string; color?: TaskColor }) =>
+    update: (id: string, dto: { title?: string; color?: TaskColor; isCompleted?: boolean }) =>
       fetchJson<TrackingTask>(`/tasks/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         body: JSON.stringify(dto),

@@ -136,14 +136,16 @@ model GitRepoBookmark {
 }
 
 model TrackingTask {
-  id        String             @id @default(uuid())
-  userId    String
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String             @db.VarChar(160)
-  color     String             @default("sky") @db.VarChar(32)
-  items     TrackingTaskItem[]
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String             @db.VarChar(160)
+  color       String             @default("sky") @db.VarChar(32)
+  isCompleted Boolean            @default(false) @map("is_completed")
+  completedAt DateTime?          @map("completed_at")
+  items       TrackingTaskItem[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
   @@index([userId, updatedAt])
   @@map("tracking_tasks")
