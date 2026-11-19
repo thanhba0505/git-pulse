@@ -270,7 +270,7 @@ export function ActivityScanner({
       <ShowcaseCard className="p-5 sm:p-6">
         <div className="space-y-4">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-            <div className="min-w-0 flex items-center gap-2.5 flex-wrap">
+            <div className="min-w-0">
               <h2
                 id="activity-scanner-heading"
                 className="text-base font-semibold text-slate-100 tracking-tight"
@@ -278,12 +278,12 @@ export function ActivityScanner({
                 {dict.scanner.title}
               </h2>
               {visibleActivities.length > 0 && (
-                <span className="text-xs font-mono text-sky-400 tabular-nums">
+                <p className="mt-1 text-xs font-mono text-sky-400 tabular-nums">
                   {t('scanner.summaryStats', {
                     prs: visibleActivities.length,
                     commits: totalCommits,
                   })}
-                </span>
+                </p>
               )}
             </div>
 
