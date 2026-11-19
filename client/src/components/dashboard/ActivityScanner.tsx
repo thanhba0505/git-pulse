@@ -10,7 +10,7 @@ import {
   TrackingTask,
 } from '../../types';
 import { useTranslation } from '../../i18n';
-import { getPrKey as computePrKey } from '../../lib/activity-utils';
+import { getPrKey as computePrKey, getPrStateStyle } from '../../lib/activity-utils';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { ActivityListSkeleton } from '../ui/Skeleton';
@@ -356,20 +356,32 @@ export function ActivityScanner({
                     { key: 'closed', label: dict.scanner.stateClosed },
                     { key: 'direct_commits', label: dict.scanner.directCommitsBadge },
                   ] as Array<{ key: StateFilter; label: string }>
-                ).map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setStateFilter(item.key)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                      stateFilter === item.key
-                        ? 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
-                        : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                ).map((item) => {
+                  const isActive = stateFilter === item.key;
+                  const stateStyle = item.key !== 'ALL' ? getPrStateStyle(item.key) : null;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setStateFilter(item.key)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                        isActive
+                          ? stateStyle
+                            ? stateStyle.badgeClass
+                            : 'bg-sky-500/20 text-sky-200 border border-sky-400/40'
+                          : 'bg-white/[0.04] text-slate-300 hover:text-white border border-white/[0.08]'
+                      }`}
+                    >
+                      {stateStyle && (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${stateStyle.dotClass}`}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

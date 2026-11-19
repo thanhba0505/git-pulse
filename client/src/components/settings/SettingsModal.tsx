@@ -8,6 +8,7 @@ import {
   PrStateFilter,
 } from '../../types';
 import { useTranslation } from '../../i18n';
+import { getPrStateStyle } from '../../lib/activity-utils';
 import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import { ModalDialog } from '../ui/ModalDialog';
 import { SegmentedControl } from '../ui/SegmentedControl';
@@ -399,6 +400,7 @@ export function SettingsModal({
               <div className="flex flex-wrap gap-2">
                 {PR_STATE_OPTIONS.map((state) => {
                   const active = draftPrefs.prStates.includes(state);
+                  const style = getPrStateStyle(state);
                   return (
                     <button
                       key={state}
@@ -407,12 +409,23 @@ export function SettingsModal({
                       aria-pressed={active}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-sky-500/20 text-sky-200 border-sky-400/40'
+                          ? style.badgeClass
                           : 'bg-white/[0.04] text-slate-400 hover:text-slate-200 border-white/[0.08]'
                       }`}
                     >
-                      {active && <Check className="w-3 h-3 text-sky-300" aria-hidden="true" />}
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          active ? style.dotClass : 'bg-slate-600'
+                        }`}
+                        aria-hidden="true"
+                      />
                       <span>{getPrStateLabel(state)}</span>
+                      {active && (
+                        <Check
+                          className={`w-3 h-3 shrink-0 ${style.iconClass}`}
+                          aria-hidden="true"
+                        />
+                      )}
                     </button>
                   );
                 })}

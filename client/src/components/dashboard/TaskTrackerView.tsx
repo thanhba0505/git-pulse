@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PrActivity, PrState, TaskColor, TrackingTask, TrackingTaskItem } from '../../types';
 import { useTranslation } from '../../i18n';
-import { getPrKey } from '../../lib/activity-utils';
+import { getPrKey, getPrStateStyle } from '../../lib/activity-utils';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { PrActivityCard } from './PrActivityCard';
 import {
@@ -321,35 +321,20 @@ export function TaskTrackerView({
   };
 
   const getStateChip = (rawState: string) => {
-    const state = rawState.toLowerCase();
-    if (state === 'draft') {
-      return {
-        label: dict.scanner.stateDraft,
-        cls: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
-      };
+    const style = getPrStateStyle(rawState);
+    if (style.normalized === 'draft') {
+      return { label: dict.scanner.stateDraft, cls: style.badgeClass };
     }
-    if (state === 'merged') {
-      return {
-        label: dict.scanner.stateMerged,
-        cls: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30',
-      };
+    if (style.normalized === 'merged') {
+      return { label: dict.scanner.stateMerged, cls: style.badgeClass };
     }
-    if (state === 'open') {
-      return {
-        label: dict.scanner.stateOpen,
-        cls: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
-      };
+    if (style.normalized === 'open') {
+      return { label: dict.scanner.stateOpen, cls: style.badgeClass };
     }
-    if (state === 'direct_commits') {
-      return {
-        label: dict.scanner.directCommitsBadge,
-        cls: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
-      };
+    if (style.normalized === 'direct_commits') {
+      return { label: dict.scanner.directCommitsBadge, cls: style.badgeClass };
     }
-    return {
-      label: dict.scanner.stateClosed,
-      cls: 'bg-slate-800 text-slate-300 border-slate-700',
-    };
+    return { label: dict.scanner.stateClosed, cls: style.badgeClass };
   };
 
   return (

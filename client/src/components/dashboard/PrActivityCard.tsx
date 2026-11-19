@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { CommitItem, PrActivity, TaskColor, TrackingTask } from '../../types';
 import { useTranslation } from '../../i18n';
-import { formatRelativeTime, getPrKey } from '../../lib/activity-utils';
+import { formatRelativeTime, getPrKey, getPrStateStyle } from '../../lib/activity-utils';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { DropdownMenu } from '../ui/DropdownMenu';
 import {
@@ -156,43 +156,43 @@ export function PrActivityCard({
   );
 
   const getStateBadge = () => {
-    const normalized = pr.state.toLowerCase();
-    if (normalized === 'draft') {
+    const style = getPrStateStyle(pr.state);
+    if (style.normalized === 'draft') {
       return {
         label: dict.scanner.stateDraft,
-        badgeClass: 'bg-amber-500/10 text-amber-300 border border-amber-500/30',
-        iconClass: 'text-amber-300',
+        badgeClass: style.badgeClass,
+        iconClass: style.iconClass,
         Icon: GitPullRequestDraft,
       };
     }
-    if (normalized === 'open') {
+    if (style.normalized === 'open') {
       return {
         label: dict.scanner.stateOpen,
-        badgeClass: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/25',
-        iconClass: 'text-emerald-400',
+        badgeClass: style.badgeClass,
+        iconClass: style.iconClass,
         Icon: GitPullRequest,
       };
     }
-    if (normalized === 'merged') {
+    if (style.normalized === 'merged') {
       return {
         label: dict.scanner.stateMerged,
-        badgeClass: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/25',
-        iconClass: 'text-indigo-400',
+        badgeClass: style.badgeClass,
+        iconClass: style.iconClass,
         Icon: GitMerge,
       };
     }
-    if (normalized === 'direct_commits') {
+    if (style.normalized === 'direct_commits') {
       return {
         label: dict.scanner.directCommitsBadge,
-        badgeClass: 'bg-sky-500/10 text-sky-300 border border-sky-500/25',
-        iconClass: 'text-sky-400',
+        badgeClass: style.badgeClass,
+        iconClass: style.iconClass,
         Icon: GitCommit,
       };
     }
     return {
       label: dict.scanner.stateClosed,
-      badgeClass: 'bg-slate-800 text-slate-300 border border-slate-700',
-      iconClass: 'text-slate-400',
+      badgeClass: style.badgeClass,
+      iconClass: style.iconClass,
       Icon: GitPullRequestClosed,
     };
   };
