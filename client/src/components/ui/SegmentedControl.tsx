@@ -47,7 +47,8 @@ export function SegmentedControl<T extends string>({
       if (!animate) {
         indicator.style.transition = 'none';
       } else {
-        indicator.style.transition = '';
+        indicator.style.transition =
+          'transform 260ms cubic-bezier(0.16, 1, 0.3, 1), width 260ms cubic-bezier(0.16, 1, 0.3, 1)';
       }
 
       indicator.style.width = `${width}px`;
@@ -58,17 +59,20 @@ export function SegmentedControl<T extends string>({
       if (!animate) {
         // Flush layout before re-enabling transitions
         void indicator.offsetWidth;
-        indicator.style.transition = '';
+        indicator.style.transition =
+          'transform 260ms cubic-bezier(0.16, 1, 0.3, 1), width 260ms cubic-bezier(0.16, 1, 0.3, 1)';
       }
     },
     [value],
   );
 
+  const optionsKey = options.map((o) => `${o.value}:${o.label}`).join('|');
+
   useLayoutEffect(() => {
     const container = containerRef.current;
     const isMeasured = container?.dataset.measured === 'true';
     syncIndicator(isMeasured);
-  }, [syncIndicator, options]);
+  }, [syncIndicator, optionsKey]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -99,10 +103,7 @@ export function SegmentedControl<T extends string>({
       <span
         ref={indicatorRef}
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-white/[0.14] border border-white/[0.2] shadow-sm opacity-0 motion-safe:transition-[transform,width] motion-safe:duration-300"
-        style={{
-          transitionTimingFunction: 'var(--ease-spring)',
-        }}
+        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-md bg-white/[0.14] border border-white/[0.2] shadow-sm opacity-0 will-change-[transform,width]"
       />
 
       {options.map((option) => {

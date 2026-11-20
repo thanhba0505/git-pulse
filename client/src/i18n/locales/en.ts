@@ -66,7 +66,6 @@ export const en: TranslationDictionary = {
   },
   scanner: {
     title: 'Pull Requests & Commits',
-    summaryStats: '{prs} items • {commits} Commits',
     rangeLabel: 'Activity timeframe',
     rangeToday: 'Today',
     range24h: 'Last 24h',

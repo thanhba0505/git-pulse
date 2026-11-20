@@ -7,6 +7,7 @@ import { DEFAULT_QUICK_ACCESS_URL } from '../../lib/ai-prompt.constants';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { StandupOutputSkeleton } from '../ui/Skeleton';
 import { useToast } from '../ui/Toast';
+import { useSmoothButtonWidth } from '../../lib/use-smooth-button-width';
 
 interface StandupOutputDockProps {
   bullets: string[];
@@ -29,6 +30,9 @@ export function StandupOutputDock({
   const [isEditing, setIsEditing] = useState(false);
   const [draftText, setDraftText] = useState('');
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const editBtnRef = useSmoothButtonWidth(isEditing);
+  const copyBtnRef = useSmoothButtonWidth(copied);
 
   const formatFullStandup = (items: string[]) => {
     return ['Today:', ...items.map((b) => `• ${b}`)].join('\n');
@@ -126,38 +130,50 @@ export function StandupOutputDock({
           <div className="flex items-center gap-2.5 flex-wrap">
             {onUpdateBullets && (
               <button
+                ref={editBtnRef}
                 type="button"
                 onClick={handleToggleEdit}
-                className={`inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+                className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 overflow-hidden whitespace-nowrap ${
                   isEditing
                     ? 'bg-sky-500 text-slate-950 border-sky-500 font-semibold'
                     : 'bg-[#253349] hover:bg-[#2E3E58] text-slate-200 border-slate-600/80'
                 }`}
               >
-                {isEditing ? (
-                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                ) : (
-                  <Pencil className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                )}
-                <span>{isEditing ? dict.common.done : dict.common.edit}</span>
+                <span
+                  key={String(isEditing)}
+                  className="inline-flex items-center gap-1.5 animate-[gp-fade-in_180ms_cubic-bezier(0.16,1,0.3,1)_both]"
+                >
+                  {isEditing ? (
+                    <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <Pencil className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                  )}
+                  <span>{isEditing ? dict.common.done : dict.common.edit}</span>
+                </span>
               </button>
             )}
 
             <button
+              ref={copyBtnRef}
               type="button"
               onClick={() => void handleCopy()}
-              className={`inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
+              className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 overflow-hidden whitespace-nowrap ${
                 copied
                   ? 'bg-emerald-500 text-slate-950 border-emerald-500 font-semibold'
                   : 'bg-white/[0.08] hover:bg-white/[0.14] text-slate-100 border-white/[0.16] hover:border-white/[0.26]'
               }`}
             >
-              {copied ? (
-                <Check className="w-3.5 h-3.5" aria-hidden="true" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-slate-300" aria-hidden="true" />
-              )}
-              <span>{copied ? dict.common.copied : dict.common.copy}</span>
+              <span
+                key={String(copied)}
+                className="inline-flex items-center gap-1.5 animate-[gp-fade-in_180ms_cubic-bezier(0.16,1,0.3,1)_both]"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-slate-300 shrink-0" aria-hidden="true" />
+                )}
+                <span>{copied ? dict.common.copied : dict.common.copy}</span>
+              </span>
             </button>
 
             <a

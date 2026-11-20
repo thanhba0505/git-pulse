@@ -66,7 +66,6 @@ export const vi: TranslationDictionary = {
   },
   scanner: {
     title: 'Hoạt động Pull Request & Commit',
-    summaryStats: '{prs} mục • {commits} Commit',
     rangeLabel: 'Khoảng thời gian lấy dữ liệu',
     rangeToday: 'Hôm nay',
     range24h: '24 giờ',
