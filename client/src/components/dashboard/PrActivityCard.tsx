@@ -87,7 +87,7 @@ function CommitTimelineList({
               className="group/commit flex items-start gap-2 text-xs text-slate-200 hover:text-sky-200 leading-relaxed min-w-0 transition-colors"
             >
               {shortSha ? (
-                <span className="inline-flex items-center justify-center w-16 font-mono text-xs tabular-nums text-slate-300 group-hover/commit:text-sky-200 bg-white/[0.08] group-hover/commit:bg-sky-500/15 border border-white/[0.1] group-hover/commit:border-sky-400/35 py-0.5 rounded shrink-0 transition-colors">
+                <span className="inline-flex items-center justify-center w-[72px] font-mono text-xs tabular-nums tracking-tight text-slate-300 group-hover/commit:text-sky-200 bg-white/[0.08] group-hover/commit:bg-sky-500/15 border border-white/[0.1] group-hover/commit:border-sky-400/35 px-2 py-0.5 rounded-md shrink-0 transition-colors">
                   {shortSha}
                 </span>
               ) : (
