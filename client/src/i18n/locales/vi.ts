@@ -66,7 +66,6 @@ export const vi: TranslationDictionary = {
   },
   scanner: {
     title: 'Hoạt động Pull Request & Commit',
-    summaryStats: '{prs} mục • {commits} Commit',
     rangeLabel: 'Khoảng thời gian lấy dữ liệu',
     rangeToday: 'Hôm nay',
     range24h: '24 giờ',
@@ -187,15 +186,12 @@ export const vi: TranslationDictionary = {
   },
   aiSettingsModal: {
     title: 'Cài đặt AI tạo báo cáo',
-    subtitle: 'Tùy chỉnh ngôn ngữ đầu ra và prompt hướng dẫn AI khi tổng hợp từ Commit.',
-    outputLangLabel: 'Ngôn ngữ báo cáo',
-    outputLangVi: 'Tiếng Việt',
-    outputLangEn: 'Tiếng Anh',
-    customPromptLabel: 'Prompt tùy chỉnh cho AI',
+    subtitle: 'Tùy chỉnh prompt hướng dẫn AI và link truy cập nhanh khi tổng hợp báo cáo.',
+    customPromptLabel: 'Prompt hướng dẫn cho AI',
     customPromptPlaceholder:
-      'VD: Tóm tắt ngắn gọn thành 3-5 gạch đầu dòng theo tính năng chính, bỏ qua các commit format/chore...',
-    customPromptHint:
-      'Để trống để dùng prompt mặc định (tóm tắt dựa trên nội dung các commit theo repo, bỏ qua tiêu đề PR).',
+      'Nhập prompt hướng dẫn AI tổng hợp báo cáo (bao gồm ngôn ngữ, định dạng và giới hạn dòng)...',
+    quickAccessUrlLabel: 'Link truy cập nhanh',
+    resetUrlBtn: 'Khôi phục mặc định',
     resetPromptBtn: 'Khôi phục mặc định',
     charCount: '{count}/2000 ký tự',
     saveError: 'Không thể lưu cài đặt AI. Vui lòng thử lại.',
@@ -234,6 +230,7 @@ export const vi: TranslationDictionary = {
     subtitle: 'Chỉnh sửa nhanh nội dung hoặc sao chép bản báo cáo.',
     copiedToast: 'Đã sao chép bản báo cáo vào bộ nhớ tạm',
     editPlaceholder: 'Mỗi dòng là một mục báo cáo...',
+    quickAccessLink: 'Truy cập nhanh',
   },
   commandPalette: {
     placeholder: 'Tìm kiếm thao tác nhanh... (gõ làm mới, ai, ngôn ngữ)',

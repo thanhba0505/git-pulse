@@ -68,6 +68,12 @@ export class UpdateFetchPreferencesDto {
   @IsOptional()
   @IsBoolean()
   compactCommits?: boolean;
+
+  @ApiPropertyOptional({ example: 'https://action.parabol.co/meetings', maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  quickAccessUrl?: string;
 }
 
 export class UpdateSettingsDto {
@@ -86,6 +92,12 @@ export class UpdateSettingsDto {
   @IsString()
   @MaxLength(2000)
   customPrompt?: string;
+
+  @ApiPropertyOptional({ example: 'https://action.parabol.co/meetings', maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  quickAccessUrl?: string;
 
   @ApiPropertyOptional({ type: UpdateFetchPreferencesDto })
   @IsOptional()

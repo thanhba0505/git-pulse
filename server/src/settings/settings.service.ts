@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import {
   DEFAULT_FETCH_PREFERENCES,
+  DEFAULT_QUICK_ACCESS_URL,
   FetchPreferences,
   normalizeFetchPreferences,
 } from './settings.types';
@@ -12,6 +13,7 @@ export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
   customPrompt: string;
+  quickAccessUrl: string;
   fetchPreferences: FetchPreferences;
 }
 
@@ -36,19 +38,29 @@ export class SettingsService {
       });
     }
 
+    const prefs = normalizeFetchPreferences(settings.fetchPreferences);
     return {
       language: settings.language,
       autoCopyToClipboard: settings.autoCopyToClipboard,
       customPrompt: settings.customPrompt ?? '',
-      fetchPreferences: normalizeFetchPreferences(settings.fetchPreferences),
+      quickAccessUrl: prefs.quickAccessUrl ?? DEFAULT_QUICK_ACCESS_URL,
+      fetchPreferences: prefs,
     };
   }
 
   async updateSettings(userId: string, dto: UpdateSettingsDto): Promise<UserSettingsResponse> {
     const current = await this.getSettings(userId);
+    const nextQuickAccessUrl =
+      dto.quickAccessUrl !== undefined
+        ? dto.quickAccessUrl.trim() || DEFAULT_QUICK_ACCESS_URL
+        : dto.fetchPreferences?.quickAccessUrl !== undefined
+          ? dto.fetchPreferences.quickAccessUrl.trim() || DEFAULT_QUICK_ACCESS_URL
+          : current.fetchPreferences.quickAccessUrl;
+
     const mergedPreferences = normalizeFetchPreferences({
       ...current.fetchPreferences,
       ...(dto.fetchPreferences ?? {}),
+      quickAccessUrl: nextQuickAccessUrl,
     });
     const normalizedCustomPrompt =
       dto.customPrompt !== undefined ? dto.customPrompt.trim() || null : undefined;
@@ -74,11 +86,13 @@ export class SettingsService {
       },
     });
 
+    const updatedPrefs = normalizeFetchPreferences(updated.fetchPreferences);
     return {
       language: updated.language,
       autoCopyToClipboard: updated.autoCopyToClipboard,
       customPrompt: updated.customPrompt ?? '',
-      fetchPreferences: normalizeFetchPreferences(updated.fetchPreferences),
+      quickAccessUrl: updatedPrefs.quickAccessUrl ?? DEFAULT_QUICK_ACCESS_URL,
+      fetchPreferences: updatedPrefs,
     };
   }
 }

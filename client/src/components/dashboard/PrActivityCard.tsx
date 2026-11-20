@@ -72,8 +72,9 @@ function CommitTimelineList({
   extraClass?: string;
 }) {
   return (
-    <ul role="list" className={`space-y-1.5 pl-3 border-l border-slate-600/80 ${extraClass}`}>
+    <ul role="list" className={`space-y-1.5 ${extraClass}`}>
       {commits.map((commit, idx) => {
+        const shortSha = commit.sha ? commit.sha.slice(0, 7) : '';
         const commitUrl = commit.sha
           ? `https://github.com/${repo}/commit/${encodeURIComponent(commit.sha)}`
           : fallbackUrl;
@@ -85,9 +86,9 @@ function CommitTimelineList({
               rel="noopener noreferrer"
               className="group/commit flex items-start gap-2 text-xs text-slate-200 hover:text-sky-200 leading-relaxed min-w-0 transition-colors"
             >
-              {commit.sha ? (
-                <span className="font-mono text-xs text-slate-300 group-hover/commit:text-sky-200 bg-white/[0.08] group-hover/commit:bg-sky-500/15 border border-white/[0.1] group-hover/commit:border-sky-400/35 px-1.5 py-0.5 rounded shrink-0 transition-colors">
-                  {commit.sha}
+              {shortSha ? (
+                <span className="inline-flex items-center justify-center w-[72px] font-mono text-xs tabular-nums tracking-tight text-slate-300 group-hover/commit:text-sky-200 bg-white/[0.08] group-hover/commit:bg-sky-500/15 border border-white/[0.1] group-hover/commit:border-sky-400/35 px-2 py-0.5 rounded-md shrink-0 transition-colors">
+                  {shortSha}
                 </span>
               ) : (
                 <span
@@ -433,7 +434,7 @@ export function PrActivityCard({
                                 setBusyTaskId(null);
                               }
                             }}
-                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs border transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] motion-reduce:active:scale-100 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
+                            className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl text-xs border transition-[background-color,border-color,color] duration-150 cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
                               isAssigned
                                 ? 'bg-gradient-to-r from-sky-500/[0.16] to-sky-500/[0.06] text-sky-200 font-semibold border-sky-400/30'
                                 : 'text-slate-200 hover:bg-white/[0.07] border-transparent hover:border-white/[0.08]'
@@ -518,8 +519,8 @@ export function PrActivityCard({
 
       {/* Commits Timeline */}
       {commitRows.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+        <div className="mt-3 pt-3 border-t border-slate-700/80">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-xs font-mono text-slate-400 flex items-center gap-2 tabular-nums">
               <GitCommit className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
               <span>{t('scanner.commitsCount', { count: commitRows.length })}</span>
@@ -549,22 +550,24 @@ export function PrActivityCard({
             )}
           </div>
 
-          {previewCommits.length > 0 && (
-            <CommitTimelineList commits={previewCommits} repo={pr.repo} fallbackUrl={pr.prUrl} />
-          )}
+          <div className="pl-3 border-l border-slate-600/80">
+            {previewCommits.length > 0 && (
+              <CommitTimelineList commits={previewCommits} repo={pr.repo} fallbackUrl={pr.prUrl} />
+            )}
 
-          {hasCollapsibleCommits && (
-            <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
-              <div className="gp-accordion-inner">
-                <CommitTimelineList
-                  commits={hiddenCommits}
-                  repo={pr.repo}
-                  fallbackUrl={pr.prUrl}
-                  extraClass="pt-1"
-                />
+            {hasCollapsibleCommits && (
+              <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
+                <div className="gp-accordion-inner">
+                  <CommitTimelineList
+                    commits={hiddenCommits}
+                    repo={pr.repo}
+                    fallbackUrl={pr.prUrl}
+                    extraClass={previewCommits.length > 0 ? 'pt-1.5' : ''}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </>

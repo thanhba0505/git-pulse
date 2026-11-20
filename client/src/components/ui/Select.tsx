@@ -217,7 +217,7 @@ export function Select<T extends string>({
         disabled={disabled}
         onClick={() => (isOpen ? closeMenu() : openMenu())}
         onKeyDown={handleKeyDown}
-        className={`group flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#152033]/95 border text-left text-xs sm:text-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.99] motion-reduce:active:scale-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`group flex items-center justify-between gap-2.5 w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#152033]/95 border text-left text-xs sm:text-sm shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] transition-[background-color,border-color,box-shadow] duration-150 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen
             ? 'border-sky-400/80 bg-[#18263D] ring-2 ring-sky-500/25 shadow-[0_0_0_3px_rgba(14,165,233,0.12)] text-slate-50'
             : 'border-slate-600/85 hover:border-slate-500/90 hover:bg-[#19263D] text-slate-100 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25'
@@ -253,7 +253,7 @@ export function Select<T extends string>({
             data-state={isClosing ? 'closing' : 'open'}
             data-open-upward={floatingPos.openUpward ? 'true' : 'false'}
             style={floatingPos.style}
-            className={`gp-menu-surface gp-menu-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl py-1.5 px-1 space-y-0.5 ${
+            className={`gp-menu-surface gp-menu-panel overflow-y-auto overscroll-contain rounded-2xl p-1.5 space-y-0.5 ${
               floatingPos.openUpward ? 'origin-bottom' : 'origin-top'
             }`}
           >
@@ -291,10 +291,8 @@ export function Select<T extends string>({
                       e.preventDefault();
                     }}
                     onClick={() => handleSelectOption(option)}
-                    className={`gp-menu-option-in relative flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg border transition-[background-color,border-color,color,transform] duration-150 select-none ${
-                      option.disabled
-                        ? 'opacity-45 cursor-not-allowed'
-                        : 'cursor-pointer active:scale-[0.985] motion-reduce:active:scale-100'
+                    className={`gp-menu-option-in relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border transition-[background-color,border-color,color] duration-150 select-none ${
+                      option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
                     } ${
                       option.isAction
                         ? isHighlighted

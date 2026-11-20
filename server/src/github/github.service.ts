@@ -1041,7 +1041,7 @@ export class GitHubService {
             entry.eventCommitShas.add(commit.sha);
             entry.eventCommits.push({
               branch: branchName,
-              sha: commit.sha,
+              sha: commit.sha.slice(0, 7),
               message: (commit.message || '').split('\n')[0].trim(),
               date: ev.created_at,
             });

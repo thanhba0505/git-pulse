@@ -1,4 +1,5 @@
 import {
+  DEFAULT_AI_PROMPT,
   buildStandupPrompts,
   classifyGeminiHttpError,
   filterAndNormalizeGitHubCatalogModels,
@@ -68,7 +69,7 @@ describe('ai-provider.helpers', () => {
     ]);
   });
 
-  it('builds commit-only prompts omitting PR titles and appends output language on custom prompt', () => {
+  it('builds commit-only prompts omitting PR titles and uses DEFAULT_AI_PROMPT when not overridden', () => {
     const { systemPrompt, userPrompt } = buildStandupPrompts(
       [
         { repo: 'org/repo', title: 'PR #12 ignored title', commits: ['feat: add vault'] },
@@ -76,6 +77,9 @@ describe('ai-provider.helpers', () => {
       ],
       'en',
     );
+    expect(systemPrompt).toBe(DEFAULT_AI_PROMPT);
+    expect(systemPrompt).toContain('Today:');
+    expect(systemPrompt).toContain('maximum 5 concise');
     expect(systemPrompt).toContain('English');
     expect(userPrompt).toContain('Repository: org/repo');
     expect(userPrompt).toContain('  - feat: add vault');
@@ -88,10 +92,9 @@ describe('ai-provider.helpers', () => {
       'vi',
       'Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.',
     );
-    expect(custom.systemPrompt).toContain('Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.');
-    expect(custom.systemPrompt).toContain('Vietnamese');
+    expect(custom.systemPrompt).toBe('Tóm tắt cực ngắn gọn trong 2 gạch đầu dòng.');
 
-    expect(parseStandupBullets('• First item\n- Second item\n* Third item')).toEqual([
+    expect(parseStandupBullets('Today:\n• First item\n- Second item\n* Third item')).toEqual([
       'First item',
       'Second item',
       'Third item',

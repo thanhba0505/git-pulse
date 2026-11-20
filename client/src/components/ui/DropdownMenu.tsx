@@ -153,7 +153,7 @@ export function DropdownMenu({
             data-open-upward={floatingPos.openUpward ? 'true' : 'false'}
             onKeyDown={handleMenuKeyDown}
             style={floatingPos.style}
-            className={`gp-menu-surface gp-menu-panel custom-scrollbar overflow-y-auto overscroll-contain rounded-xl py-1.5 px-1 max-w-[calc(100vw-1.5rem)] ${widthClass} ${originClass}`}
+            className={`gp-menu-surface gp-menu-panel overflow-y-auto overscroll-contain rounded-2xl p-1.5 max-w-[calc(100vw-1.5rem)] ${widthClass} ${originClass}`}
           >
             {children({ close })}
           </div>,

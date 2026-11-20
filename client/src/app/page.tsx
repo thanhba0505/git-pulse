@@ -15,6 +15,7 @@ import {
   TaskColor,
   TrackingTask,
 } from '../types';
+import { DEFAULT_AI_PROMPT, DEFAULT_QUICK_ACCESS_URL } from '../lib/ai-prompt.constants';
 import { api } from '../lib/api';
 import { toTaskItemInput } from '../lib/activity-utils';
 import { useAuth } from '../lib/auth-context';
@@ -202,8 +203,8 @@ export default function HomePage() {
   const [githubModels, setGithubModels] = useState<AiModelOption[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
-  const [reportLanguage, setReportLanguage] = useState<'vi' | 'en'>('vi');
   const [customPrompt, setCustomPrompt] = useState('');
+  const [quickAccessUrl, setQuickAccessUrl] = useState<string>(DEFAULT_QUICK_ACCESS_URL);
   const [isAiSettingsModalOpen, setIsAiSettingsModalOpen] = useState(false);
   const [availability, setAvailability] = useState<AiAvailabilityState>({
     status: 'idle',
@@ -454,8 +455,8 @@ export default function HomePage() {
       setAiConnections([]);
       setGithubModels([]);
       setAvailability({ status: 'idle', available: false });
-      setReportLanguage('vi');
       setCustomPrompt('');
+      setQuickAccessUrl(DEFAULT_QUICK_ACCESS_URL);
       setIsAiSettingsModalOpen(false);
       return;
     }
@@ -474,8 +475,12 @@ export default function HomePage() {
         targetRange = settingsRes.fetchPreferences.defaultTimeRange;
       }
       if (settingsRes) {
-        setReportLanguage(settingsRes.language === 'en' ? 'en' : 'vi');
         setCustomPrompt(settingsRes.customPrompt ?? '');
+        setQuickAccessUrl(
+          settingsRes.quickAccessUrl ||
+            settingsRes.fetchPreferences?.quickAccessUrl ||
+            DEFAULT_QUICK_ACCESS_URL,
+        );
       }
       setTasks(loadedTasks);
       setAiConnections(loadedConns);
@@ -620,13 +625,17 @@ export default function HomePage() {
     }
   };
 
-  const handleSaveAiSettings = async (next: { language: 'vi' | 'en'; customPrompt: string }) => {
+  const handleSaveAiSettings = async (next: { customPrompt: string; quickAccessUrl: string }) => {
     const saved = await api.settings.update({
-      language: next.language,
       customPrompt: next.customPrompt,
+      quickAccessUrl: next.quickAccessUrl,
+      fetchPreferences: {
+        ...fetchPrefs,
+        quickAccessUrl: next.quickAccessUrl,
+      },
     });
-    setReportLanguage(saved.language === 'en' ? 'en' : 'vi');
     setCustomPrompt(saved.customPrompt ?? '');
+    setQuickAccessUrl(saved.quickAccessUrl || next.quickAccessUrl);
     showToast({ title: dict.toasts.aiSettingsSaved, variant: 'success' });
   };
 
@@ -912,7 +921,6 @@ export default function HomePage() {
         engine,
         connectionId,
         model: selectedModel,
-        language: reportLanguage,
         customPrompt: customPrompt.trim() || undefined,
       });
 
@@ -935,7 +943,6 @@ export default function HomePage() {
     selectedToolKey,
     aiConnections,
     selectedModel,
-    reportLanguage,
     customPrompt,
     dict,
     showToast,
@@ -1170,7 +1177,9 @@ export default function HomePage() {
                     githubModels={githubModels}
                     selectedModel={selectedModel}
                     onModelChange={handleSelectAiModel}
-                    hasCustomPrompt={Boolean(customPrompt.trim())}
+                    hasCustomPrompt={Boolean(
+                      customPrompt.trim() && customPrompt.trim() !== DEFAULT_AI_PROMPT.trim(),
+                    )}
                     onOpenAiSettings={() => setIsAiSettingsModalOpen(true)}
                     availability={availability}
                     onRecheckAvailability={() =>
@@ -1198,6 +1207,7 @@ export default function HomePage() {
                     isGenerating={isGenerating}
                     modelUsed={modelUsed}
                     onUpdateBullets={setBullets}
+                    quickAccessUrl={quickAccessUrl}
                   />
                 </div>
               </div>
@@ -1259,8 +1269,8 @@ export default function HomePage() {
       <AiSettingsModal
         isOpen={isAiSettingsModalOpen}
         onClose={() => setIsAiSettingsModalOpen(false)}
-        language={reportLanguage}
         customPrompt={customPrompt}
+        quickAccessUrl={quickAccessUrl}
         onSave={handleSaveAiSettings}
       />
 

@@ -165,6 +165,7 @@ describe('github-activity.helpers', () => {
       expect(normalized.includePersonal).toBe(false);
       expect(normalized.includedOrgs).toEqual(['nanocohub']);
       expect(normalized.prStates).toEqual(['draft']);
+      expect(normalized.quickAccessUrl).toBe('https://action.parabol.co/meetings');
     });
   });
 });

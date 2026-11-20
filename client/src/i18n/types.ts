@@ -74,7 +74,6 @@ export interface OnboardingDictionary {
 
 export interface ScannerDictionary {
   title: string;
-  summaryStats: string;
   rangeLabel: string;
   rangeToday: string;
   range24h: string;
@@ -196,12 +195,10 @@ export interface AiConsoleDictionary {
 export interface AiSettingsModalDictionary {
   title: string;
   subtitle: string;
-  outputLangLabel: string;
-  outputLangVi: string;
-  outputLangEn: string;
   customPromptLabel: string;
   customPromptPlaceholder: string;
-  customPromptHint: string;
+  quickAccessUrlLabel: string;
+  resetUrlBtn: string;
   resetPromptBtn: string;
   charCount: string;
   saveError: string;
@@ -242,6 +239,7 @@ export interface StandupDockDictionary {
   subtitle: string;
   copiedToast: string;
   editPlaceholder: string;
+  quickAccessLink: string;
 }
 
 export interface CommandPaletteDictionary {

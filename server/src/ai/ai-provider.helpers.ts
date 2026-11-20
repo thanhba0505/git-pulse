@@ -331,16 +331,27 @@ export function normalizeStoredModels(raw: unknown): AiModelOption[] {
   return normalized;
 }
 
+export const DEFAULT_AI_PROMPT =
+  `You are an expert tech lead summarizing daily developer commits.\n` +
+  `Summarize the provided git commits into maximum 5 concise, high-impact bullet points in English.\n\n` +
+  `Format strictly as:\n` +
+  `Today:\n` +
+  `• <Past-tense action verb> <direct summary of changes>\n\n` +
+  `Rules:\n` +
+  `- The first line must be exactly "Today:".\n` +
+  `- Maximum 5 lines/bullet points, each starting with "• ".\n` +
+  `- Each bullet must begin with a capitalized past-tense verb (e.g., Added, Configured, Documented, Restricted, Fixed, Refactored, Optimized).\n` +
+  `- Focus strictly on commit messages; group related changes and omit chore or trivial noise.\n` +
+  `- Do not output any preamble, greeting, markdown formatting, or trailing text.`;
+
 /**
  * Builds consistent system & user commit-based report prompts across all AI providers.
  */
 export function buildStandupPrompts(
   prs: readonly PrItemDto[],
-  language?: string,
+  _language?: string,
   customPrompt?: string,
 ): { systemPrompt: string; userPrompt: string } {
-  const lang = language === 'en' ? 'English' : 'Vietnamese';
-
   const commitsByRepo = new Map<string, Set<string>>();
   for (const item of prs) {
     const repo = item.repo.trim() || 'workspace';
@@ -366,30 +377,22 @@ export function buildStandupPrompts(
     .join('\n\n');
 
   const trimmedCustom = customPrompt?.trim();
-  const defaultInstruction =
-    `You are an expert tech lead summarizing daily developer work progress. ` +
-    `Summarize the provided git commits into 3 to 4 concise bullet points in ${lang}. ` +
-    `Focus strictly on the commit messages, group related changes, emphasize implemented features, bugfixes, and outcomes, and skip trivial merge or chore noise. ` +
-    `Each bullet point MUST start with "• " or "- ", be under 20 words, and use clean, natural developer terminology without AI clichés. ` +
-    `Return ONLY the bullet points, no preamble, title, or greeting.`;
-
-  const systemPrompt = trimmedCustom
-    ? `${trimmedCustom}\n\nOutput language: ${lang}. Summarize strictly based on the provided commit messages.`
-    : defaultInstruction;
-
+  const systemPrompt = trimmedCustom || DEFAULT_AI_PROMPT;
   const userPrompt = `Git commits to summarize:\n\n${commitDetails}`;
   return { systemPrompt, userPrompt };
 }
 
 /**
- * Splits raw AI output into clean standup bullet lines without leading markers.
+ * Splits raw AI output into clean standup bullet lines without leading markers or Today header.
  */
 export function parseStandupBullets(rawContent: string): string[] {
   const lines = rawContent
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => line.replace(/^[-*•]\s*/, ''));
+    .filter((line) => !/^today:?$/i.test(line))
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter((line) => line.length > 0);
 
-  return lines.length > 0 ? lines : ['Cập nhật và hoàn thiện các module hệ thống.'];
+  return lines.length > 0 ? lines : ['Completed scheduled development tasks.'];
 }
