@@ -130,10 +130,6 @@ export function Header({
             >
               {({ close }) => (
                 <div className="space-y-0.5">
-                  <div className="px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
-                    {dict.header.gitAccountsHeading}
-                  </div>
-
                   {accounts.map((account, idx) => (
                     <button
                       key={account.id}
