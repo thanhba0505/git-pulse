@@ -136,7 +136,7 @@ export function Header({
                           onSelectGitAccount(account.id);
                         }
                       }}
-                      className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl text-xs text-left border transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
+                      className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs text-left border transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
                         account.isActive
                           ? 'bg-gradient-to-r from-sky-500/[0.16] to-sky-500/[0.06] border-sky-400/30 text-sky-200 font-semibold'
                           : 'border-transparent text-slate-200 hover:bg-white/[0.07] hover:border-white/[0.08]'
@@ -269,7 +269,7 @@ export function Header({
                       close();
                       onOpenHistory();
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
                   >
                     <History className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                     <span>{dict.header.history}</span>
@@ -282,7 +282,7 @@ export function Header({
                       close();
                       onOpenSettings();
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-200 hover:text-white border border-transparent hover:bg-white/[0.07] hover:border-white/[0.08] transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09]"
                   >
                     <Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
                     <span>{dict.header.settings}</span>
@@ -297,7 +297,7 @@ export function Header({
                       close();
                       onLogout();
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs text-rose-300 hover:text-rose-200 border border-transparent hover:bg-rose-500/15 hover:border-rose-500/25 transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400/60 focus-visible:bg-rose-500/15"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-rose-300 hover:text-rose-200 border border-transparent hover:bg-rose-500/15 hover:border-rose-500/25 transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400/60 focus-visible:bg-rose-500/15"
                   >
                     <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>{dict.header.logout}</span>

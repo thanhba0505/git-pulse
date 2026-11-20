@@ -253,7 +253,7 @@ export function Select<T extends string>({
             data-state={isClosing ? 'closing' : 'open'}
             data-open-upward={floatingPos.openUpward ? 'true' : 'false'}
             style={floatingPos.style}
-            className={`gp-menu-surface gp-menu-panel overflow-y-auto overscroll-contain rounded-2xl p-1 space-y-0.5 ${
+            className={`gp-menu-surface gp-menu-panel overflow-y-auto overscroll-contain rounded-2xl p-1.5 space-y-0.5 ${
               floatingPos.openUpward ? 'origin-bottom' : 'origin-top'
             }`}
           >
@@ -291,7 +291,7 @@ export function Select<T extends string>({
                       e.preventDefault();
                     }}
                     onClick={() => handleSelectOption(option)}
-                    className={`gp-menu-option-in relative flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl border transition-[background-color,border-color,color] duration-150 select-none ${
+                    className={`gp-menu-option-in relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl border transition-[background-color,border-color,color] duration-150 select-none ${
                       option.disabled ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'
                     } ${
                       option.isAction
@@ -305,7 +305,7 @@ export function Select<T extends string>({
                             : 'border-transparent text-slate-200 hover:bg-white/[0.05]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {isSelected && (
                         <span
                           aria-hidden="true"
