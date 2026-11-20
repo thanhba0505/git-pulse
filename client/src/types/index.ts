@@ -97,12 +97,14 @@ export interface FetchPreferences {
   includeDirectCommits: boolean;
   includePrWithoutCommitsInRange: boolean;
   compactCommits: boolean;
+  quickAccessUrl?: string;
 }
 
 export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
   customPrompt?: string;
+  quickAccessUrl?: string;
   fetchPreferences: FetchPreferences;
 }
 

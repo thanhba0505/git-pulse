@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../../i18n';
-import { DEFAULT_AI_PROMPT } from '../../lib/ai-prompt.constants';
+import { DEFAULT_AI_PROMPT, DEFAULT_QUICK_ACCESS_URL } from '../../lib/ai-prompt.constants';
 import { ModalDialog } from '../ui/ModalDialog';
 import { AlertCircle, Loader2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 
@@ -10,15 +10,25 @@ interface AiSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   customPrompt: string;
-  onSave: (next: { customPrompt: string }) => Promise<void>;
+  quickAccessUrl: string;
+  onSave: (next: { customPrompt: string; quickAccessUrl: string }) => Promise<void>;
 }
 
 const MAX_PROMPT_LENGTH = 2000;
 
-export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSettingsModalProps) {
+export function AiSettingsModal({
+  isOpen,
+  onClose,
+  customPrompt,
+  quickAccessUrl,
+  onSave,
+}: AiSettingsModalProps) {
   const { dict, t } = useTranslation();
   const [draftPrompt, setDraftPrompt] = useState(
     customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT,
+  );
+  const [draftQuickAccessUrl, setDraftQuickAccessUrl] = useState(
+    quickAccessUrl.trim() ? quickAccessUrl : DEFAULT_QUICK_ACCESS_URL,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,15 +36,19 @@ export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSet
   useEffect(() => {
     if (!isOpen) return;
     setDraftPrompt(customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT);
+    setDraftQuickAccessUrl(quickAccessUrl.trim() ? quickAccessUrl : DEFAULT_QUICK_ACCESS_URL);
     setError(null);
-  }, [isOpen, customPrompt]);
+  }, [isOpen, customPrompt, quickAccessUrl]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
     setError(null);
     try {
-      await onSave({ customPrompt: draftPrompt.trim() });
+      await onSave({
+        customPrompt: draftPrompt.trim(),
+        quickAccessUrl: draftQuickAccessUrl.trim() || DEFAULT_QUICK_ACCESS_URL,
+      });
       onClose();
     } catch (err) {
       setError((err as Error).message || dict.aiSettingsModal.saveError);
@@ -44,6 +58,7 @@ export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSet
   };
 
   const isPromptCustomized = draftPrompt.trim() !== DEFAULT_AI_PROMPT.trim();
+  const isUrlCustomized = draftQuickAccessUrl.trim() !== DEFAULT_QUICK_ACCESS_URL;
 
   return (
     <ModalDialog
@@ -100,6 +115,7 @@ export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSet
           </div>
         )}
 
+        {/* Custom Prompt */}
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="ai-custom-prompt" className="text-xs font-medium text-slate-300">
@@ -123,23 +139,51 @@ export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSet
             value={draftPrompt}
             onChange={(e) => setDraftPrompt(e.target.value)}
             maxLength={MAX_PROMPT_LENGTH}
-            rows={10}
+            rows={9}
             disabled={isSaving}
             placeholder={dict.aiSettingsModal.customPromptPlaceholder}
-            aria-describedby="ai-custom-prompt-hint"
             className="w-full p-3.5 rounded-xl bg-[#152033] border border-slate-600/85 hover:border-slate-500 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25 font-mono text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y transition-colors disabled:opacity-50"
           />
 
-          <div className="flex items-start justify-between gap-3">
-            <p id="ai-custom-prompt-hint" className="text-xs text-slate-400 leading-relaxed">
-              {dict.aiSettingsModal.customPromptHint}
-            </p>
+          <div className="flex items-center justify-end">
             <span className="text-xs font-mono text-slate-400 tabular-nums shrink-0">
               {t('aiSettingsModal.charCount', { count: draftPrompt.length })}
             </span>
           </div>
         </div>
 
+        {/* Quick Access Link */}
+        <div className="space-y-1.5 pt-1 border-t border-slate-700/60">
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="ai-quick-access-url" className="text-xs font-medium text-slate-300">
+              {dict.aiSettingsModal.quickAccessUrlLabel}
+            </label>
+            {isUrlCustomized && (
+              <button
+                type="button"
+                onClick={() => setDraftQuickAccessUrl(DEFAULT_QUICK_ACCESS_URL)}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                <span>{dict.aiSettingsModal.resetUrlBtn}</span>
+              </button>
+            )}
+          </div>
+
+          <input
+            id="ai-quick-access-url"
+            type="url"
+            value={draftQuickAccessUrl}
+            onChange={(e) => setDraftQuickAccessUrl(e.target.value)}
+            maxLength={500}
+            disabled={isSaving}
+            placeholder={DEFAULT_QUICK_ACCESS_URL}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[#152033] border border-slate-600/85 hover:border-slate-500 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25 text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none transition-colors disabled:opacity-50"
+          />
+        </div>
+
+        {/* Footer actions */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-700/80">
           <button
             type="button"

@@ -187,12 +187,12 @@ export const vi: TranslationDictionary = {
   },
   aiSettingsModal: {
     title: 'Cài đặt AI tạo báo cáo',
-    subtitle: 'Tùy chỉnh prompt hướng dẫn AI khi tổng hợp báo cáo từ Commit.',
+    subtitle: 'Tùy chỉnh prompt hướng dẫn AI và link truy cập nhanh khi tổng hợp báo cáo.',
     customPromptLabel: 'Prompt hướng dẫn cho AI',
     customPromptPlaceholder:
       'Nhập prompt hướng dẫn AI tổng hợp báo cáo (bao gồm ngôn ngữ, định dạng và giới hạn dòng)...',
-    customPromptHint:
-      'Prompt mặc định tạo tối đa 5 gạch đầu dòng bắt đầu bằng Today: và động từ quá khứ.',
+    quickAccessUrlLabel: 'Link truy cập nhanh',
+    resetUrlBtn: 'Khôi phục mặc định',
     resetPromptBtn: 'Khôi phục mặc định',
     charCount: '{count}/2000 ký tự',
     saveError: 'Không thể lưu cài đặt AI. Vui lòng thử lại.',
@@ -231,6 +231,7 @@ export const vi: TranslationDictionary = {
     subtitle: 'Chỉnh sửa nhanh nội dung hoặc sao chép bản báo cáo.',
     copiedToast: 'Đã sao chép bản báo cáo vào bộ nhớ tạm',
     editPlaceholder: 'Mỗi dòng là một mục báo cáo...',
+    quickAccessLink: 'Truy cập nhanh',
   },
   commandPalette: {
     placeholder: 'Tìm kiếm thao tác nhanh... (gõ làm mới, ai, ngôn ngữ)',

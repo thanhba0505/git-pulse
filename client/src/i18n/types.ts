@@ -198,7 +198,8 @@ export interface AiSettingsModalDictionary {
   subtitle: string;
   customPromptLabel: string;
   customPromptPlaceholder: string;
-  customPromptHint: string;
+  quickAccessUrlLabel: string;
+  resetUrlBtn: string;
   resetPromptBtn: string;
   charCount: string;
   saveError: string;
@@ -239,6 +240,7 @@ export interface StandupDockDictionary {
   subtitle: string;
   copiedToast: string;
   editPlaceholder: string;
+  quickAccessLink: string;
 }
 
 export interface CommandPaletteDictionary {

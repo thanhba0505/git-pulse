@@ -3,6 +3,8 @@ export type FetchTimeRange = 'today' | '24h' | '7d';
 export type PrStateFilter = 'draft' | 'open' | 'merged' | 'closed';
 export type FetchRoleScope = 'author' | 'involves';
 
+export const DEFAULT_QUICK_ACCESS_URL = 'https://action.parabol.co/meetings';
+
 export interface FetchPreferences {
   defaultGroupBy: GroupingMode;
   defaultTimeRange: FetchTimeRange;
@@ -13,6 +15,7 @@ export interface FetchPreferences {
   includeDirectCommits: boolean;
   includePrWithoutCommitsInRange: boolean;
   compactCommits: boolean;
+  quickAccessUrl: string;
 }
 
 export const VALID_GROUPING_MODES: readonly GroupingMode[] = ['owner', 'task', 'repo', 'flat'];
@@ -30,6 +33,7 @@ export const DEFAULT_FETCH_PREFERENCES: FetchPreferences = {
   includeDirectCommits: true,
   includePrWithoutCommitsInRange: true,
   compactCommits: false,
+  quickAccessUrl: DEFAULT_QUICK_ACCESS_URL,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -96,5 +100,9 @@ export function normalizeFetchPreferences(raw: unknown): FetchPreferences {
       typeof raw.compactCommits === 'boolean'
         ? raw.compactCommits
         : DEFAULT_FETCH_PREFERENCES.compactCommits,
+    quickAccessUrl:
+      typeof raw.quickAccessUrl === 'string' && raw.quickAccessUrl.trim().length > 0
+        ? raw.quickAccessUrl.trim()
+        : DEFAULT_QUICK_ACCESS_URL,
   };
 }

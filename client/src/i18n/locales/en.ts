@@ -186,12 +186,12 @@ export const en: TranslationDictionary = {
   },
   aiSettingsModal: {
     title: 'AI Report Settings',
-    subtitle: 'Customize prompt instructions for AI commit synthesis.',
+    subtitle: 'Customize prompt instructions and quick access meeting link for reports.',
     customPromptLabel: 'AI Instruction Prompt',
     customPromptPlaceholder:
       'Enter AI prompt instructions for summarizing commits (including language, format, and line limits)...',
-    customPromptHint:
-      'Default prompt creates up to 5 bullet points starting with Today: and past-tense verbs.',
+    quickAccessUrlLabel: 'Quick access link',
+    resetUrlBtn: 'Reset to default',
     resetPromptBtn: 'Reset to default',
     charCount: '{count}/2000 chars',
     saveError: 'Failed to save AI settings. Please try again.',
@@ -230,6 +230,7 @@ export const en: TranslationDictionary = {
     subtitle: 'Edit bullets inline or copy your report.',
     copiedToast: 'Copied report to clipboard',
     editPlaceholder: 'One summary bullet per line...',
+    quickAccessLink: 'Quick access',
   },
   commandPalette: {
     placeholder: 'Search quick commands... (refresh, ai, history, language)',

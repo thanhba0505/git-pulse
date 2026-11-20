@@ -1,3 +1,5 @@
+export const DEFAULT_QUICK_ACCESS_URL = 'https://action.parabol.co/meetings';
+
 export const DEFAULT_AI_PROMPT =
   `You are an expert tech lead summarizing daily developer commits.\n` +
   `Summarize the provided git commits into maximum 5 concise, high-impact bullet points in English.\n\n` +

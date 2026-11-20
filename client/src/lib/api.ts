@@ -117,6 +117,7 @@ export const api = {
       language?: 'vi' | 'en';
       autoCopyToClipboard?: boolean;
       customPrompt?: string;
+      quickAccessUrl?: string;
       fetchPreferences?: Partial<FetchPreferences>;
     }) =>
       fetchJson<UserSettingsResponse>('/settings', {

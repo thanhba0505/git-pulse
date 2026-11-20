@@ -15,7 +15,7 @@ import {
   TaskColor,
   TrackingTask,
 } from '../types';
-import { DEFAULT_AI_PROMPT } from '../lib/ai-prompt.constants';
+import { DEFAULT_AI_PROMPT, DEFAULT_QUICK_ACCESS_URL } from '../lib/ai-prompt.constants';
 import { api } from '../lib/api';
 import { toTaskItemInput } from '../lib/activity-utils';
 import { useAuth } from '../lib/auth-context';
@@ -204,6 +204,7 @@ export default function HomePage() {
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
   const [customPrompt, setCustomPrompt] = useState('');
+  const [quickAccessUrl, setQuickAccessUrl] = useState<string>(DEFAULT_QUICK_ACCESS_URL);
   const [isAiSettingsModalOpen, setIsAiSettingsModalOpen] = useState(false);
   const [availability, setAvailability] = useState<AiAvailabilityState>({
     status: 'idle',
@@ -455,6 +456,7 @@ export default function HomePage() {
       setGithubModels([]);
       setAvailability({ status: 'idle', available: false });
       setCustomPrompt('');
+      setQuickAccessUrl(DEFAULT_QUICK_ACCESS_URL);
       setIsAiSettingsModalOpen(false);
       return;
     }
@@ -474,6 +476,11 @@ export default function HomePage() {
       }
       if (settingsRes) {
         setCustomPrompt(settingsRes.customPrompt ?? '');
+        setQuickAccessUrl(
+          settingsRes.quickAccessUrl ||
+            settingsRes.fetchPreferences?.quickAccessUrl ||
+            DEFAULT_QUICK_ACCESS_URL,
+        );
       }
       setTasks(loadedTasks);
       setAiConnections(loadedConns);
@@ -618,11 +625,17 @@ export default function HomePage() {
     }
   };
 
-  const handleSaveAiSettings = async (next: { customPrompt: string }) => {
+  const handleSaveAiSettings = async (next: { customPrompt: string; quickAccessUrl: string }) => {
     const saved = await api.settings.update({
       customPrompt: next.customPrompt,
+      quickAccessUrl: next.quickAccessUrl,
+      fetchPreferences: {
+        ...fetchPrefs,
+        quickAccessUrl: next.quickAccessUrl,
+      },
     });
     setCustomPrompt(saved.customPrompt ?? '');
+    setQuickAccessUrl(saved.quickAccessUrl || next.quickAccessUrl);
     showToast({ title: dict.toasts.aiSettingsSaved, variant: 'success' });
   };
 
@@ -1194,6 +1207,7 @@ export default function HomePage() {
                     isGenerating={isGenerating}
                     modelUsed={modelUsed}
                     onUpdateBullets={setBullets}
+                    quickAccessUrl={quickAccessUrl}
                   />
                 </div>
               </div>
@@ -1256,6 +1270,7 @@ export default function HomePage() {
         isOpen={isAiSettingsModalOpen}
         onClose={() => setIsAiSettingsModalOpen(false)}
         customPrompt={customPrompt}
+        quickAccessUrl={quickAccessUrl}
         onSave={handleSaveAiSettings}
       />
 

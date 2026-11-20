@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Pencil } from 'lucide-react';
+import { Copy, Check, Pencil, ExternalLink } from 'lucide-react';
 import { useTranslation } from '../../i18n';
+import { DEFAULT_QUICK_ACCESS_URL } from '../../lib/ai-prompt.constants';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { StandupOutputSkeleton } from '../ui/Skeleton';
 import { useToast } from '../ui/Toast';
@@ -12,6 +13,7 @@ interface StandupOutputDockProps {
   isGenerating?: boolean;
   modelUsed?: string;
   onUpdateBullets?: (updated: string[]) => void;
+  quickAccessUrl?: string;
 }
 
 export function StandupOutputDock({
@@ -19,6 +21,7 @@ export function StandupOutputDock({
   isGenerating = false,
   modelUsed,
   onUpdateBullets,
+  quickAccessUrl = DEFAULT_QUICK_ACCESS_URL,
 }: StandupOutputDockProps) {
   const { dict } = useTranslation();
   const { showToast } = useToast();
@@ -156,6 +159,16 @@ export function StandupOutputDock({
               )}
               <span>{copied ? dict.common.copied : dict.common.copy}</span>
             </button>
+
+            <a
+              href={quickAccessUrl || DEFAULT_QUICK_ACCESS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium border border-white/[0.16] hover:border-sky-400/40 text-slate-100 hover:text-sky-200 bg-white/[0.08] hover:bg-sky-500/15 transition-colors cursor-pointer active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+            >
+              <span>{dict.standupDock.quickAccessLink}</span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+            </a>
           </div>
         </div>
 
