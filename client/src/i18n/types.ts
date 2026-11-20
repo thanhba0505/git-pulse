@@ -360,6 +360,9 @@ export interface AuthDictionary {
   backToLogin: string;
   devAccountHelper: string;
   googleDevBtn: string;
+  continueWithGoogle: string;
+  signUpWithGoogle: string;
+  googleConnecting: string;
   googleUnconfigured: string;
   googleNoCredential: string;
   googleAuthFailed: string;
