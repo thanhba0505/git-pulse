@@ -72,7 +72,7 @@ function CommitTimelineList({
   extraClass?: string;
 }) {
   return (
-    <ul role="list" className={`space-y-1.5 pl-3 border-l border-slate-600/80 ${extraClass}`}>
+    <ul role="list" className={`space-y-1.5 ${extraClass}`}>
       {commits.map((commit, idx) => {
         const commitUrl = commit.sha
           ? `https://github.com/${repo}/commit/${encodeURIComponent(commit.sha)}`
@@ -518,8 +518,8 @@ export function PrActivityCard({
 
       {/* Commits Timeline */}
       {commitRows.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-700/80 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+        <div className="mt-3 pt-3 border-t border-slate-700/80">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-xs font-mono text-slate-400 flex items-center gap-2 tabular-nums">
               <GitCommit className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
               <span>{t('scanner.commitsCount', { count: commitRows.length })}</span>
@@ -549,22 +549,24 @@ export function PrActivityCard({
             )}
           </div>
 
-          {previewCommits.length > 0 && (
-            <CommitTimelineList commits={previewCommits} repo={pr.repo} fallbackUrl={pr.prUrl} />
-          )}
+          <div className="pl-3 border-l border-slate-600/80">
+            {previewCommits.length > 0 && (
+              <CommitTimelineList commits={previewCommits} repo={pr.repo} fallbackUrl={pr.prUrl} />
+            )}
 
-          {hasCollapsibleCommits && (
-            <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
-              <div className="gp-accordion-inner">
-                <CommitTimelineList
-                  commits={hiddenCommits}
-                  repo={pr.repo}
-                  fallbackUrl={pr.prUrl}
-                  extraClass="pt-1"
-                />
+            {hasCollapsibleCommits && (
+              <div className="gp-accordion-grid" data-open={isExpanded ? 'true' : 'false'}>
+                <div className="gp-accordion-inner">
+                  <CommitTimelineList
+                    commits={hiddenCommits}
+                    repo={pr.repo}
+                    fallbackUrl={pr.prUrl}
+                    extraClass={previewCommits.length > 0 ? 'pt-1.5' : ''}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </>
