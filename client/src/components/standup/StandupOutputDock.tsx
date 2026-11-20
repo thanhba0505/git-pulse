@@ -167,19 +167,19 @@ export function StandupOutputDock({
             placeholder={dict.standupDock.editPlaceholder}
             rows={Math.max(4, activeBullets.length + 1)}
             aria-label={dict.common.edit}
-            className="w-full p-4 rounded-lg bg-[#152033] border border-sky-400/70 focus:ring-2 focus:ring-sky-500/25 font-mono text-xs sm:text-sm text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y"
+            className="w-full p-4 rounded-lg bg-[#152033] border border-sky-400/70 focus:ring-2 focus:ring-sky-500/25 text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y"
           />
         ) : (
-          <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
-            <div className="text-slate-200 font-semibold mb-2.5 select-none">Today:</div>
-            <ul role="list" className="space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 text-xs text-slate-200 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
+            <div className="text-slate-200 font-semibold mb-2 select-none">Today:</div>
+            <ul role="list" className="space-y-2">
               {activeBullets.map((bullet, idx) => (
                 <li
                   key={`${idx}-${bullet.slice(0, 12)}`}
                   style={{ '--stagger-idx': idx } as React.CSSProperties}
-                  className="flex items-start gap-3 gp-stagger-item"
+                  className="flex items-start gap-2.5 gp-stagger-item"
                 >
-                  <span className="text-sky-400 font-bold select-none" aria-hidden="true">
+                  <span className="text-sky-400 font-bold select-none shrink-0" aria-hidden="true">
                     •
                   </span>
                   <span className="break-words min-w-0">{bullet}</span>
