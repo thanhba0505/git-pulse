@@ -663,6 +663,36 @@ dialog.gp-top-dialog:modal {
   animation: gp-menu-exit 125ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
+/* Popover & Select Menu Panel (Ultra-slim 3px scrollbar & zero artificial symmetric gutters) */
+.gp-menu-panel {
+  scrollbar-gutter: auto !important;
+}
+
+.gp-menu-panel::-webkit-scrollbar {
+  width: 3px !important;
+  height: 3px !important;
+}
+
+.gp-menu-panel::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.gp-menu-panel::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 9999px !important;
+}
+
+.gp-menu-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.7) !important;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .gp-menu-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  }
+}
+
 .gp-toast-enter {
   animation: gp-toast-in 260ms var(--ease-smooth-out) both;
   animation-timing-function: var(--ease-spring);
