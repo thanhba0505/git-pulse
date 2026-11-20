@@ -10,7 +10,7 @@ import { Footer } from '../../../components/layout/Footer';
 function SsoCallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginWithSso } = useAuth();
+  const { loginWithSso, loginWithGoogle } = useAuth();
   const { dict } = useTranslation();
 
   const code = searchParams.get('code');
@@ -21,6 +21,54 @@ function SsoCallbackHandler() {
     let mounted = true;
 
     async function handleExchange() {
+      // 1. Check for Google OAuth id_token in URL hash (#id_token=...)
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+      const idToken = hashParams.get('id_token');
+      const hashError = hashParams.get('error') || searchParams.get('error');
+
+      if (hashError) {
+        if (typeof window !== 'undefined' && window.opener) {
+          window.opener.postMessage(
+            { type: 'GOOGLE_AUTH_ERROR', error: hashError },
+            window.location.origin,
+          );
+          window.close();
+          return;
+        }
+        if (mounted) {
+          setError(hashError);
+          setStatus('failed');
+        }
+        return;
+      }
+
+      if (idToken) {
+        if (typeof window !== 'undefined' && window.opener) {
+          window.opener.postMessage(
+            { type: 'GOOGLE_AUTH_SUCCESS', credential: idToken },
+            window.location.origin,
+          );
+          window.close();
+          return;
+        }
+
+        const result = await loginWithGoogle({ credential: idToken });
+        if (mounted) {
+          if (result.success) {
+            setStatus('success');
+            setTimeout(() => {
+              router.push('/');
+            }, 600);
+          } else {
+            setError(result.error || dict.auth.googleAuthFailed);
+            setStatus('failed');
+          }
+        }
+        return;
+      }
+
+      // 2. Check for Gateway Authorization Code SSO (?code=...)
       if (!code) {
         if (mounted) {
           setError(dict.auth.callback.missingCode);
@@ -54,7 +102,7 @@ function SsoCallbackHandler() {
     return () => {
       mounted = false;
     };
-  }, [code, loginWithSso, router, dict]);
+  }, [code, loginWithSso, loginWithGoogle, router, searchParams, dict]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
