@@ -187,15 +187,12 @@ export const vi: TranslationDictionary = {
   },
   aiSettingsModal: {
     title: 'Cài đặt AI tạo báo cáo',
-    subtitle: 'Tùy chỉnh ngôn ngữ đầu ra và prompt hướng dẫn AI khi tổng hợp từ Commit.',
-    outputLangLabel: 'Ngôn ngữ báo cáo',
-    outputLangVi: 'Tiếng Việt',
-    outputLangEn: 'Tiếng Anh',
-    customPromptLabel: 'Prompt tùy chỉnh cho AI',
+    subtitle: 'Tùy chỉnh prompt hướng dẫn AI khi tổng hợp báo cáo từ Commit.',
+    customPromptLabel: 'Prompt hướng dẫn cho AI',
     customPromptPlaceholder:
-      'VD: Tóm tắt ngắn gọn thành 3-5 gạch đầu dòng theo tính năng chính, bỏ qua các commit format/chore...',
+      'Nhập prompt hướng dẫn AI tổng hợp báo cáo (bao gồm ngôn ngữ, định dạng và giới hạn dòng)...',
     customPromptHint:
-      'Để trống để dùng prompt mặc định (tóm tắt dựa trên nội dung các commit theo repo, bỏ qua tiêu đề PR).',
+      'Prompt mặc định tạo tối đa 5 gạch đầu dòng bắt đầu bằng Today: và động từ quá khứ.',
     resetPromptBtn: 'Khôi phục mặc định',
     charCount: '{count}/2000 ký tự',
     saveError: 'Không thể lưu cài đặt AI. Vui lòng thử lại.',

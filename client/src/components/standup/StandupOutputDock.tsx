@@ -27,8 +27,12 @@ export function StandupOutputDock({
   const [draftText, setDraftText] = useState('');
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const formatFullStandup = (items: string[]) => {
+    return ['Today:', ...items.map((b) => `• ${b}`)].join('\n');
+  };
+
   useEffect(() => {
-    setDraftText(bullets.join('\n'));
+    setDraftText(formatFullStandup(bullets));
     setIsEditing(false);
   }, [bullets]);
 
@@ -47,11 +51,14 @@ export function StandupOutputDock({
   const activeBullets = isEditing
     ? draftText
         .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !/^today:?$/i.test(l))
         .map((l) => l.replace(/^[-*•]\s*/, '').trim())
         .filter((l) => l.length > 0)
     : bullets;
 
-  const standupText = activeBullets.map((b) => `• ${b}`).join('\n');
+  const standupText =
+    isEditing && draftText.trim().length > 0 ? draftText.trim() : formatFullStandup(activeBullets);
 
   const handleCopy = async () => {
     try {
@@ -72,6 +79,8 @@ export function StandupOutputDock({
     if (isEditing && onUpdateBullets) {
       const normalized = draftText
         .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !/^today:?$/i.test(l))
         .map((l) => l.replace(/^[-*•]\s*/, '').trim())
         .filter((l) => l.length > 0);
       if (normalized.length > 0) {
@@ -80,7 +89,7 @@ export function StandupOutputDock({
       setIsEditing(false);
       return;
     }
-    setDraftText(bullets.join('\n'));
+    setDraftText(formatFullStandup(bullets));
     setIsEditing(true);
   };
 
@@ -162,6 +171,7 @@ export function StandupOutputDock({
           />
         ) : (
           <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
+            <div className="text-slate-200 font-semibold mb-2.5 select-none">Today:</div>
             <ul role="list" className="space-y-2.5">
               {activeBullets.map((bullet, idx) => (
                 <li

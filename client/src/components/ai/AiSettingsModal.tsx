@@ -2,51 +2,39 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../../i18n';
+import { DEFAULT_AI_PROMPT } from '../../lib/ai-prompt.constants';
 import { ModalDialog } from '../ui/ModalDialog';
-import { Select, SelectOption } from '../ui/Select';
 import { AlertCircle, Loader2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 
 interface AiSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  language: 'vi' | 'en';
   customPrompt: string;
-  onSave: (next: { language: 'vi' | 'en'; customPrompt: string }) => Promise<void>;
+  onSave: (next: { customPrompt: string }) => Promise<void>;
 }
 
 const MAX_PROMPT_LENGTH = 2000;
 
-export function AiSettingsModal({
-  isOpen,
-  onClose,
-  language,
-  customPrompt,
-  onSave,
-}: AiSettingsModalProps) {
+export function AiSettingsModal({ isOpen, onClose, customPrompt, onSave }: AiSettingsModalProps) {
   const { dict, t } = useTranslation();
-  const [draftLang, setDraftLang] = useState<'vi' | 'en'>(language);
-  const [draftPrompt, setDraftPrompt] = useState(customPrompt);
+  const [draftPrompt, setDraftPrompt] = useState(
+    customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    setDraftLang(language);
-    setDraftPrompt(customPrompt);
+    setDraftPrompt(customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT);
     setError(null);
-  }, [isOpen, language, customPrompt]);
-
-  const outputLanguageOptions: readonly SelectOption<'vi' | 'en'>[] = [
-    { value: 'vi', label: dict.aiSettingsModal.outputLangVi },
-    { value: 'en', label: dict.aiSettingsModal.outputLangEn },
-  ];
+  }, [isOpen, customPrompt]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSaving(true);
     setError(null);
     try {
-      await onSave({ language: draftLang, customPrompt: draftPrompt.trim() });
+      await onSave({ customPrompt: draftPrompt.trim() });
       onClose();
     } catch (err) {
       setError((err as Error).message || dict.aiSettingsModal.saveError);
@@ -55,12 +43,14 @@ export function AiSettingsModal({
     }
   };
 
+  const isPromptCustomized = draftPrompt.trim() !== DEFAULT_AI_PROMPT.trim();
+
   return (
     <ModalDialog
       isOpen={isOpen}
       onClose={onClose}
       labelledBy="ai-settings-modal-title"
-      maxWidthClass="max-w-lg"
+      maxWidthClass="max-w-xl"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-700/80 shrink-0">
@@ -110,24 +100,15 @@ export function AiSettingsModal({
           </div>
         )}
 
-        <Select
-          id="ai-settings-language"
-          label={dict.aiSettingsModal.outputLangLabel}
-          value={draftLang}
-          options={outputLanguageOptions}
-          onChange={setDraftLang}
-          disabled={isSaving}
-        />
-
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="ai-custom-prompt" className="text-xs font-medium text-slate-300">
               {dict.aiSettingsModal.customPromptLabel}
             </label>
-            {draftPrompt.trim().length > 0 && (
+            {isPromptCustomized && (
               <button
                 type="button"
-                onClick={() => setDraftPrompt('')}
+                onClick={() => setDraftPrompt(DEFAULT_AI_PROMPT)}
                 disabled={isSaving}
                 className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
               >
@@ -142,11 +123,11 @@ export function AiSettingsModal({
             value={draftPrompt}
             onChange={(e) => setDraftPrompt(e.target.value)}
             maxLength={MAX_PROMPT_LENGTH}
-            rows={5}
+            rows={10}
             disabled={isSaving}
             placeholder={dict.aiSettingsModal.customPromptPlaceholder}
             aria-describedby="ai-custom-prompt-hint"
-            className="w-full p-3.5 rounded-xl bg-[#152033] border border-slate-600/85 hover:border-slate-500 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25 text-xs sm:text-sm text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y transition-colors disabled:opacity-50"
+            className="w-full p-3.5 rounded-xl bg-[#152033] border border-slate-600/85 hover:border-slate-500 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25 font-mono text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y transition-colors disabled:opacity-50"
           />
 
           <div className="flex items-start justify-between gap-3">

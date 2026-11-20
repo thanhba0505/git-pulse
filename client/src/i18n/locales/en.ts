@@ -186,15 +186,12 @@ export const en: TranslationDictionary = {
   },
   aiSettingsModal: {
     title: 'AI Report Settings',
-    subtitle: 'Customize report output language and prompt instructions for commit synthesis.',
-    outputLangLabel: 'Report language',
-    outputLangVi: 'Vietnamese',
-    outputLangEn: 'English',
-    customPromptLabel: 'Custom AI Prompt',
+    subtitle: 'Customize prompt instructions for AI commit synthesis.',
+    customPromptLabel: 'AI Instruction Prompt',
     customPromptPlaceholder:
-      'e.g., Summarize into 3-5 concise bullets grouped by feature, ignoring chore/lint commits...',
+      'Enter AI prompt instructions for summarizing commits (including language, format, and line limits)...',
     customPromptHint:
-      'Leave blank to use the default commit-only prompt (ignores PR titles and focuses strictly on commit messages).',
+      'Default prompt creates up to 5 bullet points starting with Today: and past-tense verbs.',
     resetPromptBtn: 'Reset to default',
     charCount: '{count}/2000 chars',
     saveError: 'Failed to save AI settings. Please try again.',

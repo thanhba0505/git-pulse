@@ -196,9 +196,6 @@ export interface AiConsoleDictionary {
 export interface AiSettingsModalDictionary {
   title: string;
   subtitle: string;
-  outputLangLabel: string;
-  outputLangVi: string;
-  outputLangEn: string;
   customPromptLabel: string;
   customPromptPlaceholder: string;
   customPromptHint: string;
