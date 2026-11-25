@@ -24,21 +24,29 @@ import {
 interface AiConnectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultUsername: string;
+  defaultUsername?: string;
   editingConnection?: AiConnectionSummary | null;
   onSaved: (connection: AiConnectionSummary, isUpdate: boolean, preferredModel?: string) => void;
+}
+
+function maskApiKey(rawKey: string): string {
+  const key = rawKey.trim();
+  if (key.length <= 8) {
+    return '••••';
+  }
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
 }
 
 export function AiConnectModal({
   isOpen,
   onClose,
-  defaultUsername,
   editingConnection = null,
   onSaved,
 }: AiConnectModalProps) {
   const { dict, t } = useTranslation();
   const [provider, setProvider] = useState<AiProviderType>('GROQ');
   const [labelInput, setLabelInput] = useState('');
+  const [isLabelCustomized, setIsLabelCustomized] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [hasTouchedKey, setHasTouchedKey] = useState(false);
@@ -56,6 +64,7 @@ export function AiConnectModal({
     if (!isOpen) return;
     setProvider(editingConnection?.provider ?? 'GROQ');
     setLabelInput(editingConnection?.label ?? '');
+    setIsLabelCustomized(Boolean(editingConnection?.label));
     setApiKeyInput('');
     setShowKey(false);
     setHasTouchedKey(false);
@@ -105,6 +114,9 @@ export function AiConnectModal({
     setIsPreviewing(true);
     setApiKeyError(null);
     setServerError(null);
+    if (!isLabelCustomized && !labelInput.trim()) {
+      setLabelInput(maskApiKey(cleanKey));
+    }
     try {
       const res = await api.ai.previewModels({ provider, apiKey: cleanKey });
       setPreviewModels(res.models);
@@ -131,10 +143,11 @@ export function AiConnectModal({
     setApiKeyError(null);
     setServerError(null);
     try {
+      const cleanLabel = labelInput.trim() || maskApiKey(cleanKey);
       const payload = {
         provider,
         apiKey: cleanKey,
-        ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
+        label: cleanLabel,
       };
       const saved = editingConnection
         ? await api.ai.updateConnection(editingConnection.id, payload)
@@ -228,9 +241,12 @@ export function AiConnectModal({
           type="text"
           label={dict.aiModal.labelField}
           value={labelInput}
-          onChange={(e) => setLabelInput(e.target.value)}
-          placeholder={t('aiModal.labelPlaceholder', { username: defaultUsername })}
-          hint={t('aiModal.labelHint', { username: defaultUsername })}
+          onChange={(e) => {
+            setLabelInput(e.target.value);
+            setIsLabelCustomized(true);
+          }}
+          placeholder={dict.aiModal.labelPlaceholder}
+          hint={dict.aiModal.labelHint}
           maxLength={80}
           autoComplete="off"
           disabled={isBusy}
@@ -276,7 +292,14 @@ export function AiConnectModal({
             onChange={(e) => {
               const nextVal = e.target.value;
               setApiKeyInput(nextVal);
-              if (nextVal.trim()) setHasTouchedKey(true);
+              if (nextVal.trim()) {
+                setHasTouchedKey(true);
+                if (!isLabelCustomized) {
+                  setLabelInput(maskApiKey(nextVal));
+                }
+              } else if (!isLabelCustomized) {
+                setLabelInput('');
+              }
               if (apiKeyError) setApiKeyError(null);
               if (serverError) setServerError(null);
               if (previewModels.length > 0) {

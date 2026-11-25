@@ -539,7 +539,21 @@ export default function HomePage() {
       if (status.connected) {
         void loadWorkspaces();
         void scanRef.current(targetRange, false, status, false);
-        void checkModelAvailability(initialToolKey, initialModel);
+        if (initialToolKey.startsWith('conn:')) {
+          const targetId = initialToolKey.slice(5);
+          const matched = loadedConns.find((c) => c.id === targetId);
+          if (matched && matched.status === 'ACTIVE' && matched.availableModels.length > 0) {
+            setAvailability({
+              status: 'available',
+              available: true,
+              latencyMs: undefined,
+            });
+          } else {
+            void checkModelAvailability(initialToolKey, initialModel);
+          }
+        } else {
+          void checkModelAvailability(initialToolKey, initialModel);
+        }
       }
     });
   }, [userId, loadGitStatus, loadWorkspaces, resolveDefaultModelForTool, checkModelAvailability]);
@@ -735,6 +749,19 @@ export default function HomePage() {
       setSelectedModel(nextModel);
       setAiError(null);
       persistAiSelection(userId, nextToolKey, nextModel);
+
+      if (nextToolKey.startsWith('conn:')) {
+        const targetId = nextToolKey.slice(5);
+        const matched = aiConnections.find((c) => c.id === targetId);
+        if (matched && matched.status === 'ACTIVE' && matched.availableModels.length > 0) {
+          setAvailability({
+            status: 'available',
+            available: true,
+            latencyMs: undefined,
+          });
+          return;
+        }
+      }
       void checkModelAvailability(nextToolKey, nextModel);
     },
     [
@@ -752,9 +779,26 @@ export default function HomePage() {
       setSelectedModel(nextModel);
       setAiError(null);
       persistAiSelection(userId, selectedToolKey, nextModel);
+
+      if (selectedToolKey.startsWith('conn:')) {
+        const targetId = selectedToolKey.slice(5);
+        const matched = aiConnections.find((c) => c.id === targetId);
+        if (
+          matched &&
+          matched.status === 'ACTIVE' &&
+          matched.availableModels.some((m) => m.id === nextModel)
+        ) {
+          setAvailability({
+            status: 'available',
+            available: true,
+            latencyMs: undefined,
+          });
+          return;
+        }
+      }
       void checkModelAvailability(selectedToolKey, nextModel);
     },
-    [checkModelAvailability, persistAiSelection, selectedToolKey, userId],
+    [aiConnections, checkModelAvailability, persistAiSelection, selectedToolKey, userId],
   );
 
   const handleAiConnectionSaved = useCallback(

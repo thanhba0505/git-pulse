@@ -144,7 +144,7 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
-    const label = dto.label?.trim() || defaultLabel.trim() || 'Cá nhân';
+    const label = dto.label?.trim() || maskApiKey(cleanKey);
     const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
 
     const encrypted = this.crypto.encrypt(cleanKey, userId);
@@ -195,7 +195,7 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
-    const label = dto.label?.trim() || existing.label || defaultLabel.trim() || 'Cá nhân';
+    const label = dto.label?.trim() || existing.label || maskApiKey(cleanKey);
     const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
     const encrypted = this.crypto.encrypt(cleanKey, userId);
 
@@ -343,6 +343,30 @@ export class AiService {
     return this.verifyAndFetchGeminiModels(userId, apiKey, meta, auditAction);
   }
 
+  private async probeGroqModel(apiKey: string, modelId: string): Promise<boolean> {
+    try {
+      const probeRes = await this.fetchWithTimeout(
+        `${GROQ_API_BASE_URL}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelId.trim(),
+            messages: [{ role: 'user', content: 'Ping' }],
+            max_tokens: 1,
+          }),
+        },
+        5000,
+      );
+      return probeRes.ok;
+    } catch {
+      return false;
+    }
+  }
+
   private async verifyAndFetchGroqModels(
     userId: string,
     apiKey: string,
@@ -387,8 +411,49 @@ export class AiService {
       throw new BadRequestException(`API Key Groq không hợp lệ hoặc bị từ chối: ${safeErr}`);
     }
 
-    const filtered = filterAndSortGroqModels(body.data ?? []);
-    return filtered.length > 0 ? filtered : [...DEFAULT_GROQ_MODELS];
+    const candidates = filterAndSortGroqModels(body.data ?? []);
+    const targetCandidates =
+      candidates.length > 0 ? candidates.slice(0, 10) : [...DEFAULT_GROQ_MODELS];
+
+    const probeResults = await Promise.allSettled(
+      targetCandidates.map(async (candidate) => {
+        const ok = await this.probeGroqModel(apiKey, candidate.id);
+        return { candidate, ok };
+      }),
+    );
+
+    const verified = probeResults
+      .filter(
+        (r): r is PromiseFulfilledResult<{ candidate: AiModelOption; ok: boolean }> =>
+          r.status === 'fulfilled' && r.value.ok,
+      )
+      .map((r) => r.value.candidate);
+
+    return verified.length > 0 ? verified : targetCandidates.slice(0, 2);
+  }
+
+  private async probeGeminiModel(apiKey: string, modelId: string): Promise<boolean> {
+    try {
+      const cleanModel = modelId.trim().replace(/^models\//, '');
+      const probeRes = await this.fetchWithTimeout(
+        `${GEMINI_API_BASE_URL}/models/${encodeURIComponent(cleanModel)}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: 'Ping' }] }],
+            generationConfig: { maxOutputTokens: 1, temperature: 0.1 },
+          }),
+        },
+        6000,
+      );
+      return probeRes.ok;
+    } catch {
+      return false;
+    }
   }
 
   private async verifyAndFetchGeminiModels(
@@ -433,8 +498,25 @@ export class AiService {
       );
     }
 
-    const filtered = filterAndSortGeminiModels(body.models ?? []);
-    return filtered.length > 0 ? filtered : [...DEFAULT_GEMINI_MODELS];
+    const candidates = filterAndSortGeminiModels(body.models ?? []);
+    const targetCandidates =
+      candidates.length > 0 ? candidates.slice(0, 10) : [...DEFAULT_GEMINI_MODELS];
+
+    const probeResults = await Promise.allSettled(
+      targetCandidates.map(async (candidate) => {
+        const ok = await this.probeGeminiModel(apiKey, candidate.id);
+        return { candidate, ok };
+      }),
+    );
+
+    const verified = probeResults
+      .filter(
+        (r): r is PromiseFulfilledResult<{ candidate: AiModelOption; ok: boolean }> =>
+          r.status === 'fulfilled' && r.value.ok,
+      )
+      .map((r) => r.value.candidate);
+
+    return verified.length > 0 ? verified : targetCandidates.slice(0, 2);
   }
 
   async checkAvailability(
