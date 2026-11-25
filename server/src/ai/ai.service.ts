@@ -510,7 +510,7 @@ export class AiService {
           model,
           latencyMs,
           reasonCode: 'SERVICE_UNAVAILABLE',
-          reason: `GitHub Models không khả dụng (HTTP ${response.status}). Hãy thêm Google Gemini để tiếp tục.`,
+          reason: `GitHub Models không khả dụng (HTTP ${response.status}).`,
         };
       }
 
@@ -521,8 +521,7 @@ export class AiService {
           model,
           latencyMs,
           reasonCode: 'SERVICE_UNAVAILABLE',
-          reason:
-            'GitHub Models API đã ngừng hoạt động hoặc không phản hồi danh mục mô hình. Hãy thêm Google Gemini để sử dụng.',
+          reason: 'GitHub Models API đã ngừng hoạt động hoặc không phản hồi danh mục mô hình.',
         };
       }
 
@@ -536,7 +535,7 @@ export class AiService {
           model,
           latencyMs,
           reasonCode: 'SERVICE_UNAVAILABLE',
-          reason: 'GitHub Models API không khả dụng. Hãy thêm Google Gemini để sử dụng.',
+          reason: 'GitHub Models API không khả dụng.',
         };
       }
 
@@ -1134,7 +1133,7 @@ export class AiService {
       );
     } catch {
       throw new BadRequestException(
-        'Không thể kết nối tới GitHub Models API. Vui lòng kiểm tra kết nối hoặc sử dụng Google Gemini.',
+        'Không thể kết nối tới GitHub Models API. Vui lòng kiểm tra lại kết nối mạng.',
       );
     }
 
@@ -1152,15 +1151,13 @@ export class AiService {
       const err = (await response.json().catch(() => ({}))) as { message?: string };
       throw new BadRequestException(
         redactTokens(
-          `Lỗi gọi GitHub Models API: ${err.message || response.statusText}. Đảm bảo dịch vụ GitHub Models vẫn khả dụng hoặc thêm Google Gemini.`,
+          `Lỗi gọi GitHub Models API: ${err.message || response.statusText}. Đảm bảo dịch vụ GitHub Models vẫn khả dụng.`,
         ),
       );
     }
 
     if (!isJsonContentType(response.headers.get('content-type'))) {
-      throw new BadRequestException(
-        'GitHub Models API đã ngừng hoạt động hoặc không trả về JSON. Vui lòng thêm Google Gemini để tạo báo cáo.',
-      );
+      throw new BadRequestException('GitHub Models API đã ngừng hoạt động hoặc không trả về JSON.');
     }
 
     const data = (await response.json()) as ChatCompletionsResponse;
