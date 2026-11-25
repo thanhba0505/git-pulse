@@ -46,11 +46,6 @@ interface ActivityScannerProps {
   workspaces: GitHubWorkspacesResponse | null;
   includePersonalEnabled: boolean;
   onOpenFetchSettings: () => void;
-  selectedPrKeys: ReadonlySet<string>;
-  onTogglePrSelection: (key: string) => void;
-  onSelectKeysBatch: (keys: string[], select: boolean) => void;
-  onSelectAllPrs: () => void;
-  onClearPrSelection: () => void;
   tasks: TrackingTask[];
   onCreateTask: (title: string, color: TaskColor, prs: PrActivity[]) => Promise<void>;
   onRenameTask: (taskId: string, title: string, color: TaskColor) => Promise<void>;
@@ -85,11 +80,6 @@ export function ActivityScanner({
   workspaces,
   includePersonalEnabled,
   onOpenFetchSettings,
-  selectedPrKeys,
-  onTogglePrSelection,
-  onSelectKeysBatch,
-  onSelectAllPrs,
-  onClearPrSelection,
   tasks,
   onCreateTask,
   onRenameTask,
@@ -108,14 +98,8 @@ export function ActivityScanner({
       { value: 'owner', label: dict.scanner.groupOwner },
       { value: 'task', label: dict.scanner.groupTask },
       { value: 'repo', label: dict.scanner.groupRepo },
-      { value: 'flat', label: dict.scanner.groupFlat },
     ],
-    [
-      dict.scanner.groupOwner,
-      dict.scanner.groupTask,
-      dict.scanner.groupRepo,
-      dict.scanner.groupFlat,
-    ],
+    [dict.scanner.groupOwner, dict.scanner.groupTask, dict.scanner.groupRepo],
   );
 
   const uniqueRepos = useMemo(
@@ -187,10 +171,6 @@ export function ActivityScanner({
     }));
   }, [visibleActivities]);
 
-  const selectedInVisible = visibleActivities.filter((pr) =>
-    selectedPrKeys.has(computePrKey(pr)),
-  ).length;
-
   const hasPersonalActivities = activities.some((a) => a.ownerType === 'personal');
   const shouldShowPersonalAccessHint =
     !isLoading &&
@@ -214,8 +194,6 @@ export function ActivityScanner({
     items: PrActivity[],
   ) => {
     const isCollapsed = collapsedSections.has(sectionKey);
-    const keys = items.map(computePrKey);
-    const allSelected = keys.length > 0 && keys.every((k) => selectedPrKeys.has(k));
     const sectionCommits = items.reduce((sum, item) => sum + item.commits.length, 0);
 
     return (
@@ -243,18 +221,6 @@ export function ActivityScanner({
               aria-hidden="true"
             />
           </button>
-
-          <button
-            type="button"
-            onClick={() => onSelectKeysBatch(keys, !allSelected)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-              allSelected
-                ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 hover:bg-sky-500/20'
-                : 'bg-white/[0.07] text-slate-200 hover:text-white border-white/[0.14] hover:border-white/[0.24]'
-            }`}
-          >
-            {allSelected ? dict.scanner.clearGroup : dict.scanner.selectGroup}
-          </button>
         </div>
 
         {!isCollapsed && (
@@ -264,10 +230,8 @@ export function ActivityScanner({
                 key={computePrKey(pr)}
                 pr={pr}
                 index={idx}
-                isSelected={selectedPrKeys.has(computePrKey(pr))}
                 compactCommits={compactCommits}
                 tasks={tasks}
-                onToggleSelect={onTogglePrSelection}
                 onToggleTaskAssignment={onToggleTaskAssignment}
                 onCreateTaskWithPr={async (taskTitle, targetPr) => {
                   await onCreateTask(taskTitle, 'sky', [targetPr]);
@@ -354,42 +318,6 @@ export function ActivityScanner({
               className="max-w-full overflow-x-auto"
               options={groupByOptions}
             />
-
-            {activities.length > 0 && (
-              <div
-                className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs ml-auto transition-opacity duration-200 ${
-                  groupBy === 'task'
-                    ? 'opacity-0 pointer-events-none select-none invisible'
-                    : 'opacity-100'
-                }`}
-              >
-                <span className="text-slate-300 tabular-nums whitespace-nowrap">
-                  {t('scanner.selectedSummary', {
-                    selected: selectedInVisible,
-                    total: visibleActivities.length,
-                  })}
-                </span>
-                <div className="flex items-center gap-2 border-l border-slate-600/80 pl-3 shrink-0">
-                  <button
-                    type="button"
-                    onClick={onSelectAllPrs}
-                    className="text-sky-400 hover:text-sky-300 font-medium cursor-pointer transition-colors whitespace-nowrap"
-                  >
-                    {dict.scanner.selectAll}
-                  </button>
-                  <span className="text-slate-400/70" aria-hidden="true">
-                    /
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onClearPrSelection}
-                    className="text-slate-300 hover:text-white font-medium cursor-pointer transition-colors whitespace-nowrap"
-                  >
-                    {dict.scanner.clearSelection}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* State & Repo Filter Bar */}
@@ -521,9 +449,7 @@ export function ActivityScanner({
             <TaskTrackerView
               tasks={tasks}
               activities={activities}
-              selectedPrKeys={selectedPrKeys}
               compactCommits={compactCommits}
-              onTogglePrSelection={onTogglePrSelection}
               onCreateTask={onCreateTask}
               onRenameTask={onRenameTask}
               onToggleTaskComplete={onToggleTaskComplete}
@@ -567,10 +493,8 @@ export function ActivityScanner({
                     key={computePrKey(pr)}
                     pr={pr}
                     index={index}
-                    isSelected={selectedPrKeys.has(computePrKey(pr))}
                     compactCommits={compactCommits}
                     tasks={tasks}
-                    onToggleSelect={onTogglePrSelection}
                     onToggleTaskAssignment={onToggleTaskAssignment}
                     onCreateTaskWithPr={async (taskTitle, targetPr) => {
                       await onCreateTask(taskTitle, 'sky', [targetPr]);

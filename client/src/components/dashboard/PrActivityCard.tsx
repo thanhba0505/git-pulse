@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { CommitItem, PrActivity, TaskColor, TrackingTask } from '../../types';
 import { useTranslation } from '../../i18n';
-import { formatRelativeTime, getPrKey, getPrStateStyle } from '../../lib/activity-utils';
+import { formatRelativeTime, getPrStateStyle } from '../../lib/activity-utils';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { DropdownMenu } from '../ui/DropdownMenu';
 import {
@@ -27,14 +27,11 @@ import {
 interface PrActivityCardProps {
   pr: PrActivity;
   index?: number;
-  isSelected: boolean;
   compactCommits: boolean;
   tasks: TrackingTask[];
-  onToggleSelect: (key: string) => void;
   onToggleTaskAssignment: (taskId: string, pr: PrActivity, isAssigned: boolean) => Promise<void>;
   onCreateTaskWithPr: (title: string, pr: PrActivity) => Promise<void>;
   variant?: 'card' | 'embedded';
-  disableStandupSelection?: boolean;
   statusNoteTag?: string;
   excludeTaskId?: string;
   hideTaskAssignMenu?: boolean;
@@ -110,14 +107,11 @@ function CommitTimelineList({
 export function PrActivityCard({
   pr,
   index,
-  isSelected,
   compactCommits,
   tasks,
-  onToggleSelect,
   onToggleTaskAssignment,
   onCreateTaskWithPr,
   variant = 'card',
-  disableStandupSelection = false,
   statusNoteTag,
   excludeTaskId,
   hideTaskAssignMenu = false,
@@ -129,7 +123,6 @@ export function PrActivityCard({
   const [quickTaskTitle, setQuickTaskTitle] = useState('');
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
 
-  const prKey = getPrKey(pr);
   const isDirectCommits = pr.activityType === 'direct_commits';
 
   const commitRows: CommitItem[] =
@@ -224,33 +217,12 @@ export function PrActivityCard({
     }
   };
 
-  const opacityClass = disableStandupSelection
-    ? 'opacity-100'
-    : isSelected
-      ? 'opacity-100'
-      : 'opacity-65';
+  const opacityClass = 'opacity-100';
 
   const cardBody = (
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          {!disableStandupSelection && (
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={isSelected}
-              aria-label={t('scanner.selectPrAria', { title: accessibleTitle })}
-              onClick={() => onToggleSelect(prKey)}
-              className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 ${
-                isSelected
-                  ? 'bg-sky-500 border-sky-400 text-slate-950'
-                  : 'bg-[#152033] border-slate-500/80 hover:border-sky-400/70 text-transparent'
-              }`}
-            >
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" aria-hidden="true" />
-            </button>
-          )}
-
           <div
             className={`w-9 h-9 rounded-lg bg-white/[0.08] border border-white/[0.14] flex items-center justify-center shrink-0 mt-0.5 ${stateInfo.iconClass}`}
             aria-hidden="true"

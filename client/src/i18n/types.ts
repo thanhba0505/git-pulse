@@ -185,6 +185,8 @@ export interface AiConsoleDictionary {
   updateKeyQuickBtn: string;
   expiresLabel: string;
   noExpiration: string;
+  selectedCommitsLabel: string;
+  viewCommitsBtn: string;
   generateBtn: string;
   generateSelectedBtn: string;
   generatingBtn: string;
@@ -341,6 +343,18 @@ export interface HistoryModalDictionary {
   confirmDeleteBtn: string;
 }
 
+export interface CommitModalDictionary {
+  title: string;
+  subtitle: string;
+  selectAll: string;
+  clearAll: string;
+  filterSavedNote: string;
+  noCommits: string;
+  selectedSummary: string;
+  commitsSelected: string;
+  applyBtn: string;
+}
+
 export interface AuthDictionary {
   workspaceLoading: string;
   brandTagline: string;
@@ -484,5 +498,6 @@ export interface TranslationDictionary {
   githubModal: GithubModalDictionary;
   settingsModal: SettingsModalDictionary;
   historyModal: HistoryModalDictionary;
+  commitModal: CommitModalDictionary;
   auth: AuthDictionary;
 }
