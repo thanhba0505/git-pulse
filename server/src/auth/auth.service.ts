@@ -126,7 +126,7 @@ export class AuthService {
   async login(
     user: AuthenticatedUser,
     response: Response,
-  ): Promise<{ message: string; user: AuthenticatedUser }> {
+  ): Promise<{ message: string; user: AuthenticatedUser; token: string }> {
     const payload = {
       sub: user.id,
       username: user.username,
@@ -140,7 +140,7 @@ export class AuthService {
     response.cookie('git_pulse_session', token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
       maxAge: maxAgeMs,
     });
@@ -148,7 +148,7 @@ export class AuthService {
     response.cookie('access_token', token, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
       maxAge: maxAgeMs,
     });
@@ -156,6 +156,7 @@ export class AuthService {
     return {
       message: 'Đăng nhập thành công',
       user,
+      token,
     };
   }
 
@@ -165,7 +166,7 @@ export class AuthService {
   async register(
     dto: RegisterDto,
     response: Response,
-  ): Promise<{ message: string; user: AuthenticatedUser }> {
+  ): Promise<{ message: string; user: AuthenticatedUser; token: string }> {
     let gwUser: GatewayUserPayload | null = null;
 
     try {
@@ -231,7 +232,7 @@ export class AuthService {
   async loginWithSso(
     dto: SsoCallbackDto,
     response: Response,
-  ): Promise<{ message: string; user: AuthenticatedUser }> {
+  ): Promise<{ message: string; user: AuthenticatedUser; token: string }> {
     let gatewayRes: globalThis.Response;
     try {
       gatewayRes = await fetch(`${this.gatewayUrl}/auth/oauth/token`, {
@@ -280,7 +281,7 @@ export class AuthService {
   async loginWithGoogle(
     dto: GoogleLoginDto,
     response: Response,
-  ): Promise<{ message: string; user: AuthenticatedUser }> {
+  ): Promise<{ message: string; user: AuthenticatedUser; token: string }> {
     let email = dto.email?.toLowerCase();
     let name = dto.name;
     let googleId = dto.googleId;

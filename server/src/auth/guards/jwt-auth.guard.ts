@@ -20,10 +20,12 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request & { user?: AuthenticatedUser }>();
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
     const token =
       req.cookies?.['git_pulse_session'] ||
       req.cookies?.['access_token'] ||
-      req.headers.authorization?.replace(/^Bearer\s+/i, '');
+      (bearerToken && bearerToken.length > 0 ? bearerToken : undefined);
 
     if (!token) {
       throw new UnauthorizedException(
