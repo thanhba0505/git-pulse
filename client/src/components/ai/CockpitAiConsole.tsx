@@ -9,7 +9,9 @@ import { ShowcaseCard } from '../ui/ShowcaseCard';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronRight,
   Clock,
+  GitCommit,
   KeyRound,
   Loader2,
   RefreshCw,
@@ -41,6 +43,8 @@ interface CockpitAiConsoleProps {
   error?: string | null;
   selectedPrCount: number;
   selectedCommitCount: number;
+  totalCommitCount?: number;
+  onOpenCommitSelector?: () => void;
 }
 
 export function CockpitAiConsole({
@@ -64,6 +68,8 @@ export function CockpitAiConsole({
   error,
   selectedPrCount,
   selectedCommitCount,
+  totalCommitCount = 0,
+  onOpenCommitSelector,
 }: CockpitAiConsoleProps) {
   const { dict, t, locale } = useTranslation();
 
@@ -166,11 +172,7 @@ export function CockpitAiConsole({
   const isGenerateDisabled =
     !hasSelection || isGenerating || isRefreshingModels || isChecking || isUnavailable;
 
-  const ctaText = isGenerating
-    ? dict.aiConsole.generatingBtn
-    : selectedCommitCount > 0
-      ? t('aiConsole.generateSelectedBtn', { count: selectedCommitCount })
-      : dict.aiConsole.generateBtn;
+  const ctaText = isGenerating ? dict.aiConsole.generatingBtn : dict.aiConsole.generateBtn;
 
   return (
     <ShowcaseCard as="section" aria-labelledby="ai-console-heading" className="p-5 sm:p-6">
@@ -337,6 +339,27 @@ export function CockpitAiConsole({
             <span className="leading-relaxed">{error}</span>
           </div>
         )}
+
+        {/* Selected Commits Trigger Row */}
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#152033]/80 border border-slate-700/80">
+          <div className="flex items-center gap-2 min-w-0">
+            <GitCommit className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
+            <span className="text-xs text-slate-300 font-mono font-medium truncate">
+              {t('aiConsole.selectedCommitsLabel', { count: selectedCommitCount })}
+            </span>
+          </div>
+          {onOpenCommitSelector && (
+            <button
+              type="button"
+              onClick={onOpenCommitSelector}
+              disabled={isGenerating || totalCommitCount === 0}
+              className="inline-flex items-center gap-1 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-sky-300 hover:text-sky-200 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            >
+              <span>{dict.aiConsole.viewCommitsBtn}</span>
+              <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
         {/* Primary Generate Button */}
         <button

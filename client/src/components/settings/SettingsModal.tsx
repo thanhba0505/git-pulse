@@ -560,7 +560,7 @@ export function SettingsModal({
                   {dict.settingsModal.defaultGroupByLabel}
                 </span>
                 <SegmentedControl
-                  value={draftPrefs.defaultGroupBy}
+                  value={draftPrefs.defaultGroupBy === 'flat' ? 'owner' : draftPrefs.defaultGroupBy}
                   onChange={(val) => setDraftPrefs((prev) => ({ ...prev, defaultGroupBy: val }))}
                   ariaLabel={dict.settingsModal.defaultGroupByLabel}
                   size="sm"
@@ -569,7 +569,6 @@ export function SettingsModal({
                     { value: 'owner', label: dict.scanner.groupOwner },
                     { value: 'task', label: dict.scanner.groupTask },
                     { value: 'repo', label: dict.scanner.groupRepo },
-                    { value: 'flat', label: dict.scanner.groupFlat },
                   ]}
                 />
               </div>

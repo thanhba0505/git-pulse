@@ -72,6 +72,12 @@ const AiSettingsModal = dynamic(
   { ssr: false },
 );
 
+const CommitSelectionModal = dynamic(
+  () => import('../components/ai/CommitSelectionModal').then((m) => m.CommitSelectionModal),
+  { ssr: false },
+);
+import type { SelectableCommit } from '../components/ai/CommitSelectionModal';
+
 const ACTIVITY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const DEFAULT_FETCH_PREFERENCES: FetchPreferences = {
@@ -197,7 +203,6 @@ export default function HomePage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [sinceOption, setSinceOption] = useState<'today' | '24h' | '7d'>('today');
   const [repoFilter, setRepoFilter] = useState<string>('ALL');
-  const [selectedPrKeys, setSelectedPrKeys] = useState<Set<string>>(() => new Set());
 
   const [aiConnections, setAiConnections] = useState<AiConnectionSummary[]>([]);
   const aiConnectionsRef = useRef<AiConnectionSummary[]>(aiConnections);
@@ -224,27 +229,170 @@ export default function HomePage() {
   const [modelUsed, setModelUsed] = useState<string>('');
   const availabilityCheckIdRef = useRef(0);
 
-  const selectedActivities = useMemo(() => {
-    const base =
-      groupBy === 'task' || repoFilter === 'ALL'
-        ? activities
-        : activities.filter((a) => a.repo === repoFilter);
-    return base.filter((pr) => selectedPrKeys.has(getPrKey(pr)));
-  }, [activities, groupBy, repoFilter, selectedPrKeys]);
+  // Persistent Commit Filter state (Personal / Organization)
+  const [includePersonalCommits, setIncludePersonalCommits] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const val = localStorage.getItem('gitpulse:commit_filter:personal');
+      return val !== null ? val === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
 
-  const selectedCommitCount = useMemo(
-    () =>
-      selectedActivities.reduce(
-        (total, activity) => total + activity.commits.filter((c) => c.trim().length > 0).length,
-        0,
-      ),
-    [selectedActivities],
+  const [includeOrgCommits, setIncludeOrgCommits] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const val = localStorage.getItem('gitpulse:commit_filter:org');
+      return val !== null ? val === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [selectedCommitIds, setSelectedCommitIds] = useState<Set<string>>(() => new Set());
+  const [isCommitModalOpen, setIsCommitModalOpen] = useState(false);
+
+  // Derive individual selectable commits from current activities
+  const allSelectableCommits = useMemo<SelectableCommit[]>(() => {
+    const list: SelectableCommit[] = [];
+    for (const act of activities) {
+      const prKey = getPrKey(act);
+      act.commits.forEach((msg, idx) => {
+        const trimmed = msg.trim();
+        if (!trimmed) return;
+        list.push({
+          id: `${prKey}::${idx}`,
+          prKey,
+          repo: act.repo,
+          prNumber: act.number,
+          prTitle: act.title,
+          prUrl: act.prUrl,
+          ownerType: act.ownerType,
+          owner: act.owner,
+          message: trimmed,
+        });
+      });
+    }
+    return list;
+  }, [activities]);
+
+  const selectedCommitCount = selectedCommitIds.size;
+
+  const selectedPrCount = useMemo(() => {
+    const prKeys = new Set<string>();
+    for (const id of selectedCommitIds) {
+      const idx = id.lastIndexOf('::');
+      if (idx !== -1) prKeys.add(id.slice(0, idx));
+    }
+    return prKeys.size;
+  }, [selectedCommitIds]);
+
+  const applyScannedActivities = useCallback(
+    (nextActivities: PrActivity[]) => {
+      setActivities(nextActivities);
+      setRepoFilter('ALL');
+
+      const initialSelected = new Set<string>();
+      for (const act of nextActivities) {
+        const isPersonal = act.ownerType === 'personal';
+        const shouldSelect = isPersonal ? includePersonalCommits : includeOrgCommits;
+        if (shouldSelect) {
+          const prKey = getPrKey(act);
+          act.commits.forEach((msg, idx) => {
+            if (msg.trim()) {
+              initialSelected.add(`${prKey}::${idx}`);
+            }
+          });
+        }
+      }
+      setSelectedCommitIds(initialSelected);
+    },
+    [includePersonalCommits, includeOrgCommits],
   );
 
-  const applyScannedActivities = useCallback((nextActivities: PrActivity[]) => {
-    setActivities(nextActivities);
-    setRepoFilter('ALL');
-    setSelectedPrKeys(new Set(nextActivities.map(getPrKey)));
+  // Initialize commit selection on first activity load if set is empty
+  const hasInitializedCommitsRef = useRef(false);
+  useEffect(() => {
+    if (activities.length > 0 && !hasInitializedCommitsRef.current) {
+      hasInitializedCommitsRef.current = true;
+      const initialSelected = new Set<string>();
+      for (const act of activities) {
+        const isPersonal = act.ownerType === 'personal';
+        const shouldSelect = isPersonal ? includePersonalCommits : includeOrgCommits;
+        if (shouldSelect) {
+          const prKey = getPrKey(act);
+          act.commits.forEach((msg, idx) => {
+            if (msg.trim()) {
+              initialSelected.add(`${prKey}::${idx}`);
+            }
+          });
+        }
+      }
+      setSelectedCommitIds(initialSelected);
+    }
+  }, [activities, includePersonalCommits, includeOrgCommits]);
+
+  const handleTogglePersonalCommits = useCallback(
+    (checked: boolean) => {
+      setIncludePersonalCommits(checked);
+      try {
+        localStorage.setItem('gitpulse:commit_filter:personal', String(checked));
+      } catch {
+        // ignore
+      }
+      setSelectedCommitIds((prev) => {
+        const next = new Set(prev);
+        for (const c of allSelectableCommits) {
+          if (c.ownerType === 'personal') {
+            if (checked) next.add(c.id);
+            else next.delete(c.id);
+          }
+        }
+        return next;
+      });
+    },
+    [allSelectableCommits],
+  );
+
+  const handleToggleOrgCommits = useCallback(
+    (checked: boolean) => {
+      setIncludeOrgCommits(checked);
+      try {
+        localStorage.setItem('gitpulse:commit_filter:org', String(checked));
+      } catch {
+        // ignore
+      }
+      setSelectedCommitIds((prev) => {
+        const next = new Set(prev);
+        for (const c of allSelectableCommits) {
+          if (c.ownerType === 'organization') {
+            if (checked) next.add(c.id);
+            else next.delete(c.id);
+          }
+        }
+        return next;
+      });
+    },
+    [allSelectableCommits],
+  );
+
+  const handleToggleCommit = useCallback((commitId: string) => {
+    setAiError(null);
+    setSelectedCommitIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(commitId)) next.delete(commitId);
+      else next.add(commitId);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllCommits = useCallback(() => {
+    setSelectedCommitIds(new Set(allSelectableCommits.map((c) => c.id)));
+  }, [allSelectableCommits]);
+
+  const handleDeselectAllCommits = useCallback(() => {
+    setSelectedCommitIds(new Set());
   }, []);
 
   const gitStatusRef = useRef<GitStatus>(gitStatus);
@@ -944,12 +1092,22 @@ export default function HomePage() {
       return;
     }
 
-    if (selectedActivities.length === 0) {
-      setAiError(dict.aiConsole.noSelectedPrsError);
-      return;
-    }
+    const filteredPrs = activities
+      .map((act) => {
+        const prKey = getPrKey(act);
+        const selectedForThisPr = act.commits.filter((msg, idx) => {
+          if (!msg.trim()) return false;
+          return selectedCommitIds.has(`${prKey}::${idx}`);
+        });
+        return {
+          repo: act.repo,
+          title: act.title,
+          commits: selectedForThisPr,
+        };
+      })
+      .filter((p) => p.commits.length > 0);
 
-    if (selectedCommitCount === 0) {
+    if (filteredPrs.length === 0) {
       setAiError(dict.aiConsole.noSelectedCommitsError);
       return;
     }
@@ -965,11 +1123,7 @@ export default function HomePage() {
 
     try {
       const res = await api.ai.summarize({
-        prs: selectedActivities.map((a) => ({
-          repo: a.repo,
-          title: a.title,
-          commits: a.commits,
-        })),
+        prs: filteredPrs,
         engine,
         connectionId,
         model: selectedModel,
@@ -996,9 +1150,8 @@ export default function HomePage() {
       setIsGenerating(false);
     }
   }, [
-    activities.length,
-    selectedActivities,
-    selectedCommitCount,
+    activities,
+    selectedCommitIds,
     selectedToolKey,
     aiConnections,
     selectedModel,
@@ -1023,7 +1176,7 @@ export default function HomePage() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         const blockedByAvailability =
           availability.status === 'checking' || availability.status === 'unavailable';
-        if (selectedActivities.length > 0 && !isGenerating && !blockedByAvailability) {
+        if (selectedCommitCount > 0 && !isGenerating && !blockedByAvailability) {
           e.preventDefault();
           void generateRef.current();
         }
@@ -1032,57 +1185,7 @@ export default function HomePage() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [user, gitStatus.connected, selectedActivities.length, isGenerating, availability.status]);
-
-  const handleTogglePrSelection = (key: string) => {
-    setAiError(null);
-    setSelectedPrKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectKeysBatch = (keys: string[], select: boolean) => {
-    setAiError(null);
-    setSelectedPrKeys((prev) => {
-      const next = new Set(prev);
-      for (const k of keys) {
-        if (select) next.add(k);
-        else next.delete(k);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAllVisiblePrs = () => {
-    setAiError(null);
-    const visible =
-      repoFilter === 'ALL' ? activities : activities.filter((a) => a.repo === repoFilter);
-    setSelectedPrKeys((prev) => {
-      const next = new Set(prev);
-      for (const pr of visible) {
-        next.add(getPrKey(pr));
-      }
-      return next;
-    });
-  };
-
-  const handleClearVisiblePrSelection = () => {
-    const visible =
-      repoFilter === 'ALL' ? activities : activities.filter((a) => a.repo === repoFilter);
-    setSelectedPrKeys((prev) => {
-      const next = new Set(prev);
-      for (const pr of visible) {
-        next.delete(getPrKey(pr));
-      }
-      return next;
-    });
-  };
+  }, [user, gitStatus.connected, selectedCommitCount, isGenerating, availability.status]);
 
   if (!isIntroComplete) {
     return <IntroScreen onComplete={() => setIsIntroComplete(true)} />;
@@ -1213,11 +1316,6 @@ export default function HomePage() {
                     workspaces={workspaces}
                     includePersonalEnabled={fetchPrefs.includePersonal}
                     onOpenFetchSettings={() => openSettingsTab('fetch')}
-                    selectedPrKeys={selectedPrKeys}
-                    onTogglePrSelection={handleTogglePrSelection}
-                    onSelectKeysBatch={handleSelectKeysBatch}
-                    onSelectAllPrs={handleSelectAllVisiblePrs}
-                    onClearPrSelection={handleClearVisiblePrSelection}
                     tasks={tasks}
                     onCreateTask={handleCreateTask}
                     onRenameTask={handleRenameTask}
@@ -1258,8 +1356,10 @@ export default function HomePage() {
                     onGenerate={handleGenerateSummary}
                     isGenerating={isGenerating}
                     error={aiError}
-                    selectedPrCount={selectedActivities.length}
+                    selectedPrCount={selectedPrCount}
                     selectedCommitCount={selectedCommitCount}
+                    totalCommitCount={allSelectableCommits.length}
+                    onOpenCommitSelector={() => setIsCommitModalOpen(true)}
                   />
 
                   <StandupOutputDock
@@ -1334,12 +1434,26 @@ export default function HomePage() {
         onSave={handleSaveAiSettings}
       />
 
+      <CommitSelectionModal
+        isOpen={isCommitModalOpen}
+        onClose={() => setIsCommitModalOpen(false)}
+        commits={allSelectableCommits}
+        selectedCommitIds={selectedCommitIds}
+        onToggleCommit={handleToggleCommit}
+        onSelectAll={handleSelectAllCommits}
+        onDeselectAll={handleDeselectAllCommits}
+        includePersonal={includePersonalCommits}
+        onTogglePersonal={handleTogglePersonalCommits}
+        includeOrg={includeOrgCommits}
+        onToggleOrg={handleToggleOrgCommits}
+      />
+
       {gitStatus.connected && (
         <CommandPalette
           isOpen={isPaletteOpen}
           onClose={() => setIsPaletteOpen(false)}
           canGenerate={
-            selectedActivities.length > 0 &&
+            selectedCommitCount > 0 &&
             !isGenerating &&
             availability.status !== 'checking' &&
             availability.status !== 'unavailable'

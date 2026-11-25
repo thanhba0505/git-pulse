@@ -22,9 +22,7 @@ import {
 interface TaskTrackerViewProps {
   tasks: TrackingTask[];
   activities: PrActivity[];
-  selectedPrKeys: ReadonlySet<string>;
   compactCommits: boolean;
-  onTogglePrSelection: (key: string) => void;
   onCreateTask: (title: string, color: TaskColor, prs: PrActivity[]) => Promise<void>;
   onRenameTask: (taskId: string, title: string, color: TaskColor) => Promise<void>;
   onToggleTaskComplete: (taskId: string, isCompleted: boolean) => Promise<void>;
@@ -85,9 +83,7 @@ function buildFallbackActivity(item: TrackingTaskItem, title: string, state: str
 export function TaskTrackerView({
   tasks,
   activities,
-  selectedPrKeys,
   compactCommits,
-  onTogglePrSelection,
   onCreateTask,
   onRenameTask,
   onToggleTaskComplete,
@@ -894,14 +890,11 @@ export function TaskTrackerView({
                               key={`${item.repo}#${item.prNumber}`}
                               pr={targetPr}
                               variant="embedded"
-                              isSelected={true}
-                              disableStandupSelection={true}
                               statusNoteTag={!live ? dict.tasks.outOfWindowTag : undefined}
                               excludeTaskId={task.id}
                               hideTaskAssignMenu={true}
                               compactCommits={compactCommits}
                               tasks={tasks}
-                              onToggleSelect={onTogglePrSelection}
                               onToggleTaskAssignment={onToggleTaskAssignment}
                               onCreateTaskWithPr={async (taskTitle, target) => {
                                 await onCreateTask(taskTitle, 'sky', [target]);
@@ -937,10 +930,8 @@ export function TaskTrackerView({
                 key={getPrKey(pr)}
                 pr={pr}
                 index={index}
-                isSelected={selectedPrKeys.has(getPrKey(pr))}
                 compactCommits={compactCommits}
                 tasks={tasks}
-                onToggleSelect={onTogglePrSelection}
                 onToggleTaskAssignment={onToggleTaskAssignment}
                 onCreateTaskWithPr={async (title, targetPr) => {
                   await onCreateTask(title, 'sky', [targetPr]);
