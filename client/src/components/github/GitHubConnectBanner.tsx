@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GitStatus } from '../../types';
+import { formatExpiration } from '../../lib/activity-utils';
 import { useTranslation } from '../../i18n';
 import { ModalDialog } from '../ui/ModalDialog';
 import { Input } from '../ui/Input';
@@ -13,6 +14,7 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Clock,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -167,12 +169,16 @@ export function GitHubConnectModal({
                       ? new Date(status.lastSyncAt).toLocaleTimeString(dateLocale)
                       : dict.githubModal.neverSynced}
                   </p>
-                  {status.expiresAt && (
-                    <p className="text-xs text-amber-300 mt-0.5 tabular-nums">
-                      {dict.githubModal.expiresAt}:{' '}
-                      {new Date(status.expiresAt).toLocaleDateString(dateLocale)}
-                    </p>
-                  )}
+                  <p className="mt-1">
+                    <span
+                      className={`inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md border text-xs ${
+                        formatExpiration(status.expiresAt, locale).badgeClass
+                      }`}
+                    >
+                      <Clock className="w-3 h-3" aria-hidden="true" />
+                      <span>{formatExpiration(status.expiresAt, locale).label}</span>
+                    </span>
+                  </p>
                 </div>
               </div>
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" aria-hidden="true" />

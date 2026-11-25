@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export const SUPPORTED_AI_PROVIDERS = ['GOOGLE_GEMINI', 'GROQ'] as const;
@@ -35,6 +35,14 @@ export class CreateAiConnectionDto {
   @IsString()
   @MaxLength(80)
   label?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-12-31T23:59:59.999Z',
+    description: 'ISO date string or null',
+  })
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
 }
 
 export class CheckAvailabilityDto {

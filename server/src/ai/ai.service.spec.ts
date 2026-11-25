@@ -673,4 +673,94 @@ describe('AiService', () => {
     // Only the working model is kept! gemini-2.5-flash-lite was hidden
     expect(preview.models.map((m) => m.id)).toEqual(['gemini-2.5-flash']);
   });
+
+  it('persists expiresAt when creating or updating an AI connection', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/models?')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              models: [
+                {
+                  name: 'models/gemini-2.5-flash',
+                  displayName: 'Gemini 2.5 Flash',
+                  supportedGenerationMethods: ['generateContent'],
+                },
+              ],
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      }
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: 'Pong' }] } }],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+
+    const expiryDate = '2026-12-31T23:59:59.000Z';
+    mockPrisma.aiConnection.create.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'conn-exp-1',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    const created = await aiService.createConnection(
+      userId,
+      { provider: 'GOOGLE_GEMINI', apiKey: syntheticGeminiKey, expiresAt: expiryDate },
+      'test-label',
+    );
+
+    expect(created.expiresAt).toEqual(new Date(expiryDate));
+    const createData = mockPrisma.aiConnection.create.mock.calls[0][0].data;
+    expect(createData.expiresAt).toEqual(new Date(expiryDate));
+
+    // Update connection expiresAt
+    const updatedExpiry = '2027-06-30T00:00:00.000Z';
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-exp-1',
+      userId,
+      provider: 'GOOGLE_GEMINI',
+      label: 'test-label',
+      encryptedKey: 'enc',
+      keyIv: 'iv',
+      keyTag: 'tag',
+      keyVersion: 1,
+      maskedKey: 'AIza••••hijk',
+      expiresAt: new Date(expiryDate),
+    });
+
+    mockPrisma.aiConnection.update.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'conn-exp-1',
+        userId,
+        provider: 'GOOGLE_GEMINI',
+        label: 'test-label',
+        encryptedKey: 'enc',
+        keyIv: 'iv',
+        keyTag: 'tag',
+        keyVersion: 1,
+        maskedKey: 'AIza••••hijk',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    const updated = await aiService.updateConnection(
+      userId,
+      'conn-exp-1',
+      { provider: 'GOOGLE_GEMINI', apiKey: syntheticGeminiKey, expiresAt: updatedExpiry },
+      'test-label',
+    );
+
+    expect(updated.expiresAt).toEqual(new Date(updatedExpiry));
+  });
 });

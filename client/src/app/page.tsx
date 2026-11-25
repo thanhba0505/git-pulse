@@ -1234,6 +1234,7 @@ export default function HomePage() {
                     onSelectToolKey={handleSelectAiTool}
                     connections={aiConnections}
                     githubModels={githubModels}
+                    gitTokenExpiresAt={gitStatus.expiresAt}
                     selectedModel={selectedModel}
                     onModelChange={handleSelectAiModel}
                     hasCustomPrompt={Boolean(

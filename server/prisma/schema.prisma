@@ -70,6 +70,7 @@ model AiConnection {
   availableModels Json?          @map("available_models")
   status          TokenStatus    @default(ACTIVE)
   isActive        Boolean        @default(true) @map("is_active")
+  expiresAt       DateTime?      @map("expires_at")
   lastVerifiedAt  DateTime?      @map("last_verified_at")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
