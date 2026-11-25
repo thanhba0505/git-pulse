@@ -101,7 +101,7 @@ describe('AiService', () => {
       data: { encryptedKey: string; keyIv: string; keyTag: string; label: string };
     };
     expect(createCall.data.encryptedKey).not.toBe(syntheticGeminiKey);
-    expect(createCall.data.label).toBe('lethanhba');
+    expect(createCall.data.label).toBe('AIza••••hijk');
     expect(
       cryptoService.decrypt(
         createCall.data.encryptedKey,
@@ -111,7 +111,7 @@ describe('AiService', () => {
       ),
     ).toBe(syntheticGeminiKey);
 
-    expect(summary.label).toBe('lethanhba');
+    expect(summary.label).toBe('AIza••••hijk');
     expect(summary.maskedKey).toBe('AIza••••hijk');
     expect(summary.availableModels.map((m) => m.id)).toEqual(['gemini-2.5-flash']);
     expect(JSON.stringify(summary)).not.toContain(syntheticGeminiKey);
@@ -619,5 +619,58 @@ describe('AiService', () => {
       'Tối ưu hóa hiệu năng tổng hợp',
     ]);
     expect(result.engine).toBe('GROQ');
+  });
+
+  it('filters out failing or unauthorized models during verification, keeping only verified models', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/models?')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              models: [
+                {
+                  name: 'models/gemini-2.5-flash',
+                  displayName: 'Gemini 2.5 Flash',
+                  supportedGenerationMethods: ['generateContent'],
+                },
+                {
+                  name: 'models/gemini-2.5-flash-lite',
+                  displayName: 'Gemini 2.5 Flash-Lite',
+                  supportedGenerationMethods: ['generateContent'],
+                },
+              ],
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        );
+      }
+      if (url.includes('gemini-2.5-flash-lite')) {
+        // Failing probe (e.g. Free Tier disabled)
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: { message: 'Free tier not available' } }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      // Successful probe for gemini-2.5-flash
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            candidates: [{ content: { parts: [{ text: 'Pong' }] } }],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    });
+
+    const preview = await aiService.previewModels(userId, {
+      provider: 'GOOGLE_GEMINI',
+      apiKey: syntheticGeminiKey,
+    });
+
+    expect(preview.valid).toBe(true);
+    // Only the working model is kept! gemini-2.5-flash-lite was hidden
+    expect(preview.models.map((m) => m.id)).toEqual(['gemini-2.5-flash']);
   });
 });
