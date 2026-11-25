@@ -20,11 +20,13 @@ enum GitAuthType {
 enum AiEngineType {
   GITHUB_MODELS
   GOOGLE_GEMINI
+  GROQ
   WEB_LLM
 }
 
 enum AiProviderType {
   GOOGLE_GEMINI
+  GROQ
 }
 
 enum TokenStatus {

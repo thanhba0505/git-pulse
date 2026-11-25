@@ -37,7 +37,7 @@ export function AiConnectModal({
   onSaved,
 }: AiConnectModalProps) {
   const { dict, t } = useTranslation();
-  const [provider, setProvider] = useState<AiProviderType>('GOOGLE_GEMINI');
+  const [provider, setProvider] = useState<AiProviderType>('GROQ');
   const [labelInput, setLabelInput] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
@@ -54,7 +54,7 @@ export function AiConnectModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setProvider(editingConnection?.provider ?? 'GOOGLE_GEMINI');
+    setProvider(editingConnection?.provider ?? 'GROQ');
     setLabelInput(editingConnection?.label ?? '');
     setApiKeyInput('');
     setShowKey(false);
@@ -68,11 +68,25 @@ export function AiConnectModal({
 
   const providerOptions: readonly SelectOption<AiProviderType>[] = [
     {
+      value: 'GROQ',
+      label: dict.aiModal.providerGroqLabel,
+      description: dict.aiModal.providerGroqDesc,
+    },
+    {
       value: 'GOOGLE_GEMINI',
       label: dict.aiModal.providerGeminiLabel,
       description: dict.aiModal.providerGeminiDesc,
     },
   ];
+
+  const isGroq = provider === 'GROQ';
+  const keyLinkHref = isGroq
+    ? 'https://console.groq.com/keys'
+    : 'https://aistudio.google.com/app/apikey';
+  const keyLinkText = isGroq ? dict.aiModal.getGroqKeyLink : dict.aiModal.getGeminiKeyLink;
+  const keyPlaceholder = isGroq
+    ? dict.aiModal.apiKeyPlaceholderGroq
+    : dict.aiModal.apiKeyPlaceholder;
 
   const previewModelOptions: readonly SelectOption<string>[] = previewModels.map((m) => ({
     value: m.id,
@@ -233,12 +247,12 @@ export function AiConnectModal({
             requiredMark
             labelAction={
               <a
-                href="https://aistudio.google.com/app/apikey"
+                href={keyLinkHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-sky-400 hover:text-sky-300 inline-flex items-center gap-1 transition-colors"
               >
-                <span>{dict.aiModal.getGeminiKeyLink}</span>
+                <span>{keyLinkText}</span>
                 <ExternalLink className="w-3 h-3" aria-hidden="true" />
               </a>
             }
@@ -276,7 +290,7 @@ export function AiConnectModal({
               }
             }}
             error={apiKeyError}
-            placeholder={dict.aiModal.apiKeyPlaceholder}
+            placeholder={keyPlaceholder}
             hint={dict.aiModal.apiKeyHint}
             autoComplete="off"
             autoCorrect="off"

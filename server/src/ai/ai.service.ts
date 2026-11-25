@@ -8,6 +8,7 @@ import {
   CheckAvailabilityDto,
   CreateAiConnectionDto,
   PreviewAiModelsDto,
+  SupportedAiProvider,
   ValidAiEngine,
 } from './dto/ai-connection.dto';
 import { SummarizeDto } from './dto/summarize.dto';
@@ -15,14 +16,19 @@ import {
   AiModelOption,
   buildStandupPrompts,
   classifyGeminiHttpError,
+  classifyGroqHttpError,
   DEFAULT_GEMINI_MODELS,
+  DEFAULT_GROQ_MODELS,
   filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
+  filterAndSortGroqModels,
   GEMINI_API_BASE_URL,
   GeminiApiModelEntry,
   GITHUB_MODELS_CATALOG_URL,
   GITHUB_MODELS_INFERENCE_URL,
   GitHubCatalogModelEntry,
+  GROQ_API_BASE_URL,
+  GroqModelEntry,
   isAbortError,
   isJsonContentType,
   mapGitHubModelId,
@@ -33,7 +39,7 @@ import {
 
 export interface AiConnectionSummary {
   id: string;
-  provider: 'GOOGLE_GEMINI';
+  provider: SupportedAiProvider;
   label: string;
   maskedKey: string;
   availableModels: AiModelOption[];
@@ -91,12 +97,13 @@ export class AiService {
 
   private toConnectionSummary(conn: AiConnection): AiConnectionSummary {
     const stored = normalizeStoredModels(conn.availableModels);
+    const defaultModels = conn.provider === 'GROQ' ? DEFAULT_GROQ_MODELS : DEFAULT_GEMINI_MODELS;
     return {
       id: conn.id,
       provider: conn.provider,
       label: conn.label,
       maskedKey: conn.maskedKey,
-      availableModels: stored.length > 0 ? stored : [...DEFAULT_GEMINI_MODELS],
+      availableModels: stored.length > 0 ? stored : [...defaultModels],
       status: conn.status,
       lastVerifiedAt: conn.lastVerifiedAt,
       createdAt: conn.createdAt,
@@ -138,7 +145,7 @@ export class AiService {
     }
 
     const label = dto.label?.trim() || defaultLabel.trim() || 'Cá nhân';
-    const models = await this.verifyAndFetchGeminiModels(userId, cleanKey, meta);
+    const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
 
     const encrypted = this.crypto.encrypt(cleanKey, userId);
     const created = await this.prisma.aiConnection.create({
@@ -189,7 +196,7 @@ export class AiService {
     }
 
     const label = dto.label?.trim() || existing.label || defaultLabel.trim() || 'Cá nhân';
-    const models = await this.verifyAndFetchGeminiModels(userId, cleanKey, meta);
+    const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
     const encrypted = this.crypto.encrypt(cleanKey, userId);
 
     const updated = await this.prisma.aiConnection.update({
@@ -253,7 +260,13 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
-    const models = await this.verifyAndFetchGeminiModels(userId, cleanKey, meta, 'AI_KEY_PREVIEW');
+    const models = await this.verifyAndFetchModels(
+      userId,
+      dto.provider,
+      cleanKey,
+      meta,
+      'AI_KEY_PREVIEW',
+    );
     return {
       valid: true,
       maskedKey: maskApiKey(cleanKey),
@@ -282,7 +295,13 @@ export class AiService {
 
     let models: AiModelOption[];
     try {
-      models = await this.verifyAndFetchGeminiModels(userId, apiKey, meta, 'AI_MODELS_REFRESH');
+      models = await this.verifyAndFetchModels(
+        userId,
+        existing.provider,
+        apiKey,
+        meta,
+        'AI_MODELS_REFRESH',
+      );
     } catch (err) {
       await this.prisma.aiConnection.updateMany({
         where: { id: existing.id, userId },
@@ -309,6 +328,67 @@ export class AiService {
     );
 
     return this.toConnectionSummary(updated);
+  }
+
+  private async verifyAndFetchModels(
+    userId: string,
+    provider: SupportedAiProvider,
+    apiKey: string,
+    meta?: RequestMetadata,
+    auditAction = 'AI_KEY_SAVE',
+  ): Promise<AiModelOption[]> {
+    if (provider === 'GROQ') {
+      return this.verifyAndFetchGroqModels(userId, apiKey, meta, auditAction);
+    }
+    return this.verifyAndFetchGeminiModels(userId, apiKey, meta, auditAction);
+  }
+
+  private async verifyAndFetchGroqModels(
+    userId: string,
+    apiKey: string,
+    meta?: RequestMetadata,
+    auditAction = 'AI_KEY_SAVE',
+  ): Promise<AiModelOption[]> {
+    let response: Response;
+    try {
+      response = await this.fetchWithTimeout(
+        `${GROQ_API_BASE_URL}/models`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${apiKey}` },
+        },
+        8000,
+      );
+    } catch {
+      await this.githubService.recordAuditLog(
+        userId,
+        auditAction,
+        'FAILED',
+        'Network failure contacting Groq API',
+        meta,
+      );
+      throw new BadRequestException('Không thể kết nối tới Groq API. Vui lòng thử lại.');
+    }
+
+    const body = (await response.json().catch(() => ({}))) as {
+      data?: GroqModelEntry[];
+      error?: { message?: string };
+    };
+
+    if (!response.ok) {
+      const safeErr = redactTokens(body.error?.message || response.statusText);
+      await this.githubService.recordAuditLog(
+        userId,
+        auditAction,
+        'FAILED',
+        `Groq API rejected key (${response.status}): ${safeErr}`,
+        meta,
+      );
+      throw new BadRequestException(`API Key Groq không hợp lệ hoặc bị từ chối: ${safeErr}`);
+    }
+
+    const filtered = filterAndSortGroqModels(body.data ?? []);
+    return filtered.length > 0 ? filtered : [...DEFAULT_GROQ_MODELS];
   }
 
   private async verifyAndFetchGeminiModels(
@@ -364,6 +444,9 @@ export class AiService {
   ): Promise<AiAvailabilityResult> {
     if (dto.engine === 'GOOGLE_GEMINI') {
       return this.checkGeminiAvailability(userId, dto.connectionId, dto.model);
+    }
+    if (dto.engine === 'GROQ') {
+      return this.checkGroqAvailability(userId, dto.connectionId, dto.model);
     }
     return this.checkGitHubModelsAvailability(userId, dto.model, meta);
   }
@@ -642,19 +725,145 @@ export class AiService {
     };
   }
 
-  private async findGeminiConnection(
+  private async checkGroqAvailability(
     userId: string,
+    connectionId: string | undefined,
+    model: string,
+  ): Promise<AiAvailabilityResult> {
+    const startedAt = Date.now();
+    const conn = await this.findAiConnection(userId, 'GROQ', connectionId);
+    if (!conn) {
+      return {
+        available: false,
+        engine: 'GROQ',
+        model,
+        latencyMs: Date.now() - startedAt,
+        reasonCode: 'NOT_CONNECTED',
+        reason: 'Chưa tìm thấy kết nối Groq. Vui lòng thêm API Key.',
+      };
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = this.crypto.decrypt(conn.encryptedKey, conn.keyIv, conn.keyTag, userId);
+    } catch {
+      return {
+        available: false,
+        engine: 'GROQ',
+        model,
+        latencyMs: Date.now() - startedAt,
+        reasonCode: 'DECRYPT_ERROR',
+        reason: 'Không thể giải mã API Key Groq. Vui lòng thêm lại key.',
+      };
+    }
+
+    const cleanModel = model.trim();
+    try {
+      const probeRes = await this.fetchWithTimeout(
+        `${GROQ_API_BASE_URL}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: cleanModel,
+            messages: [{ role: 'user', content: 'Ping' }],
+            max_tokens: 1,
+          }),
+        },
+        8000,
+      );
+
+      if (!probeRes.ok) {
+        return this.handleGroqAvailabilityError(conn.id, cleanModel, probeRes, startedAt);
+      }
+
+      await this.prisma.aiConnection.updateMany({
+        where: { id: conn.id, userId },
+        data: { status: 'ACTIVE', lastVerifiedAt: new Date() },
+      });
+
+      return {
+        available: true,
+        engine: 'GROQ',
+        model: cleanModel,
+        latencyMs: Date.now() - startedAt,
+      };
+    } catch (err) {
+      if (isAbortError(err)) {
+        return {
+          available: false,
+          engine: 'GROQ',
+          model: cleanModel,
+          latencyMs: Date.now() - startedAt,
+          reasonCode: 'TIMEOUT',
+          reason: `Mô hình ${cleanModel} phản hồi quá chậm (> 8 giây).`,
+        };
+      }
+      return {
+        available: false,
+        engine: 'GROQ',
+        model: cleanModel,
+        latencyMs: Date.now() - startedAt,
+        reasonCode: 'NETWORK_ERROR',
+        reason: 'Không thể kết nối tới Groq API để kiểm tra mô hình.',
+      };
+    }
+  }
+
+  private async handleGroqAvailabilityError(
+    connectionId: string,
+    model: string,
+    response: Response,
+    startedAt: number,
+  ): Promise<AiAvailabilityResult> {
+    const latencyMs = Date.now() - startedAt;
+    const errBody = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    const rawMsg = redactTokens(errBody.error?.message || response.statusText);
+    const classified = classifyGroqHttpError(model, response.status, rawMsg);
+
+    if (classified.shouldRevoke) {
+      await this.prisma.aiConnection.updateMany({
+        where: { id: connectionId },
+        data: { status: 'REVOKED' },
+      });
+    }
+
+    return {
+      available: false,
+      engine: 'GROQ',
+      model,
+      latencyMs,
+      reasonCode: classified.reasonCode,
+      reason: classified.reason,
+    };
+  }
+
+  private async findAiConnection(
+    userId: string,
+    provider: SupportedAiProvider,
     connectionId?: string,
   ): Promise<AiConnection | null> {
     if (connectionId) {
       return this.prisma.aiConnection.findFirst({
-        where: { id: connectionId, userId, provider: 'GOOGLE_GEMINI' },
+        where: { id: connectionId, userId, provider },
       });
     }
     return this.prisma.aiConnection.findFirst({
-      where: { userId, provider: 'GOOGLE_GEMINI' },
+      where: { userId, provider },
       orderBy: [{ updatedAt: 'desc' }],
     });
+  }
+
+  private async findGeminiConnection(
+    userId: string,
+    connectionId?: string,
+  ): Promise<AiConnection | null> {
+    return this.findAiConnection(userId, 'GOOGLE_GEMINI', connectionId);
   }
 
   private async resolveCommitPrompts(userId: string, dto: SummarizeDto) {
@@ -687,6 +896,9 @@ export class AiService {
     const engine: ValidAiEngine = dto.engine || 'GITHUB_MODELS';
     if (engine === 'GOOGLE_GEMINI') {
       return this.summarizeWithGemini(userId, dto, meta);
+    }
+    if (engine === 'GROQ') {
+      return this.summarizeWithGroq(userId, dto, meta);
     }
     return this.summarizeWithGitHubModels(userId, dto, meta);
   }
@@ -807,6 +1019,78 @@ export class AiService {
       rawText: rawContent,
       modelUsed: model,
       engine: 'GOOGLE_GEMINI',
+    };
+  }
+
+  private async summarizeWithGroq(userId: string, dto: SummarizeDto, meta?: RequestMetadata) {
+    const conn = await this.findAiConnection(userId, 'GROQ', dto.connectionId);
+    if (!conn) {
+      throw new BadRequestException('Chưa cấu hình Groq API Key. Vui lòng thêm key trước.');
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = this.crypto.decrypt(conn.encryptedKey, conn.keyIv, conn.keyTag, userId);
+    } catch {
+      throw new BadRequestException('Không thể giải mã API Key Groq. Vui lòng cập nhật lại key.');
+    }
+
+    const model = (dto.model || DEFAULT_GROQ_MODELS[0].id).trim();
+    const { systemPrompt, userPrompt } = await this.resolveCommitPrompts(userId, dto);
+
+    let response: Response;
+    try {
+      response = await this.fetchWithTimeout(
+        `${GROQ_API_BASE_URL}/chat/completions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 1024,
+          }),
+        },
+        30000,
+      );
+    } catch {
+      throw new BadRequestException('Không thể kết nối tới Groq API. Vui lòng thử lại sau.');
+    }
+
+    if (!response.ok) {
+      const errBody = (await response.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      const rawMsg = redactTokens(errBody.error?.message || response.statusText);
+      const classified = classifyGroqHttpError(model, response.status, rawMsg);
+      if (classified.shouldRevoke) {
+        await this.prisma.aiConnection.updateMany({
+          where: { id: conn.id },
+          data: { status: 'REVOKED' },
+        });
+      }
+      throw new BadRequestException(`Groq API từ chối xử lý: ${classified.reason}`);
+    }
+
+    const data = (await response.json()) as ChatCompletionsResponse;
+    const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
+    const bullets = parseStandupBullets(rawContent);
+
+    await this.saveReportAndAudit(userId, dto, 'GROQ', model, bullets, meta);
+
+    return {
+      success: true,
+      bullets,
+      rawText: rawContent,
+      modelUsed: model,
+      engine: 'GROQ' as const,
     };
   }
 

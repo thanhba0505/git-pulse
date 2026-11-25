@@ -77,14 +77,20 @@ export function CockpitAiConsole({
         label: dict.aiConsole.githubModelsLabel,
         description: dict.aiConsole.githubModelsDesc,
       },
-      ...connections.map((conn) => ({
-        value: `conn:${conn.id}`,
-        label: `${dict.aiConsole.geminiProviderLabel} (${conn.label})`,
-        description: dict.aiModal.apiKeyLabel,
-        ...(conn.status === 'REVOKED'
-          ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
-          : {}),
-      })),
+      ...connections.map((conn) => {
+        const providerName =
+          conn.provider === 'GROQ'
+            ? dict.aiConsole.groqProviderLabel
+            : dict.aiConsole.geminiProviderLabel;
+        return {
+          value: `conn:${conn.id}`,
+          label: `${providerName} (${conn.label})`,
+          description: dict.aiModal.apiKeyLabel,
+          ...(conn.status === 'REVOKED'
+            ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
+            : {}),
+        };
+      }),
       {
         value: ADD_AI_PROVIDER_ACTION,
         label: dict.aiConsole.addProviderOptionLabel,

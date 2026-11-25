@@ -200,6 +200,8 @@ export default function HomePage() {
   const [selectedPrKeys, setSelectedPrKeys] = useState<Set<string>>(() => new Set());
 
   const [aiConnections, setAiConnections] = useState<AiConnectionSummary[]>([]);
+  const aiConnectionsRef = useRef<AiConnectionSummary[]>(aiConnections);
+  aiConnectionsRef.current = aiConnections;
   const [githubModels, setGithubModels] = useState<AiModelOption[]>([]);
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
@@ -362,7 +364,10 @@ export default function HomePage() {
       if (toolKey.startsWith('conn:')) {
         const targetId = toolKey.slice(5);
         const conn = conns.find((c) => c.id === targetId);
-        return conn?.availableModels[0]?.id || 'gemini-2.5-flash';
+        return (
+          conn?.availableModels[0]?.id ||
+          (conn?.provider === 'GROQ' ? 'llama-3.3-70b-versatile' : 'gemini-2.5-flash')
+        );
       }
       return ghModels[0]?.id || 'openai/gpt-4o-mini';
     },
@@ -394,8 +399,11 @@ export default function HomePage() {
       setAvailability({ status: 'checking', available: false });
 
       const isConn = toolKey.startsWith('conn:');
-      const engine: AiEngine = isConn ? 'GOOGLE_GEMINI' : 'GITHUB_MODELS';
       const connectionId = isConn ? toolKey.slice(5) : undefined;
+      const activeConn = connectionId
+        ? aiConnectionsRef.current.find((c) => c.id === connectionId)
+        : undefined;
+      const engine: AiEngine = activeConn ? activeConn.provider : isConn ? 'GROQ' : 'GITHUB_MODELS';
 
       try {
         const res = await api.ai.checkAvailability({ engine, connectionId, model });
@@ -903,9 +911,9 @@ export default function HomePage() {
     }
 
     const isConn = selectedToolKey.startsWith('conn:');
-    const engine: AiEngine = isConn ? 'GOOGLE_GEMINI' : 'GITHUB_MODELS';
     const connectionId = isConn ? selectedToolKey.slice(5) : undefined;
     const activeConn = connectionId ? aiConnections.find((c) => c.id === connectionId) : undefined;
+    const engine: AiEngine = activeConn ? activeConn.provider : isConn ? 'GROQ' : 'GITHUB_MODELS';
 
     setAiError(null);
     setIsGenerating(true);
@@ -925,10 +933,17 @@ export default function HomePage() {
       });
 
       setBullets(res.bullets);
+      const providerLabel =
+        engine === 'GROQ'
+          ? dict.aiConsole.groqProviderLabel
+          : engine === 'GOOGLE_GEMINI'
+            ? dict.aiConsole.geminiProviderLabel
+            : dict.aiConsole.githubModelsLabel;
+
       setModelUsed(
-        engine === 'GOOGLE_GEMINI' && activeConn
-          ? `${dict.aiConsole.geminiProviderLabel} (${activeConn.label}) • ${res.modelUsed}`
-          : `${dict.aiConsole.githubModelsLabel} • ${res.modelUsed}`,
+        activeConn
+          ? `${providerLabel} (${activeConn.label}) • ${res.modelUsed}`
+          : `${providerLabel} • ${res.modelUsed}`,
       );
       showToast({ title: dict.toasts.standupReady, variant: 'success' });
     } catch (err) {

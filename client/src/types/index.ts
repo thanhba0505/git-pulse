@@ -138,15 +138,15 @@ export interface ReportItem {
   summaryText: string;
   prCount: number;
   commitCount: number;
-  aiEngineUsed: 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'WEB_LLM';
+  aiEngineUsed: 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'GROQ' | 'WEB_LLM';
   modelName: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   createdAt: string;
 }
 
-export type AiEngine = 'GITHUB_MODELS' | 'GOOGLE_GEMINI';
-export type AiProviderType = 'GOOGLE_GEMINI';
+export type AiEngine = 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'GROQ';
+export type AiProviderType = 'GOOGLE_GEMINI' | 'GROQ';
 
 export interface AiModelOption {
   id: string;
