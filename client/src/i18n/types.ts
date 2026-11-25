@@ -170,6 +170,7 @@ export interface AiConsoleDictionary {
   githubModelsLabel: string;
   githubModelsDesc: string;
   geminiProviderLabel: string;
+  groqProviderLabel: string;
   addProviderOptionLabel: string;
   addProviderOptionDesc: string;
   revokedBadge: string;
@@ -211,6 +212,8 @@ export interface AiModalDictionary {
   titleUpdate: string;
   subtitle: string;
   providerLabel: string;
+  providerGroqLabel: string;
+  providerGroqDesc: string;
   providerGeminiLabel: string;
   providerGeminiDesc: string;
   providerScopeNote: string;
@@ -219,7 +222,9 @@ export interface AiModalDictionary {
   labelHint: string;
   apiKeyLabel: string;
   getGeminiKeyLink: string;
+  getGroqKeyLink: string;
   apiKeyPlaceholder: string;
+  apiKeyPlaceholderGroq: string;
   apiKeyHint: string;
   apiKeyRequired: string;
   previewModelsBtn: string;

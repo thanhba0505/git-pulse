@@ -495,4 +495,129 @@ describe('AiService', () => {
       'deepseek/deepseek-r1',
     ]);
   });
+
+  it('creates a Groq connection, verifies key against Groq models endpoint, and saves encrypted key', async () => {
+    const syntheticGroqKey = 'gsk_test1234567890abcdef1234567890';
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: 'llama-3.3-70b-versatile', active: true },
+            { id: 'deepseek-r1-distill-llama-70b', active: true },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    mockPrisma.aiConnection.create.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'conn-groq-1',
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    const summary = await aiService.createConnection(
+      userId,
+      { provider: 'GROQ', apiKey: syntheticGroqKey, label: 'My Groq' },
+      'lethanhba',
+    );
+
+    expect(summary.provider).toBe('GROQ');
+    expect(summary.label).toBe('My Groq');
+    expect(summary.maskedKey).toBe('gsk_••••7890');
+    expect(summary.availableModels.map((m) => m.id)).toEqual([
+      'llama-3.3-70b-versatile',
+      'deepseek-r1-distill-llama-70b',
+    ]);
+  });
+
+  it('checks availability for Groq connection and succeeds when probe completions call returns 200', async () => {
+    const syntheticGroqKey = 'gsk_test1234567890abcdef1234567890';
+    const encrypted = cryptoService.encrypt(syntheticGroqKey, userId);
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-groq-1',
+      userId,
+      provider: 'GROQ',
+      label: 'My Groq',
+      encryptedKey: encrypted.encryptedText,
+      keyIv: encrypted.iv,
+      keyTag: encrypted.tag,
+      keyVersion: encrypted.keyVersion,
+      maskedKey: 'gsk_••••7890',
+      status: 'ACTIVE',
+    });
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Pong' } }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const result = await aiService.checkAvailability(userId, {
+      engine: 'GROQ',
+      connectionId: 'conn-groq-1',
+      model: 'llama-3.3-70b-versatile',
+    });
+
+    expect(result.available).toBe(true);
+    expect(result.engine).toBe('GROQ');
+    expect(result.model).toBe('llama-3.3-70b-versatile');
+  });
+
+  it('summarizes activities with Groq using OpenAI-compatible chat completions', async () => {
+    const syntheticGroqKey = 'gsk_test1234567890abcdef1234567890';
+    const encrypted = cryptoService.encrypt(syntheticGroqKey, userId);
+    mockPrisma.aiConnection.findFirst.mockResolvedValue({
+      id: 'conn-groq-1',
+      userId,
+      provider: 'GROQ',
+      label: 'My Groq',
+      encryptedKey: encrypted.encryptedText,
+      keyIv: encrypted.iv,
+      keyTag: encrypted.tag,
+      keyVersion: encrypted.keyVersion,
+      maskedKey: 'gsk_••••7890',
+      status: 'ACTIVE',
+    });
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: '- Tích hợp Groq Cloud provider\n- Tối ưu hóa hiệu năng tổng hợp',
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const result = await aiService.summarize(userId, {
+      engine: 'GROQ',
+      connectionId: 'conn-groq-1',
+      model: 'llama-3.3-70b-versatile',
+      prs: [
+        {
+          repo: 'prism-hub',
+          title: 'Add Groq support',
+          commits: ['feat(ai): integrate groq provider'],
+        },
+      ],
+    });
+
+    expect(result.bullets).toEqual([
+      'Tích hợp Groq Cloud provider',
+      'Tối ưu hóa hiệu năng tổng hợp',
+    ]);
+    expect(result.engine).toBe('GROQ');
+  });
 });

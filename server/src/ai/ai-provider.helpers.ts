@@ -3,12 +3,42 @@ import { PrItemDto } from './dto/summarize.dto';
 export const GITHUB_MODELS_CATALOG_URL = 'https://models.github.ai/catalog/models';
 export const GITHUB_MODELS_INFERENCE_URL = 'https://models.github.ai/inference/chat/completions';
 export const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+export const GROQ_API_BASE_URL = 'https://api.groq.com/openai/v1';
 
 export interface AiModelOption {
   id: string;
   label: string;
   description?: string;
 }
+
+export interface GroqModelEntry {
+  id: string;
+  owned_by?: string;
+  active?: boolean;
+}
+
+export const DEFAULT_GROQ_MODELS: readonly AiModelOption[] = [
+  {
+    id: 'llama-3.3-70b-versatile',
+    label: 'Llama 3.3 70B Versatile',
+    description: 'Flagship 70B • Fast & High Quality',
+  },
+  {
+    id: 'llama-3.1-8b-instant',
+    label: 'Llama 3.1 8B Instant',
+    description: 'Ultra Fast • Lightweight Standup',
+  },
+  {
+    id: 'deepseek-r1-distill-llama-70b',
+    label: 'DeepSeek R1 Distill 70B',
+    description: 'Deep Reasoning • High Capability',
+  },
+  {
+    id: 'mixtral-8x7b-32768',
+    label: 'Mixtral 8x7B (32k)',
+    description: 'MoE • Large Context Window',
+  },
+];
 
 export interface GeminiApiModelEntry {
   name?: string;
@@ -395,4 +425,62 @@ export function parseStandupBullets(rawContent: string): string[] {
     .filter((line) => line.length > 0);
 
   return lines.length > 0 ? lines : ['Completed scheduled development tasks.'];
+}
+
+export function filterAndSortGroqModels(models: GroqModelEntry[]): AiModelOption[] {
+  const recognizedIds = new Set(DEFAULT_GROQ_MODELS.map((m) => m.id));
+  const result: AiModelOption[] = [];
+
+  for (const def of DEFAULT_GROQ_MODELS) {
+    if (models.some((m) => m.id === def.id && m.active !== false)) {
+      result.push(def);
+    }
+  }
+
+  for (const m of models) {
+    if (!recognizedIds.has(m.id) && m.active !== false) {
+      if (!m.id.includes('whisper') && !m.id.includes('tts') && !m.id.includes('embed')) {
+        result.push({
+          id: m.id,
+          label: m.id,
+          description: m.owned_by ? `By ${m.owned_by}` : 'Groq Fast LPU Model',
+        });
+      }
+    }
+  }
+
+  return result.length > 0 ? result : [...DEFAULT_GROQ_MODELS];
+}
+
+export function classifyGroqHttpError(
+  model: string,
+  statusCode: number,
+  rawMsg: string,
+): { reasonCode: string; reason: string; shouldRevoke: boolean } {
+  if (statusCode === 401 || statusCode === 403 || /invalid.*api.*key|unauthorized/i.test(rawMsg)) {
+    return {
+      reasonCode: 'INVALID_KEY',
+      reason: `API Key Groq không hợp lệ hoặc đã hết hạn: ${rawMsg}`,
+      shouldRevoke: true,
+    };
+  }
+  if (statusCode === 429 || /rate.*limit|quota/i.test(rawMsg)) {
+    return {
+      reasonCode: 'RATE_LIMIT_EXCEEDED',
+      reason: `Hạn mức Groq API bị quá tải hoặc đạt giới hạn RPM: ${rawMsg}`,
+      shouldRevoke: false,
+    };
+  }
+  if (statusCode === 404 || /model.*not.*found/i.test(rawMsg)) {
+    return {
+      reasonCode: 'MODEL_NOT_FOUND',
+      reason: `Mô hình ${model} không tìm thấy trên Groq Cloud: ${rawMsg}`,
+      shouldRevoke: false,
+    };
+  }
+  return {
+    reasonCode: 'SERVICE_UNAVAILABLE',
+    reason: `Groq API phản hồi lỗi (HTTP ${statusCode}): ${rawMsg}`,
+    shouldRevoke: false,
+  };
 }

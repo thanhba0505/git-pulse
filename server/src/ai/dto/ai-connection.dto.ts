@@ -1,10 +1,10 @@
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export const SUPPORTED_AI_PROVIDERS = ['GOOGLE_GEMINI'] as const;
+export const SUPPORTED_AI_PROVIDERS = ['GOOGLE_GEMINI', 'GROQ'] as const;
 export type SupportedAiProvider = (typeof SUPPORTED_AI_PROVIDERS)[number];
 
-export const VALID_AI_ENGINES = ['GITHUB_MODELS', 'GOOGLE_GEMINI'] as const;
+export const VALID_AI_ENGINES = ['GITHUB_MODELS', 'GOOGLE_GEMINI', 'GROQ'] as const;
 export type ValidAiEngine = (typeof VALID_AI_ENGINES)[number];
 
 export class PreviewAiModelsDto {
