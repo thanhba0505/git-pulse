@@ -269,14 +269,24 @@ export const api = {
       fetchJson<AiConnectionSummary>(`/ai/connections/${encodeURIComponent(id)}/refresh-models`, {
         method: 'POST',
       }),
-    createConnection: (dto: { provider: AiProviderType; apiKey: string; label?: string }) =>
+    createConnection: (dto: {
+      provider: AiProviderType;
+      apiKey: string;
+      label?: string;
+      expiresAt?: string | null;
+    }) =>
       fetchJson<AiConnectionSummary>('/ai/connections', {
         method: 'POST',
         body: JSON.stringify(dto),
       }),
     updateConnection: (
       id: string,
-      dto: { provider: AiProviderType; apiKey: string; label?: string },
+      dto: {
+        provider: AiProviderType;
+        apiKey: string;
+        label?: string;
+        expiresAt?: string | null;
+      },
     ) =>
       fetchJson<AiConnectionSummary>(`/ai/connections/${encodeURIComponent(id)}`, {
         method: 'PATCH',

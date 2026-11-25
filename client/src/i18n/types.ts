@@ -183,6 +183,8 @@ export interface AiConsoleDictionary {
   recheckBtn: string;
   addGeminiQuickBtn: string;
   updateKeyQuickBtn: string;
+  expiresLabel: string;
+  noExpiration: string;
   generateBtn: string;
   generateSelectedBtn: string;
   generatingBtn: string;
@@ -231,6 +233,13 @@ export interface AiModalDictionary {
   previewingModelsBtn: string;
   previewSuccess: string;
   defaultModelLabel: string;
+  expiresAtLabel: string;
+  expiresNever: string;
+  expires30d: string;
+  expires60d: string;
+  expires90d: string;
+  expiresCustom: string;
+  customDatePlaceholder: string;
   saveError: string;
   saveBtn: string;
   savingBtn: string;
@@ -443,6 +452,7 @@ export interface SettingsModalDictionary {
   addAccountBtn: string;
   noAccounts: string;
   activeLabel: string;
+  expiresLabel: string;
   switchToBtn: string;
   disconnectAccountBtn: string;
   confirmDisconnectBtn: string;

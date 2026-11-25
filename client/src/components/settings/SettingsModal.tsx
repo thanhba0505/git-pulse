@@ -9,7 +9,7 @@ import {
   PrStateFilter,
 } from '../../types';
 import { useTranslation } from '../../i18n';
-import { getPrStateStyle } from '../../lib/activity-utils';
+import { getPrStateStyle, formatExpiration } from '../../lib/activity-utils';
 import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import { ModalDialog } from '../ui/ModalDialog';
 import { SegmentedControl } from '../ui/SegmentedControl';
@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Building2,
   Check,
+  Clock,
   GitBranch,
   KeyRound,
   Languages,
@@ -707,9 +708,21 @@ export function SettingsModal({
                               </span>
                             )}
                           </div>
-                          {acc.tokenStatus && acc.tokenStatus !== 'ACTIVE' && (
-                            <p className="text-xs text-rose-300 mt-0.5">{acc.tokenStatus}</p>
-                          )}
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            {acc.tokenStatus && acc.tokenStatus !== 'ACTIVE' && (
+                              <span className="text-xs text-rose-300 font-mono">
+                                {acc.tokenStatus}
+                              </span>
+                            )}
+                            <span
+                              className={`inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md border text-xs ${
+                                formatExpiration(acc.expiresAt, locale).badgeClass
+                              }`}
+                            >
+                              <Clock className="w-3 h-3" aria-hidden="true" />
+                              <span>{formatExpiration(acc.expiresAt, locale).label}</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -816,7 +829,10 @@ export function SettingsModal({
                         <div className="min-w-0">
                           <div className="flex items-center flex-wrap gap-2">
                             <span className="text-sm font-semibold text-slate-100 truncate">
-                              {dict.aiConsole.geminiProviderLabel} ({conn.label})
+                              {conn.provider === 'GROQ'
+                                ? dict.aiConsole.groqProviderLabel
+                                : dict.aiConsole.geminiProviderLabel}{' '}
+                              ({conn.label})
                             </span>
                             {conn.status === 'REVOKED' ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0">
@@ -830,6 +846,16 @@ export function SettingsModal({
                                 })}
                               </span>
                             )}
+                          </div>
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <span
+                              className={`inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md border text-xs ${
+                                formatExpiration(conn.expiresAt, locale).badgeClass
+                              }`}
+                            >
+                              <Clock className="w-3 h-3" aria-hidden="true" />
+                              <span>{formatExpiration(conn.expiresAt, locale).label}</span>
+                            </span>
                           </div>
                         </div>
                       </div>

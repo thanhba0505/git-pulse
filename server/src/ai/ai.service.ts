@@ -44,6 +44,7 @@ export interface AiConnectionSummary {
   maskedKey: string;
   availableModels: AiModelOption[];
   status: string;
+  expiresAt: Date | null;
   lastVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -105,6 +106,7 @@ export class AiService {
       maskedKey: conn.maskedKey,
       availableModels: stored.length > 0 ? stored : [...defaultModels],
       status: conn.status,
+      expiresAt: conn.expiresAt,
       lastVerifiedAt: conn.lastVerifiedAt,
       createdAt: conn.createdAt,
       updatedAt: conn.updatedAt,
@@ -144,6 +146,11 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
+    const parsedExpiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
+    if (parsedExpiresAt && Number.isNaN(parsedExpiresAt.getTime())) {
+      throw new BadRequestException('Thời gian hết hạn không hợp lệ.');
+    }
+
     const label = dto.label?.trim() || maskApiKey(cleanKey);
     const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
 
@@ -161,6 +168,7 @@ export class AiService {
         availableModels: models as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
         isActive: true,
+        expiresAt: parsedExpiresAt,
         lastVerifiedAt: new Date(),
       },
     });
@@ -195,6 +203,19 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
+    let expiresAtToUpdate: Date | null | undefined = undefined;
+    if (dto.expiresAt !== undefined) {
+      if (dto.expiresAt === null || dto.expiresAt === '') {
+        expiresAtToUpdate = null;
+      } else {
+        const parsed = new Date(dto.expiresAt);
+        if (Number.isNaN(parsed.getTime())) {
+          throw new BadRequestException('Thời gian hết hạn không hợp lệ.');
+        }
+        expiresAtToUpdate = parsed;
+      }
+    }
+
     const label = dto.label?.trim() || existing.label || maskApiKey(cleanKey);
     const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
     const encrypted = this.crypto.encrypt(cleanKey, userId);
@@ -212,6 +233,7 @@ export class AiService {
         availableModels: models as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
         isActive: true,
+        ...(expiresAtToUpdate !== undefined ? { expiresAt: expiresAtToUpdate } : {}),
         lastVerifiedAt: new Date(),
       },
     });

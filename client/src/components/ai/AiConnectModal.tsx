@@ -37,6 +37,8 @@ function maskApiKey(rawKey: string): string {
   return `${key.slice(0, 4)}••••${key.slice(-4)}`;
 }
 
+type ExpirationPreset = 'never' | '30' | '60' | '90' | 'custom';
+
 export function AiConnectModal({
   isOpen,
   onClose,
@@ -47,6 +49,8 @@ export function AiConnectModal({
   const [provider, setProvider] = useState<AiProviderType>('GROQ');
   const [labelInput, setLabelInput] = useState('');
   const [isLabelCustomized, setIsLabelCustomized] = useState(false);
+  const [expirationPreset, setExpirationPreset] = useState<ExpirationPreset>('never');
+  const [customExpirationDate, setCustomExpirationDate] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [hasTouchedKey, setHasTouchedKey] = useState(false);
@@ -65,6 +69,13 @@ export function AiConnectModal({
     setProvider(editingConnection?.provider ?? 'GROQ');
     setLabelInput(editingConnection?.label ?? '');
     setIsLabelCustomized(Boolean(editingConnection?.label));
+    if (editingConnection?.expiresAt) {
+      setExpirationPreset('custom');
+      setCustomExpirationDate(editingConnection.expiresAt.slice(0, 10));
+    } else {
+      setExpirationPreset('never');
+      setCustomExpirationDate('');
+    }
     setApiKeyInput('');
     setShowKey(false);
     setHasTouchedKey(false);
@@ -143,11 +154,26 @@ export function AiConnectModal({
     setApiKeyError(null);
     setServerError(null);
     try {
+      let expiresAtPayload: string | null | undefined = undefined;
+      if (expirationPreset === 'never') {
+        expiresAtPayload = null;
+      } else if (expirationPreset === 'custom') {
+        expiresAtPayload = customExpirationDate
+          ? new Date(`${customExpirationDate}T23:59:59.999Z`).toISOString()
+          : null;
+      } else {
+        const days = Number.parseInt(expirationPreset, 10);
+        if (!Number.isNaN(days)) {
+          expiresAtPayload = new Date(Date.now() + days * 86400 * 1000).toISOString();
+        }
+      }
+
       const cleanLabel = labelInput.trim() || maskApiKey(cleanKey);
       const payload = {
         provider,
         apiKey: cleanKey,
         label: cleanLabel,
+        expiresAt: expiresAtPayload,
       };
       const saved = editingConnection
         ? await api.ai.updateConnection(editingConnection.id, payload)
@@ -251,6 +277,34 @@ export function AiConnectModal({
           autoComplete="off"
           disabled={isBusy}
         />
+
+        <div className="space-y-2">
+          <Select
+            id="ai-modal-expiration"
+            label={dict.aiModal.expiresAtLabel}
+            value={expirationPreset}
+            options={[
+              { value: 'never', label: dict.aiModal.expiresNever },
+              { value: '30', label: dict.aiModal.expires30d },
+              { value: '60', label: dict.aiModal.expires60d },
+              { value: '90', label: dict.aiModal.expires90d },
+              { value: 'custom', label: dict.aiModal.expiresCustom },
+            ]}
+            onChange={(next) => setExpirationPreset(next as ExpirationPreset)}
+            disabled={isBusy}
+          />
+          {expirationPreset === 'custom' && (
+            <Input
+              id="ai-modal-custom-expires"
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={customExpirationDate}
+              onChange={(e) => setCustomExpirationDate(e.target.value)}
+              placeholder={dict.aiModal.customDatePlaceholder}
+              disabled={isBusy}
+            />
+          )}
+        </div>
 
         <div className="space-y-3">
           <Input

@@ -2,12 +2,14 @@
 
 import React, { useMemo } from 'react';
 import { AiAvailabilityState, AiConnectionSummary, AiModelOption } from '../../types';
+import { formatExpiration } from '../../lib/activity-utils';
 import { useTranslation } from '../../i18n';
 import { Select, SelectOption } from '../ui/Select';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   KeyRound,
   Loader2,
   RefreshCw,
@@ -23,6 +25,7 @@ interface CockpitAiConsoleProps {
   onSelectToolKey: (toolKey: string) => void;
   connections: readonly AiConnectionSummary[];
   githubModels: readonly AiModelOption[];
+  gitTokenExpiresAt?: string | null;
   selectedModel: string;
   onModelChange: (model: string) => void;
   hasCustomPrompt: boolean;
@@ -45,6 +48,7 @@ export function CockpitAiConsole({
   onSelectToolKey,
   connections,
   githubModels,
+  gitTokenExpiresAt,
   selectedModel,
   onModelChange,
   hasCustomPrompt,
@@ -61,7 +65,7 @@ export function CockpitAiConsole({
   selectedPrCount,
   selectedCommitCount,
 }: CockpitAiConsoleProps) {
-  const { dict, t } = useTranslation();
+  const { dict, t, locale } = useTranslation();
 
   const activeConnection = useMemo(() => {
     if (!selectedToolKey.startsWith('conn:')) return null;
@@ -69,22 +73,39 @@ export function CockpitAiConsole({
     return connections.find((c) => c.id === targetId) ?? null;
   }, [selectedToolKey, connections]);
 
+  const activeExpirationInfo = useMemo(() => {
+    if (selectedToolKey === BUILTIN_GITHUB_TOOL_KEY) {
+      return formatExpiration(gitTokenExpiresAt, locale);
+    }
+    if (activeConnection) {
+      return formatExpiration(activeConnection.expiresAt, locale);
+    }
+    return null;
+  }, [selectedToolKey, gitTokenExpiresAt, activeConnection, locale]);
+
   const providerOptions = useMemo<readonly SelectOption<string>[]>(() => {
+    const gitExp = formatExpiration(gitTokenExpiresAt, locale);
+    const gitDesc = gitTokenExpiresAt
+      ? `${dict.aiConsole.githubModelsDesc} • ${gitExp.label}`
+      : dict.aiConsole.githubModelsDesc;
+
     const items: SelectOption<string>[] = [
       {
         value: BUILTIN_GITHUB_TOOL_KEY,
         label: dict.aiConsole.githubModelsLabel,
-        description: dict.aiConsole.githubModelsDesc,
+        description: gitDesc,
       },
       ...connections.map((conn) => {
         const providerName =
           conn.provider === 'GROQ'
             ? dict.aiConsole.groqProviderLabel
             : dict.aiConsole.geminiProviderLabel;
+        const exp = formatExpiration(conn.expiresAt, locale);
+        const expDesc = conn.expiresAt ? ` • ${exp.label}` : '';
         return {
           value: `conn:${conn.id}`,
           label: `${providerName} (${conn.label})`,
-          description: dict.aiModal.apiKeyLabel,
+          description: `${dict.aiModal.apiKeyLabel}${expDesc}`,
           ...(conn.status === 'REVOKED'
             ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
             : {}),
@@ -98,7 +119,7 @@ export function CockpitAiConsole({
       },
     ];
     return items;
-  }, [connections, dict]);
+  }, [connections, dict, gitTokenExpiresAt, locale]);
 
   const modelOptions = useMemo<readonly SelectOption<string>[]>(() => {
     if (activeConnection) {
@@ -194,6 +215,21 @@ export function CockpitAiConsole({
           onChange={handleToolChange}
           disabled={isGenerating || isRefreshingModels}
         />
+
+        {/* Active Key / Token Expiration Info */}
+        {activeExpirationInfo && (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#152033]/70 border border-slate-700/60 text-xs">
+            <span className="text-slate-400 font-medium flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+              <span>{dict.aiConsole.expiresLabel}:</span>
+            </span>
+            <span
+              className={`inline-flex items-center font-mono px-2 py-0.5 rounded-md border text-xs ${activeExpirationInfo.badgeClass}`}
+            >
+              {activeExpirationInfo.label}
+            </span>
+          </div>
+        )}
 
         {/* Full-Width AI Model Select */}
         <Select

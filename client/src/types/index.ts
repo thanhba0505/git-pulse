@@ -161,6 +161,7 @@ export interface AiConnectionSummary {
   maskedKey: string;
   availableModels: AiModelOption[];
   status: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
+  expiresAt?: string | null;
   lastVerifiedAt?: string | null;
   createdAt: string;
   updatedAt: string;

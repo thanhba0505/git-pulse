@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { User, GitStatus } from '../../types';
+import { formatExpiration } from '../../lib/activity-utils';
 import { useTranslation } from '../../i18n';
 import { DropdownMenu } from '../ui/DropdownMenu';
 import {
@@ -38,7 +39,7 @@ export function Header({
   onOpenSettings,
   onLogout,
 }: HeaderProps) {
-  const { dict } = useTranslation();
+  const { dict, locale } = useTranslation();
   const accounts = gitStatus.accounts ?? [];
   const hasConnectedAccounts = Boolean(gitStatus.connected && accounts.length > 0);
 
@@ -130,55 +131,71 @@ export function Header({
             >
               {({ close }) => (
                 <div className="space-y-0.5">
-                  {accounts.map((account, idx) => (
-                    <button
-                      key={account.id}
-                      type="button"
-                      role="menuitem"
-                      style={{ '--opt-idx': idx } as React.CSSProperties}
-                      onClick={() => {
-                        close();
-                        if (!account.isActive) {
-                          onSelectGitAccount(account.id);
-                        }
-                      }}
-                      className={`gp-menu-option-in w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs text-left border transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
-                        account.isActive
-                          ? 'bg-gradient-to-r from-sky-500/[0.16] via-sky-500/[0.10] to-indigo-500/[0.06] border-sky-400/30 text-sky-200 font-semibold'
-                          : 'border-transparent text-slate-200 hover:bg-white/[0.07] hover:border-white/[0.08]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                  {accounts.map((account, idx) => {
+                    const expInfo = formatExpiration(account.expiresAt, locale);
+                    return (
+                      <button
+                        key={account.id}
+                        type="button"
+                        role="menuitem"
+                        style={{ '--opt-idx': idx } as React.CSSProperties}
+                        onClick={() => {
+                          close();
+                          if (!account.isActive) {
+                            onSelectGitAccount(account.id);
+                          }
+                        }}
+                        className={`gp-menu-option-in w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs text-left border transition-[background-color,border-color,color] duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 focus-visible:bg-white/[0.09] ${
+                          account.isActive
+                            ? 'bg-gradient-to-r from-sky-500/[0.16] via-sky-500/[0.10] to-indigo-500/[0.06] border-sky-400/30 text-sky-200 font-semibold'
+                            : 'border-transparent text-slate-200 hover:bg-white/[0.07] hover:border-white/[0.08]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {account.isActive && (
+                            <span
+                              aria-hidden="true"
+                              className="w-[3px] self-stretch my-0.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)] shrink-0"
+                            />
+                          )}
+                          {account.gitAvatar ? (
+                            <img
+                              src={account.gitAvatar}
+                              alt={account.gitUsername}
+                              className="w-6 h-6 rounded-full border border-white/15 object-cover shrink-0"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-white/[0.08] flex items-center justify-center text-xs font-mono text-slate-300 shrink-0">
+                              {account.gitUsername.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <span className="font-mono truncate block">@{account.gitUsername}</span>
+                            <span
+                              className={`block text-xs font-mono leading-tight mt-0.5 ${
+                                expInfo.isExpired
+                                  ? 'text-rose-400'
+                                  : expInfo.isExpiringSoon
+                                    ? 'text-amber-400'
+                                    : 'text-slate-400'
+                              }`}
+                            >
+                              {expInfo.label}
+                            </span>
+                          </div>
+                        </div>
+
                         {account.isActive && (
                           <span
                             aria-hidden="true"
-                            className="w-[3px] self-stretch my-0.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)] shrink-0"
-                          />
+                            className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0"
+                          >
+                            <Check className="w-3 h-3" />
+                          </span>
                         )}
-                        {account.gitAvatar ? (
-                          <img
-                            src={account.gitAvatar}
-                            alt={account.gitUsername}
-                            className="w-5 h-5 rounded-full border border-white/15 object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-white/[0.08] flex items-center justify-center text-xs font-mono text-slate-300 shrink-0">
-                            {account.gitUsername.slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="font-mono truncate">@{account.gitUsername}</span>
-                      </div>
-
-                      {account.isActive && (
-                        <span
-                          aria-hidden="true"
-                          className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shrink-0"
-                        >
-                          <Check className="w-3 h-3" />
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
 
                   <hr className="border-white/[0.1] my-1 mx-1" />
 

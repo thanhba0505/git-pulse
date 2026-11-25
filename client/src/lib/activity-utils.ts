@@ -96,3 +96,84 @@ export function formatRelativeTime(isoDate: string | undefined, locale: 'vi' | '
   const diffDays = Math.round(diffSeconds / 86400);
   return rtf.format(diffDays, 'day');
 }
+
+export interface ExpirationInfo {
+  label: string;
+  isExpired: boolean;
+  isExpiringSoon: boolean;
+  daysRemaining?: number;
+  formattedDate?: string;
+  badgeClass: string;
+}
+
+export function formatExpiration(
+  expiresAt?: string | Date | null,
+  locale: 'vi' | 'en' = 'vi',
+): ExpirationInfo {
+  if (!expiresAt) {
+    return {
+      label: locale === 'vi' ? 'Không thời hạn' : 'No expiration',
+      isExpired: false,
+      isExpiringSoon: false,
+      badgeClass: 'text-slate-400 bg-slate-800/60 border-slate-700/60',
+    };
+  }
+
+  const targetDate = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+  const targetTime = targetDate.getTime();
+  if (Number.isNaN(targetTime)) {
+    return {
+      label: locale === 'vi' ? 'Không thời hạn' : 'No expiration',
+      isExpired: false,
+      isExpiringSoon: false,
+      badgeClass: 'text-slate-400 bg-slate-800/60 border-slate-700/60',
+    };
+  }
+
+  const dateStr = targetDate.toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  const now = Date.now();
+  const diffMs = targetTime - now;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMs <= 0 || diffDays <= 0) {
+    return {
+      label: locale === 'vi' ? `Đã hết hạn (${dateStr})` : `Expired (${dateStr})`,
+      isExpired: true,
+      isExpiringSoon: false,
+      daysRemaining: 0,
+      formattedDate: dateStr,
+      badgeClass: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
+    };
+  }
+
+  if (diffDays <= 7) {
+    return {
+      label:
+        locale === 'vi'
+          ? `Hết hạn sau ${diffDays} ngày (${dateStr})`
+          : `Expires in ${diffDays}d (${dateStr})`,
+      isExpired: false,
+      isExpiringSoon: true,
+      daysRemaining: diffDays,
+      formattedDate: dateStr,
+      badgeClass: 'text-amber-400 bg-amber-500/15 border-amber-500/30',
+    };
+  }
+
+  return {
+    label:
+      locale === 'vi'
+        ? `Hết hạn: ${dateStr} (còn ${diffDays} ngày)`
+        : `Expires: ${dateStr} (${diffDays}d left)`,
+    isExpired: false,
+    isExpiringSoon: false,
+    daysRemaining: diffDays,
+    formattedDate: dateStr,
+    badgeClass: 'text-slate-300 bg-slate-800/80 border-slate-700/70',
+  };
+}
