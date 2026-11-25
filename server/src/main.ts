@@ -26,8 +26,12 @@ export function configureApp(app: INestApplication): void {
     'http://localhost:5100',
     'http://localhost:4100',
     'https://git-pulse-client.vercel.app',
+    'https://git-pulse-app.vercel.app',
+    'https://git-pulse-web.vercel.app',
     'https://central-gateway-client.vercel.app',
+    'https://central-gateway-app.vercel.app',
     'https://wonderlab-client.vercel.app',
+    'https://wonderlab-app.vercel.app',
     'https://wonderlab.io.vn',
     'https://www.wonderlab.io.vn',
   ];

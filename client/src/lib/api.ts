@@ -16,19 +16,59 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api/v1';
 
+const TOKEN_STORAGE_KEY = 'git_pulse_token';
+
+let memoryToken: string | null = null;
+
+export function getStoredToken(): string | null {
+  if (typeof window !== 'undefined') {
+    try {
+      return localStorage.getItem(TOKEN_STORAGE_KEY) || memoryToken;
+    } catch {
+      return memoryToken;
+    }
+  }
+  return memoryToken;
+}
+
+export function setStoredToken(token: string | null): void {
+  memoryToken = token;
+  if (typeof window !== 'undefined') {
+    try {
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
+}
+
 async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  if (token && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(url, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
+    if (res.status === 401 && endpoint === '/auth/me') {
+      setStoredToken(null);
+    }
     const errorBody = (await res.json().catch(() => ({}))) as {
       message?: string | string[];
     };
@@ -44,31 +84,65 @@ async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promis
 export const api = {
   auth: {
     me: () => fetchJson<{ user: User }>('/auth/me'),
-    login: (username: string, password?: string) =>
-      fetchJson<{ message: string; user: User }>('/auth/login', {
+    login: async (username: string, password?: string) => {
+      const res = await fetchJson<{ message: string; user: User; token?: string }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username, password, devBypass: !password }),
-      }),
-    register: (username: string, email: string, password: string) =>
-      fetchJson<{ message: string; user: User }>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, email, password }),
-      }),
+      });
+      if (res.token) {
+        setStoredToken(res.token);
+      }
+      return res;
+    },
+    register: async (username: string, email: string, password: string) => {
+      const res = await fetchJson<{ message: string; user: User; token?: string }>(
+        '/auth/register',
+        {
+          method: 'POST',
+          body: JSON.stringify({ username, email, password }),
+        },
+      );
+      if (res.token) {
+        setStoredToken(res.token);
+      }
+      return res;
+    },
     forgotPassword: (email: string) =>
       fetchJson<{ success: boolean; message: string }>('/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email }),
       }),
-    googleLogin: (dto: { email?: string; name?: string; credential?: string; googleId?: string }) =>
-      fetchJson<{ user: User }>('/auth/google', {
-        method: 'POST',
-        body: JSON.stringify(dto),
-      }),
-    ssoCallback: (code: string, codeVerifier: string) =>
-      fetchJson<{ message: string; user: User }>('/auth/sso/callback', {
-        method: 'POST',
-        body: JSON.stringify({ code, code_verifier: codeVerifier }),
-      }),
+    googleLogin: async (dto: {
+      email?: string;
+      name?: string;
+      credential?: string;
+      googleId?: string;
+    }) => {
+      const res = await fetchJson<{ message?: string; user: User; token?: string }>(
+        '/auth/google',
+        {
+          method: 'POST',
+          body: JSON.stringify(dto),
+        },
+      );
+      if (res.token) {
+        setStoredToken(res.token);
+      }
+      return res;
+    },
+    ssoCallback: async (code: string, codeVerifier: string) => {
+      const res = await fetchJson<{ message: string; user: User; token?: string }>(
+        '/auth/sso/callback',
+        {
+          method: 'POST',
+          body: JSON.stringify({ code, code_verifier: codeVerifier }),
+        },
+      );
+      if (res.token) {
+        setStoredToken(res.token);
+      }
+      return res;
+    },
     getDevUsers: () =>
       fetchJson<
         Array<{
@@ -79,7 +153,13 @@ export const api = {
           avatarUrl?: string | null;
         }>
       >('/auth/dev/users'),
-    logout: () => fetchJson<{ success: boolean }>('/auth/logout', { method: 'POST' }),
+    logout: async () => {
+      try {
+        return await fetchJson<{ success: boolean }>('/auth/logout', { method: 'POST' });
+      } finally {
+        setStoredToken(null);
+      }
+    },
   },
   github: {
     getStatus: () => fetchJson<GitStatus>('/github/status'),

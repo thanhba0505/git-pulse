@@ -84,8 +84,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Đăng xuất và xóa phiên làm việc' })
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('git_pulse_session', { path: '/' });
-    res.clearCookie('access_token', { path: '/' });
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      path: '/',
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      secure: isProduction,
+    };
+    res.clearCookie('git_pulse_session', cookieOptions);
+    res.clearCookie('access_token', cookieOptions);
     return { success: true };
   }
 }
