@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   KeyRound,
   Loader2,
-  Plus,
   RefreshCw,
   Settings,
   Sparkles,
@@ -274,16 +273,7 @@ export function CockpitAiConsole({
                   <span>{dict.aiConsole.recheckBtn}</span>
                 </button>
 
-                {!activeConnection ? (
-                  <button
-                    type="button"
-                    onClick={onOpenAddAiModal}
-                    className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-md text-xs font-semibold text-slate-950 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>{dict.aiConsole.addGeminiQuickBtn}</span>
-                  </button>
-                ) : (
+                {activeConnection &&
                   (availability.reasonCode === 'INVALID_KEY' ||
                     availability.reasonCode === 'DECRYPT_ERROR' ||
                     availability.reasonCode === 'NOT_CONNECTED') && (
@@ -295,8 +285,7 @@ export function CockpitAiConsole({
                       <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>{dict.aiConsole.updateKeyQuickBtn}</span>
                     </button>
-                  )
-                )}
+                  )}
               </div>
             </div>
           )}
