@@ -6,8 +6,11 @@ import {
   FetchPreferences,
   GitHubWorkspacesResponse,
   GitStatus,
+  ParabolConnectionSummary,
+  ParabolStandupsResponse,
   PrActivity,
   ReportItem,
+  SubmitParabolStandupResponse,
   TaskColor,
   TrackingTask,
   User,
@@ -197,7 +200,6 @@ export const api = {
       language?: 'vi' | 'en';
       autoCopyToClipboard?: boolean;
       customPrompt?: string;
-      quickAccessUrl?: string;
       fetchPreferences?: Partial<FetchPreferences>;
     }) =>
       fetchJson<UserSettingsResponse>('/settings', {
@@ -258,13 +260,16 @@ export const api = {
   ai: {
     listConnections: () => fetchJson<AiConnectionSummary[]>('/ai/connections'),
     previewModels: (dto: { provider: AiProviderType; apiKey: string }) =>
-      fetchJson<{ valid: boolean; maskedKey: string; models: AiModelOption[] }>(
-        '/ai/preview-models',
-        {
-          method: 'POST',
-          body: JSON.stringify(dto),
-        },
-      ),
+      fetchJson<{
+        valid: boolean;
+        maskedKey: string;
+        suggestedLabel: string;
+        expiresAt: string | null;
+        models: AiModelOption[];
+      }>('/ai/preview-models', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
     refreshConnectionModels: (id: string) =>
       fetchJson<AiConnectionSummary>(`/ai/connections/${encodeURIComponent(id)}/refresh-models`, {
         method: 'POST',
@@ -331,5 +336,57 @@ export const api = {
   reports: {
     list: () => fetchJson<ReportItem[]>('/reports'),
     delete: (id: string) => fetchJson<{ success: boolean }>(`/reports/${id}`, { method: 'DELETE' }),
+  },
+  parabol: {
+    listConnections: () => fetchJson<ParabolConnectionSummary[]>('/parabol/connections'),
+    verifyToken: (token: string) =>
+      fetchJson<{
+        valid: boolean;
+        suggestedLabel: string;
+        name: string | null;
+        email: string | null;
+        maskedPrefix: string;
+        expiresAt: string | null;
+        teams: Array<{ id: string; name: string }>;
+      }>('/parabol/verify-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    saveConnection: (dto: { token: string; label?: string }) =>
+      fetchJson<ParabolConnectionSummary>('/parabol/connections', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
+    switchActiveConnection: (id: string) =>
+      fetchJson<ParabolConnectionSummary[]>(
+        `/parabol/connections/${encodeURIComponent(id)}/active`,
+        {
+          method: 'PATCH',
+        },
+      ),
+    deleteConnection: (id: string) =>
+      fetchJson<{ success: boolean }>(`/parabol/connections/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    listStandups: (options?: { connectionId?: string; meetingUrl?: string; refresh?: boolean }) => {
+      const params = new URLSearchParams();
+      if (options?.connectionId) params.set('connectionId', options.connectionId);
+      if (options?.meetingUrl) params.set('meetingUrl', options.meetingUrl);
+      if (options?.refresh) params.set('refresh', 'true');
+      const q = params.toString();
+      return fetchJson<ParabolStandupsResponse>(`/parabol/standups${q ? `?${q}` : ''}`);
+    },
+    submitStandup: (dto: {
+      connectionId?: string;
+      meetingId: string;
+      promptId: string;
+      bullets: string[];
+      shareImmediately?: boolean;
+      includeTodayHeader?: boolean;
+    }) =>
+      fetchJson<SubmitParabolStandupResponse>('/parabol/standups/submit', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
   },
 };

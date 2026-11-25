@@ -450,7 +450,7 @@ html[data-gp-motion='paused'] .gp-showcase-tilt:hover {
 }
 
 .gp-menu-surface {
-  background: linear-gradient(180deg, rgba(30, 42, 64, 0.97) 0%, rgba(20, 30, 48, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(24, 35, 54, 0.99) 0%, rgba(18, 27, 43, 0.995) 100%);
   -webkit-backdrop-filter: blur(28px) saturate(165%);
   backdrop-filter: blur(28px) saturate(165%);
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -612,7 +612,7 @@ dialog.gp-top-dialog:modal {
 @keyframes gp-toast-in {
   from {
     opacity: 0;
-    translate: 0 10px;
+    translate: 0 -10px;
     scale: 0.96;
   }
   to {
@@ -706,6 +706,21 @@ dialog.gp-top-dialog:modal {
     scrollbar-width: thin;
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
   }
+}
+
+.gp-toast-region {
+  position: fixed;
+  inset: auto;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  height: auto;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
 }
 
 .gp-toast-enter {

@@ -120,6 +120,8 @@ const GITHUB_MODEL_ID_MAP: Record<string, string> = {
   'meta-llama-3.3-70b-instruct': 'meta/llama-3.3-70b-instruct',
 };
 
+export { extractTokenExpiration as extractApiKeyExpiration } from '../common/token-expiration.util';
+
 /**
  * Masks an API key so only safe prefix/suffix hints remain for UI display.
  */

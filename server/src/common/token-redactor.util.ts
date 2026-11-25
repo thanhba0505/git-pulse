@@ -16,9 +16,12 @@ const AI_KEY_PATTERNS = [
   /gsk_[a-zA-Z0-9]{20,}/g, // Groq API Key
 ];
 
+const BEARER_TOKEN_PATTERN = /\bBearer\s+(?!\[REDACTED_)[A-Za-z0-9._~+/=-]{16,}/gi;
+const PARABOL_PAT_PATTERNS = [/\bpbl_[A-Za-z0-9_-]{16,}/g, /\bpat_[A-Za-z0-9_-]{16,}/g];
+
 /**
- * Sanitizes any string or JSON representation by replacing detected GitHub tokens
- * and AI provider keys with safe placeholders to prevent leaks in logs or errors.
+ * Sanitizes any string or JSON representation by replacing detected GitHub tokens,
+ * AI provider keys, and Parabol / Bearer credentials with safe placeholders.
  */
 export function redactTokens(input: unknown): string {
   if (input === null || input === undefined) {
@@ -43,6 +46,10 @@ export function redactTokens(input: unknown): string {
   for (const pattern of AI_KEY_PATTERNS) {
     sanitized = sanitized.replace(pattern, '[REDACTED_AI_KEY]');
   }
+  for (const pattern of PARABOL_PAT_PATTERNS) {
+    sanitized = sanitized.replace(pattern, '[REDACTED_PARABOL_TOKEN]');
+  }
+  sanitized = sanitized.replace(BEARER_TOKEN_PATTERN, 'Bearer [REDACTED_TOKEN]');
 
   return sanitized;
 }

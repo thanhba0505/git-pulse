@@ -11,6 +11,7 @@ import { AiModule } from './ai/ai.module';
 import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { TasksModule } from './tasks/tasks.module';
+import { ParabolModule } from './parabol/parabol.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -34,6 +35,7 @@ import { HealthController } from './health/health.controller';
     ReportsModule,
     SettingsModule,
     TasksModule,
+    ParabolModule,
   ],
   controllers: [HealthController],
   providers: [

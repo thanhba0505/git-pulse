@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ModalDialog } from './ModalDialog';
 import { useTranslation } from '../../i18n';
 import { useAmbientMotionPreference } from '../../lib/motion-preference';
@@ -16,6 +16,11 @@ import {
   CornerDownLeft,
   Pause,
   Play,
+  ListChecks,
+  Send,
+  KeyRound,
+  Settings,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { AiConnectionSummary } from '../../types';
 
@@ -33,12 +38,20 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   canGenerate: boolean;
+  hasSelectableCommits: boolean;
+  showParabolAction: boolean;
+  canSendToParabol: boolean;
   aiConnections: readonly AiConnectionSummary[];
   onSyncRange: (range: 'today' | '24h' | '7d') => void;
+  onOpenCommitSelector: () => void;
   onGenerate: () => void;
   onSelectAiTool: (toolKey: string) => void;
   onOpenAddAiModal: () => void;
+  onOpenParabolSubmit: () => void;
+  onOpenAddReportPlatform: () => void;
   onOpenHistory: () => void;
+  onOpenSettings: () => void;
+  onOpenReportSettings: () => void;
   onOpenGitModal: () => void;
   onToggleLanguage: () => void;
 }
@@ -47,12 +60,20 @@ export function CommandPalette({
   isOpen,
   onClose,
   canGenerate,
+  hasSelectableCommits,
+  showParabolAction,
+  canSendToParabol,
   aiConnections,
   onSyncRange,
+  onOpenCommitSelector,
   onGenerate,
   onSelectAiTool,
   onOpenAddAiModal,
+  onOpenParabolSubmit,
+  onOpenAddReportPlatform,
   onOpenHistory,
+  onOpenSettings,
+  onOpenReportSettings,
   onOpenGitModal,
   onToggleLanguage,
 }: CommandPaletteProps) {
@@ -60,6 +81,7 @@ export function CommandPalette({
   const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -68,8 +90,8 @@ export function CommandPalette({
     }
   }, [isOpen]);
 
-  const commands = useMemo<CommandItem[]>(
-    () => [
+  const commands = useMemo<CommandItem[]>(() => {
+    const items: CommandItem[] = [
       {
         id: 'sync-today',
         label: dict.commandPalette.actions.syncToday,
@@ -92,6 +114,14 @@ export function CommandPalette({
         onSelect: () => onSyncRange('7d'),
       },
       {
+        id: 'select-commits',
+        label: dict.commandPalette.actions.selectCommits,
+        group: dict.commandPalette.groups.git,
+        disabled: !hasSelectableCommits,
+        icon: ListChecks,
+        onSelect: onOpenCommitSelector,
+      },
+      {
         id: 'generate-standup',
         label: dict.commandPalette.actions.generateStandup,
         group: dict.commandPalette.groups.ai,
@@ -107,26 +137,65 @@ export function CommandPalette({
         icon: Globe,
         onSelect: () => onSelectAiTool('builtin:GITHUB_MODELS'),
       },
-      ...aiConnections.map((conn) => ({
-        id: `engine-conn-${conn.id}`,
-        label: `${dict.aiConsole.geminiProviderLabel} (${conn.label})`,
-        group: dict.commandPalette.groups.ai,
-        icon: Sparkles,
-        onSelect: () => onSelectAiTool(`conn:${conn.id}`),
-      })),
+      ...aiConnections.map((conn) => {
+        const providerName =
+          conn.provider === 'GROQ'
+            ? dict.aiConsole.groqProviderLabel
+            : dict.aiConsole.geminiProviderLabel;
+        return {
+          id: `engine-conn-${conn.id}`,
+          label: `${providerName} (${conn.label})`,
+          group: dict.commandPalette.groups.ai,
+          icon: Sparkles,
+          onSelect: () => onSelectAiTool(`conn:${conn.id}`),
+        };
+      }),
       {
-        id: 'engine-add-gemini',
+        id: 'engine-add-ai',
         label: dict.commandPalette.actions.addGeminiAi,
         group: dict.commandPalette.groups.ai,
         icon: Plus,
         onSelect: onOpenAddAiModal,
       },
+      ...(showParabolAction
+        ? [
+            {
+              id: 'send-to-parabol',
+              label: dict.commandPalette.actions.sendToParabol,
+              group: dict.commandPalette.groups.reports,
+              disabled: !canSendToParabol,
+              icon: Send,
+              onSelect: onOpenParabolSubmit,
+            },
+          ]
+        : []),
+      {
+        id: 'connect-report-platform',
+        label: dict.commandPalette.actions.connectReportPlatform,
+        group: dict.commandPalette.groups.reports,
+        icon: KeyRound,
+        onSelect: onOpenAddReportPlatform,
+      },
       {
         id: 'open-history',
         label: dict.commandPalette.actions.openHistory,
-        group: dict.commandPalette.groups.navigation,
+        group: dict.commandPalette.groups.reports,
         icon: History,
         onSelect: onOpenHistory,
+      },
+      {
+        id: 'open-settings',
+        label: dict.commandPalette.actions.openSettings,
+        group: dict.commandPalette.groups.navigation,
+        icon: Settings,
+        onSelect: onOpenSettings,
+      },
+      {
+        id: 'open-report-settings',
+        label: dict.commandPalette.actions.openReportSettings,
+        group: dict.commandPalette.groups.navigation,
+        icon: SlidersHorizontal,
+        onSelect: onOpenReportSettings,
       },
       {
         id: 'open-git-modal',
@@ -151,22 +220,30 @@ export function CommandPalette({
         icon: isMotionPaused ? Play : Pause,
         onSelect: toggleMotion,
       },
-    ],
-    [
-      dict,
-      canGenerate,
-      aiConnections,
-      isMotionPaused,
-      onSyncRange,
-      onGenerate,
-      onSelectAiTool,
-      onOpenAddAiModal,
-      onOpenHistory,
-      onOpenGitModal,
-      onToggleLanguage,
-      toggleMotion,
-    ],
-  );
+    ];
+    return items;
+  }, [
+    dict,
+    canGenerate,
+    hasSelectableCommits,
+    showParabolAction,
+    canSendToParabol,
+    aiConnections,
+    isMotionPaused,
+    onSyncRange,
+    onOpenCommitSelector,
+    onGenerate,
+    onSelectAiTool,
+    onOpenAddAiModal,
+    onOpenParabolSubmit,
+    onOpenAddReportPlatform,
+    onOpenHistory,
+    onOpenSettings,
+    onOpenReportSettings,
+    onOpenGitModal,
+    onToggleLanguage,
+    toggleMotion,
+  ]);
 
   const filteredCommands = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -175,6 +252,13 @@ export function CommandPalette({
       (cmd) => cmd.label.toLowerCase().includes(q) || cmd.group.toLowerCase().includes(q),
     );
   }, [commands, query]);
+
+  const safeActiveIndex =
+    filteredCommands.length > 0 ? Math.min(activeIndex, filteredCommands.length - 1) : 0;
+
+  useEffect(() => {
+    itemRefs.current[safeActiveIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [safeActiveIndex]);
 
   const executeItem = (item: CommandItem) => {
     if (item.disabled) return;
@@ -187,13 +271,13 @@ export function CommandPalette({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev + 1) % filteredCommands.length);
+      setActiveIndex((safeActiveIndex + 1) % filteredCommands.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+      setActiveIndex((safeActiveIndex - 1 + filteredCommands.length) % filteredCommands.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      const target = filteredCommands[activeIndex];
+      const target = filteredCommands[safeActiveIndex];
       if (target) {
         executeItem(target);
       }
@@ -242,11 +326,14 @@ export function CommandPalette({
         ) : (
           filteredCommands.map((item, idx) => {
             const Icon = item.icon;
-            const isActive = idx === activeIndex;
+            const isActive = idx === safeActiveIndex;
 
             return (
               <button
                 key={item.id}
+                ref={(el) => {
+                  itemRefs.current[idx] = el;
+                }}
                 type="button"
                 disabled={item.disabled}
                 onMouseEnter={() => setActiveIndex(idx)}

@@ -90,28 +90,33 @@ export function CockpitAiConsole({
   }, [selectedToolKey, gitTokenExpiresAt, activeConnection, locale]);
 
   const providerOptions = useMemo<readonly SelectOption<string>[]>(() => {
-    const gitExp = formatExpiration(gitTokenExpiresAt, locale);
-    const gitDesc = gitTokenExpiresAt
-      ? `${dict.aiConsole.githubModelsDesc} • ${gitExp.label}`
-      : dict.aiConsole.githubModelsDesc;
+    const formatOptionDesc = (prefix: string, expiresAt?: string | null): string => {
+      if (!expiresAt) return prefix;
+      const exp = formatExpiration(expiresAt, locale);
+      if (exp.isExpired) {
+        return `${prefix} - ${dict.aiConsole.expiredShort}`;
+      }
+      if (typeof exp.daysRemaining === 'number') {
+        return `${prefix} - ${t('aiConsole.daysRemainingShort', { days: exp.daysRemaining })}`;
+      }
+      return prefix;
+    };
 
     const items: SelectOption<string>[] = [
       {
         value: BUILTIN_GITHUB_TOOL_KEY,
         label: dict.aiConsole.githubModelsLabel,
-        description: gitDesc,
+        description: formatOptionDesc(dict.aiConsole.githubModelsDesc, gitTokenExpiresAt),
       },
       ...connections.map((conn) => {
         const providerName =
           conn.provider === 'GROQ'
             ? dict.aiConsole.groqProviderLabel
             : dict.aiConsole.geminiProviderLabel;
-        const exp = formatExpiration(conn.expiresAt, locale);
-        const expDesc = conn.expiresAt ? ` • ${exp.label}` : '';
         return {
           value: `conn:${conn.id}`,
           label: `${providerName} (${conn.label})`,
-          description: `${dict.aiModal.apiKeyLabel}${expDesc}`,
+          description: formatOptionDesc(dict.aiModal.apiKeyLabel, conn.expiresAt),
           ...(conn.status === 'REVOKED'
             ? { badge: dict.aiConsole.revokedBadge, badgeTone: 'rose' as const }
             : {}),
@@ -125,7 +130,7 @@ export function CockpitAiConsole({
       },
     ];
     return items;
-  }, [connections, dict, gitTokenExpiresAt, locale]);
+  }, [connections, dict, gitTokenExpiresAt, locale, t]);
 
   const modelOptions = useMemo<readonly SelectOption<string>[]>(() => {
     if (activeConnection) {
@@ -171,8 +176,6 @@ export function CockpitAiConsole({
   const isUnavailable = availability.status === 'unavailable';
   const isGenerateDisabled =
     !hasSelection || isGenerating || isRefreshingModels || isChecking || isUnavailable;
-
-  const ctaText = isGenerating ? dict.aiConsole.generatingBtn : dict.aiConsole.generateBtn;
 
   return (
     <ShowcaseCard as="section" aria-labelledby="ai-console-heading" className="p-5 sm:p-6">
@@ -368,13 +371,9 @@ export function CockpitAiConsole({
           disabled={isGenerateDisabled}
           className="gp-cta-shimmer w-full min-h-[42px] flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:bg-slate-700/70 disabled:text-slate-300 disabled:border disabled:border-slate-600/80 disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         >
-          {isGenerating ? (
-            <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
-          ) : (
-            <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
-          )}
-          <span>{ctaText}</span>
-          {!isGenerating && !isGenerateDisabled && (
+          <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>{dict.aiConsole.generateBtn}</span>
+          {!isGenerateDisabled && (
             <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950/20 text-xs font-mono font-semibold text-slate-950/80 ml-1">
               ⌘↵
             </kbd>

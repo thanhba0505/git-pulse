@@ -20,13 +20,14 @@
 
 ## 📌 Project Overview
 
-**Git Pulse** aggregates daily GitHub pull requests and commits to synthesize concise standup reports using a **Personal BYOK AI Vault & Provider Console** (GitHub Models & per-user encrypted Google Gemini API keys with live model availability verification). Built with a clean Carbon-Slate precision UI and full bilingual (`vi` / `en`) support, it keeps engineering teams aligned with zero cognitive clutter.
+**Git Pulse** aggregates daily GitHub pull requests and commits to synthesize concise standup reports using a **Personal BYOK AI Vault & Provider Console** (`Groq Cloud` LPU & `Google Gemini` encrypted per-user API keys with live model availability verification) and direct **Parabol Standup** delivery. Built with a clean Cool Slate precision UI and full bilingual (`vi` / `en`) support, it keeps engineering teams aligned with zero cognitive clutter.
 
 ### Core Capabilities:
 
-- **Configurable AI Providers & Live Availability Checks**:
-  - **GitHub Models**: Uses the user's active GitHub token with live endpoint & model availability probing.
-  - **Personal Google Gemini (BYOK Vault)**: Each developer can connect their own Google AI Studio API key (`AIza...`), encrypted per-user with **AES-256-GCM + HKDF-SHA256**, automatically discovering live Gemini models (`Gemini 2.5 Flash`, `Gemini 2.5 Pro`, etc.) and probing runtime availability/quota before summarization.
+- **Configurable AI Providers & Live Verification**:
+  - **Groq Cloud (LPU) & Google Gemini (BYOK Vault)**: Connect personal Groq (`gsk_...`) or Google AI Studio (`AIza...` / `AQ...`) API keys encrypted per-user with **AES-256-GCM + HKDF-SHA256**, auto-discovering available models, key expiration metadata, and live runtime probes before summarization.
+- **Direct Parabol Standup Delivery**:
+  - Connect one or more Parabol Personal Access Tokens (`pat_...` from `action.parabol.co/me/profile`), auto-verify profile metadata and expiration, select an active `TeamPromptMeeting` & prompt, and push formatted TipTap standup bullets as a Private Draft or immediate team share.
 - **Git Activity Scanner**: Fetches pull requests, commit timelines, and repository contributions across configurable time windows (`Today`, `24h`, `7d`).
 - **Bilingual Workspace (`vi` / `en`)**: Full interface internationalization decoupled cleanly from AI report generation language.
 - **Multi-Format Export Dock**: 1-click clipboard formatting for Parabol standups, Slack bullet lists, and plain bullets.

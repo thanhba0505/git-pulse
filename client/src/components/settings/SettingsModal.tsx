@@ -6,9 +6,11 @@ import {
   FetchPreferences,
   GitAccountSummary,
   GitHubWorkspacesResponse,
+  ParabolConnectionSummary,
   PrStateFilter,
 } from '../../types';
 import { useTranslation } from '../../i18n';
+import { DEFAULT_AI_PROMPT } from '../../lib/ai-prompt.constants';
 import { getPrStateStyle, formatExpiration } from '../../lib/activity-utils';
 import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import { ModalDialog } from '../ui/ModalDialog';
@@ -17,7 +19,7 @@ import {
   AlertCircle,
   Building2,
   Check,
-  Clock,
+  FileText,
   GitBranch,
   KeyRound,
   Languages,
@@ -25,6 +27,8 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  RotateCcw,
+  Send,
   Settings,
   SlidersHorizontal,
   Sparkles,
@@ -33,17 +37,23 @@ import {
   X,
 } from 'lucide-react';
 
-export type SettingsTabKey = 'fetch' | 'display' | 'general';
+export type SettingsTabKey = 'fetch' | 'display' | 'reports' | 'general';
+export type SettingsSectionAnchor = 'ai-prompt' | 'report-delivery';
 
 interface SettingsModalProps {
   isOpen: boolean;
   initialTab?: SettingsTabKey;
+  initialSection?: SettingsSectionAnchor | null;
   onClose: () => void;
   accounts: GitAccountSummary[];
   aiConnections: readonly AiConnectionSummary[];
   workspaces: GitHubWorkspacesResponse | null;
   preferences: FetchPreferences;
+  customPrompt: string;
+  parabolConnections: readonly ParabolConnectionSummary[];
+  parabolEnabled: boolean;
   onSavePreferences: (next: FetchPreferences) => Promise<void>;
+  onSaveAiPrompt: (customPrompt: string) => Promise<void>;
   onSwitchAccount: (accountId: string) => Promise<void>;
   onDisconnectAccount: (accountId: string) => Promise<void>;
   onOpenAddAccount: () => void;
@@ -51,6 +61,10 @@ interface SettingsModalProps {
   onOpenUpdateAi: (connection: AiConnectionSummary) => void;
   onRefreshAiModels: (connectionId: string) => Promise<void>;
   onDeleteAiConnection: (connectionId: string) => Promise<void>;
+  onOpenAddReportPlatform: () => void;
+  onToggleParabolEnabled: (enabled: boolean) => void;
+  onSwitchParabolConnection: (connectionId: string) => Promise<void>;
+  onDeleteParabolConnection: (connectionId: string) => Promise<void>;
 }
 
 interface ToggleRowProps {
@@ -58,10 +72,18 @@ interface ToggleRowProps {
   label: string;
   description?: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 }
 
-function ToggleSwitchRow({ id, label, description, checked, onChange }: ToggleRowProps) {
+function ToggleSwitchRow({
+  id,
+  label,
+  description,
+  checked,
+  disabled = false,
+  onChange,
+}: ToggleRowProps) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3">
       <div className="min-w-0">
@@ -77,8 +99,9 @@ function ToggleSwitchRow({ id, label, description, checked, onChange }: ToggleRo
         type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1E293B] ${
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1E293B] ${
           checked
             ? 'bg-sky-500 border-sky-400'
             : 'bg-slate-700 border-slate-500 hover:border-slate-400'
@@ -95,17 +118,66 @@ function ToggleSwitchRow({ id, label, description, checked, onChange }: ToggleRo
   );
 }
 
+interface AccountRowProps {
+  avatar: React.ReactNode;
+  title: string;
+  badge?: React.ReactNode;
+  subtitle: string;
+  subtitleToneClass?: string;
+  isActive?: boolean;
+  actions: React.ReactNode;
+}
+
+/**
+ * Uniform 2-line account card preventing uneven text wrapping across providers.
+ */
+function AccountRow({
+  avatar,
+  title,
+  badge,
+  subtitle,
+  subtitleToneClass = 'text-slate-400',
+  isActive = false,
+  actions,
+}: AccountRowProps) {
+  return (
+    <div
+      className={`px-3.5 py-3 rounded-xl border transition-colors flex items-center justify-between gap-3 ${
+        isActive ? 'bg-sky-500/[0.1] border-sky-400/40' : 'bg-[#253349]/55 border-slate-600/75'
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {avatar}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-slate-100 truncate">{title}</span>
+            {badge}
+          </div>
+          <p className={`text-xs font-mono truncate mt-0.5 ${subtitleToneClass}`}>{subtitle}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">{actions}</div>
+    </div>
+  );
+}
+
 const PR_STATE_OPTIONS: readonly PrStateFilter[] = ['draft', 'open', 'merged', 'closed'];
+const MAX_PROMPT_LENGTH = 2000;
 
 export function SettingsModal({
   isOpen,
   initialTab = 'general',
+  initialSection = null,
   onClose,
   accounts,
   aiConnections,
   workspaces,
   preferences,
+  customPrompt,
+  parabolConnections,
+  parabolEnabled,
   onSavePreferences,
+  onSaveAiPrompt,
   onSwitchAccount,
   onDisconnectAccount,
   onOpenAddAccount,
@@ -113,35 +185,62 @@ export function SettingsModal({
   onOpenUpdateAi,
   onRefreshAiModels,
   onDeleteAiConnection,
+  onOpenAddReportPlatform,
+  onToggleParabolEnabled,
+  onSwitchParabolConnection,
+  onDeleteParabolConnection,
 }: SettingsModalProps) {
   const { locale, setLocale, dict, t } = useTranslation();
   const { isPaused: isMotionPaused, toggleMotion } = useAmbientMotionPreference();
 
   const [activeTab, setActiveTab] = useState<SettingsTabKey>(initialTab);
   const [draftPrefs, setDraftPrefs] = useState<FetchPreferences>(preferences);
+  const [draftPrompt, setDraftPrompt] = useState(
+    customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT,
+  );
+
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [confirmingAiId, setConfirmingAiId] = useState<string | null>(null);
+  const [confirmingParabolId, setConfirmingParabolId] = useState<string | null>(null);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busyAiId, setBusyAiId] = useState<string | null>(null);
+  const [busyParabolId, setBusyParabolId] = useState<string | null>(null);
+
   const [isSavingPrefs, setIsSavingPrefs] = useState(false);
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const tabButtonRefs = useRef<Map<SettingsTabKey, HTMLButtonElement>>(new Map());
+  const aiPromptSectionRef = useRef<HTMLElement>(null);
+  const reportDeliverySectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
-      setDraftPrefs(preferences);
-      setConfirmingId(null);
-      setConfirmingAiId(null);
-      setError(null);
-    }
-  }, [isOpen, initialTab, preferences]);
+    if (!isOpen) return;
+    setActiveTab(initialTab);
+    setDraftPrefs(preferences);
+    setDraftPrompt(customPrompt.trim() ? customPrompt : DEFAULT_AI_PROMPT);
+    setConfirmingId(null);
+    setConfirmingAiId(null);
+    setConfirmingParabolId(null);
+    setError(null);
+  }, [isOpen, initialTab, preferences, customPrompt]);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'reports' || !initialSection) return;
+    const targetRef =
+      initialSection === 'ai-prompt' ? aiPromptSectionRef : reportDeliverySectionRef;
+    const timer = setTimeout(() => {
+      targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [isOpen, activeTab, initialSection]);
 
   const tabItems: Array<{ key: SettingsTabKey; label: string; Icon: typeof SlidersHorizontal }> = [
     { key: 'fetch', label: dict.settingsModal.tabFetch, Icon: SlidersHorizontal },
     { key: 'display', label: dict.settingsModal.tabDisplay, Icon: LayoutGrid },
-    { key: 'general', label: dict.settingsModal.tabGeneral, Icon: Settings },
+    { key: 'reports', label: dict.settingsModal.tabReports, Icon: FileText },
+    { key: 'general', label: dict.settingsModal.tabGeneral, Icon: User },
   ];
 
   const handleTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
@@ -160,28 +259,29 @@ export function SettingsModal({
     }
   };
 
-  const togglePrState = (state: PrStateFilter) => {
+  const toggleOrg = (login: string) => {
     setDraftPrefs((prev) => {
-      const exists = prev.prStates.includes(state);
-      const nextStates = exists
-        ? prev.prStates.filter((s) => s !== state)
-        : [...prev.prStates, state];
+      const exists = prev.includedOrgs.includes(login);
       return {
         ...prev,
-        prStates: nextStates.length > 0 ? nextStates : [state],
+        includedOrgs: exists
+          ? prev.includedOrgs.filter((item) => item !== login)
+          : [...prev.includedOrgs, login],
       };
     });
   };
 
-  const toggleOrg = (orgLogin: string) => {
+  const togglePrState = (state: PrStateFilter) => {
     setDraftPrefs((prev) => {
-      const exists = prev.includedOrgs.includes(orgLogin);
-      const nextOrgs = exists
-        ? prev.includedOrgs.filter((o) => o !== orgLogin)
-        : [...prev.includedOrgs, orgLogin];
+      const exists = prev.prStates.includes(state);
+      if (exists && prev.prStates.length === 1) {
+        return prev;
+      }
       return {
         ...prev,
-        includedOrgs: nextOrgs,
+        prStates: exists
+          ? prev.prStates.filter((item) => item !== state)
+          : [...prev.prStates, state],
       };
     });
   };
@@ -203,6 +303,18 @@ export function SettingsModal({
       setError((err as Error).message || dict.githubModal.patSaveError);
     } finally {
       setIsSavingPrefs(false);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    setIsSavingPrompt(true);
+    setError(null);
+    try {
+      await onSaveAiPrompt(draftPrompt.trim());
+    } catch (err) {
+      setError((err as Error).message || dict.settingsModal.savePromptError);
+    } finally {
+      setIsSavingPrompt(false);
     }
   };
 
@@ -256,7 +368,46 @@ export function SettingsModal({
     }
   };
 
+  const handleSwitchParabol = async (connectionId: string) => {
+    setBusyParabolId(connectionId);
+    setError(null);
+    try {
+      await onSwitchParabolConnection(connectionId);
+    } catch (err) {
+      setError((err as Error).message || 'Failed to switch Parabol account.');
+    } finally {
+      setBusyParabolId(null);
+    }
+  };
+
+  const handleDeleteParabol = async (connectionId: string) => {
+    setBusyParabolId(connectionId);
+    setError(null);
+    try {
+      await onDeleteParabolConnection(connectionId);
+      setConfirmingParabolId(null);
+    } catch (err) {
+      setError((err as Error).message || 'Failed to remove Parabol connection.');
+    } finally {
+      setBusyParabolId(null);
+    }
+  };
+
   const orgs = workspaces?.organizations ?? [];
+  const hasActiveParabol = parabolConnections.some((c) => c.status === 'ACTIVE');
+  const isPromptCustomized = draftPrompt.trim() !== DEFAULT_AI_PROMPT.trim();
+  const savedPromptNormalized = customPrompt.trim() || DEFAULT_AI_PROMPT.trim();
+  const isPromptDirty = draftPrompt.trim() !== savedPromptNormalized;
+
+  const getExpirationTone = (expiresAt: string | null | undefined) => {
+    const info = formatExpiration(expiresAt, locale);
+    const toneClass = info.isExpired
+      ? 'text-rose-300'
+      : info.isExpiringSoon
+        ? 'text-amber-300'
+        : 'text-slate-400';
+    return { label: info.label, toneClass };
+  };
 
   return (
     <ModalDialog
@@ -297,7 +448,7 @@ export function SettingsModal({
         </button>
       </div>
 
-      {/* WAI-ARIA Accessible Tab Bar with Bottom Border Underline Indicator */}
+      {/* WAI-ARIA Accessible Tab Bar */}
       <div
         role="tablist"
         aria-label={dict.settingsModal.tablistAria}
@@ -345,7 +496,7 @@ export function SettingsModal({
             className="p-3.5 rounded-lg bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-start gap-2.5"
           >
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{error}</span>
+            <span className="break-words">{error}</span>
           </div>
         )}
 
@@ -356,7 +507,6 @@ export function SettingsModal({
           hidden={activeTab !== 'fetch'}
           className={activeTab === 'fetch' ? 'space-y-6' : 'hidden'}
         >
-          {/* Workspace Sources */}
           <section className="space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
               {dict.settingsModal.workspaceSection}
@@ -433,7 +583,6 @@ export function SettingsModal({
             </div>
           </section>
 
-          {/* PR States & Role Scope */}
           <section className="space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
               {dict.settingsModal.prStatesSection}
@@ -509,7 +658,6 @@ export function SettingsModal({
             </div>
           </section>
 
-          {/* Scanner Behavior Switches */}
           <section className="space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
               {dict.settingsModal.advancedSection}
@@ -542,7 +690,7 @@ export function SettingsModal({
           </section>
         </div>
 
-        {/* TAB 2: GROUPING & LAYOUT */}
+        {/* TAB 2: DISPLAY & INTERFACE */}
         <div
           role="tabpanel"
           aria-labelledby="settings-tab-display"
@@ -551,7 +699,7 @@ export function SettingsModal({
         >
           <section className="space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
-              {dict.settingsModal.tabDisplay}
+              {dict.settingsModal.displaySection}
             </h3>
 
             <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 divide-y divide-slate-700/80">
@@ -584,15 +732,7 @@ export function SettingsModal({
               />
             </div>
           </section>
-        </div>
 
-        {/* TAB 3: INTERFACE & LINKED ACCOUNTS */}
-        <div
-          role="tabpanel"
-          aria-labelledby="settings-tab-general"
-          hidden={activeTab !== 'general'}
-          className={activeTab === 'general' ? 'space-y-6' : 'hidden'}
-        >
           <section className="space-y-3">
             <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
               {dict.settingsModal.interfaceSection}
@@ -643,7 +783,257 @@ export function SettingsModal({
               </div>
             </div>
           </section>
+        </div>
 
+        {/* TAB 3: REPORTS (AI SYNTHESIS PROMPT + REPORT DELIVERY PLATFORMS) */}
+        <div
+          role="tabpanel"
+          aria-labelledby="settings-tab-reports"
+          hidden={activeTab !== 'reports'}
+          className={activeTab === 'reports' ? 'space-y-6' : 'hidden'}
+        >
+          {/* Section A: Tổng hợp Báo cáo AI */}
+          <section ref={aiPromptSectionRef} id="settings-ai-prompt" className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                {dict.settingsModal.aiSynthesisSection}
+              </h3>
+              {isPromptCustomized && (
+                <button
+                  type="button"
+                  onClick={() => setDraftPrompt(DEFAULT_AI_PROMPT)}
+                  disabled={isSavingPrompt}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                  <span>{dict.settingsModal.resetPromptBtn}</span>
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-xl bg-[#253349]/55 border border-slate-600/75 p-4 space-y-3">
+              <label
+                htmlFor="settings-ai-prompt-input"
+                className="block text-xs font-medium text-slate-200"
+              >
+                {dict.settingsModal.customPromptLabel}
+              </label>
+
+              <textarea
+                id="settings-ai-prompt-input"
+                value={draftPrompt}
+                onChange={(e) => setDraftPrompt(e.target.value)}
+                maxLength={MAX_PROMPT_LENGTH}
+                rows={6}
+                disabled={isSavingPrompt}
+                placeholder={dict.settingsModal.customPromptPlaceholder}
+                className="w-full p-3.5 rounded-xl bg-[#152033] border border-slate-600/85 hover:border-slate-500 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-500/25 font-mono text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y transition-colors disabled:opacity-50"
+              />
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-mono text-slate-400 tabular-nums">
+                  {t('settingsModal.promptCharCount', { count: draftPrompt.length })}
+                </span>
+                <button
+                  type="button"
+                  disabled={isSavingPrompt || !isPromptDirty}
+                  onClick={() => void handleSavePrompt()}
+                  className="inline-flex items-center gap-1.5 min-h-[32px] px-3.5 py-1 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 disabled:bg-slate-700/70 disabled:text-slate-300 disabled:border disabled:border-slate-600/80 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  {isSavingPrompt && (
+                    <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                  )}
+                  <span>
+                    {isSavingPrompt
+                      ? dict.settingsModal.savingPromptBtn
+                      : dict.settingsModal.savePromptBtn}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Section B: Nền tảng báo cáo công việc */}
+          <section
+            ref={reportDeliverySectionRef}
+            id="settings-report-delivery"
+            className="space-y-3 pt-2 border-t border-slate-700/80"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                {dict.settingsModal.reportDeliverySection}
+              </h3>
+              <button
+                type="button"
+                onClick={onOpenAddReportPlatform}
+                className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/25 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{dict.settingsModal.addParabolBtn}</span>
+              </button>
+            </div>
+
+            {/* Sub-group: Parabol */}
+            <div className="rounded-xl bg-[#1B273B]/75 border border-slate-600/75 p-4 space-y-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
+                    aria-hidden="true"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-100">
+                    {dict.settingsModal.platformParabolLabel}
+                  </span>
+                </div>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border shrink-0 ${
+                    hasActiveParabol
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {hasActiveParabol
+                    ? dict.settingsModal.connectedBadge
+                    : dict.settingsModal.disconnectedBadge}
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-[#253349]/60 border border-slate-600/70">
+                <ToggleSwitchRow
+                  id="settings-parabol-enabled"
+                  label={dict.settingsModal.showParabolActionLabel}
+                  description={dict.settingsModal.showParabolActionDesc}
+                  checked={parabolEnabled && hasActiveParabol}
+                  disabled={!hasActiveParabol}
+                  onChange={onToggleParabolEnabled}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="block text-xs font-medium text-slate-300">
+                  {dict.settingsModal.parabolAccountsSection}
+                </span>
+
+                {parabolConnections.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-[#253349]/55 border border-slate-600/75 text-center">
+                    <Send className="w-5 h-5 text-slate-400 mx-auto mb-2" aria-hidden="true" />
+                    <p className="text-xs text-slate-400">
+                      {dict.settingsModal.noParabolConnections}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {parabolConnections.map((conn) => {
+                      const isBusy = busyParabolId === conn.id;
+                      const isConfirming = confirmingParabolId === conn.id;
+                      const exp = getExpirationTone(conn.expiresAt);
+                      const subtitleParts = [
+                        exp.label,
+                        conn.parabolEmail,
+                        conn.maskedPrefix,
+                      ].filter(Boolean);
+
+                      return (
+                        <AccountRow
+                          key={conn.id}
+                          isActive={conn.isActive}
+                          avatar={
+                            <div
+                              className="w-9 h-9 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
+                              aria-hidden="true"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </div>
+                          }
+                          title={conn.parabolName || conn.label}
+                          badge={
+                            conn.status === 'REVOKED' ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0 whitespace-nowrap">
+                                {dict.aiConsole.revokedBadge}
+                              </span>
+                            ) : conn.isActive ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 whitespace-nowrap">
+                                <Check className="w-3 h-3" aria-hidden="true" />
+                                {dict.settingsModal.defaultLabel}
+                              </span>
+                            ) : null
+                          }
+                          subtitle={subtitleParts.join(' • ')}
+                          subtitleToneClass={exp.toneClass}
+                          actions={
+                            !isConfirming ? (
+                              <>
+                                {!conn.isActive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleSwitchParabol(conn.id)}
+                                    disabled={isBusy}
+                                    className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                                  >
+                                    {isBusy ? (
+                                      <Loader2
+                                        className="w-3.5 h-3.5 animate-spin"
+                                        aria-hidden="true"
+                                      />
+                                    ) : (
+                                      <span>{dict.settingsModal.setDefaultBtn}</span>
+                                    )}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmingParabolId(conn.id)}
+                                  disabled={isBusy}
+                                  title={dict.settingsModal.deleteParabolBtn}
+                                  aria-label={`${dict.settingsModal.deleteParabolBtn}: ${conn.label}`}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteParabol(conn.id)}
+                                  disabled={isBusy}
+                                  className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                                >
+                                  {isBusy && (
+                                    <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+                                  )}
+                                  <span>{dict.settingsModal.confirmDisconnectBtn}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmingParabolId(null)}
+                                  disabled={isBusy}
+                                  className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                  {dict.common.cancel}
+                                </button>
+                              </>
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* TAB 4: ACCOUNTS & AI PROVIDERS */}
+        <div
+          role="tabpanel"
+          aria-labelledby="settings-tab-general"
+          hidden={activeTab !== 'general'}
+          className={activeTab === 'general' ? 'space-y-6' : 'hidden'}
+        >
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
@@ -651,10 +1041,7 @@ export function SettingsModal({
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenAddAccount();
-                }}
+                onClick={onOpenAddAccount}
                 className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/25 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -668,22 +1055,22 @@ export function SettingsModal({
                 <p className="text-xs text-slate-400">{dict.settingsModal.noAccounts}</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {accounts.map((acc) => {
                   const isBusy = busyId === acc.id;
                   const isConfirming = confirmingId === acc.id;
+                  const exp = getExpirationTone(acc.expiresAt);
+                  const subtitle =
+                    acc.tokenStatus && acc.tokenStatus !== 'ACTIVE'
+                      ? `${acc.tokenStatus} • ${exp.label}`
+                      : exp.label;
 
                   return (
-                    <div
+                    <AccountRow
                       key={acc.id}
-                      className={`p-3.5 rounded-xl border transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        acc.isActive
-                          ? 'bg-sky-500/[0.1] border-sky-400/40'
-                          : 'bg-[#253349]/55 border-slate-600/75'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {acc.gitAvatar ? (
+                      isActive={acc.isActive}
+                      avatar={
+                        acc.gitAvatar ? (
                           <img
                             src={acc.gitAvatar}
                             alt={acc.gitUsername}
@@ -693,72 +1080,57 @@ export function SettingsModal({
                           <div className="w-9 h-9 rounded-full bg-white/[0.1] border border-white/20 flex items-center justify-center text-xs font-semibold text-slate-200 shrink-0">
                             {acc.gitUsername.slice(0, 2).toUpperCase()}
                           </div>
-                        )}
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-100 truncate">
-                              @{acc.gitUsername}
-                            </span>
-                            {acc.isActive && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
-                                <Check className="w-3 h-3" aria-hidden="true" />
-                                {dict.settingsModal.activeLabel}
-                              </span>
+                        )
+                      }
+                      title={`@${acc.gitUsername}`}
+                      badge={
+                        acc.isActive ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 whitespace-nowrap">
+                            <Check className="w-3 h-3" aria-hidden="true" />
+                            {dict.settingsModal.activeLabel}
+                          </span>
+                        ) : null
+                      }
+                      subtitle={subtitle}
+                      subtitleToneClass={exp.toneClass}
+                      actions={
+                        !isConfirming ? (
+                          <>
+                            {!acc.isActive && (
+                              <button
+                                type="button"
+                                onClick={() => void handleSwitch(acc.id)}
+                                disabled={isBusy}
+                                className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                              >
+                                {isBusy ? (
+                                  <Loader2
+                                    className="w-3.5 h-3.5 animate-spin"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <span>{dict.settingsModal.switchToBtn}</span>
+                                )}
+                              </button>
                             )}
-                          </div>
-                          <div className="flex items-center flex-wrap gap-2 mt-1">
-                            {acc.tokenStatus && acc.tokenStatus !== 'ACTIVE' && (
-                              <span className="text-xs text-rose-300 font-mono">
-                                {acc.tokenStatus}
-                              </span>
-                            )}
-                            <span
-                              className={`inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md border text-xs ${
-                                formatExpiration(acc.expiresAt, locale).badgeClass
-                              }`}
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingId(acc.id)}
+                              disabled={isBusy}
+                              title={dict.settingsModal.disconnectAccountBtn}
+                              aria-label={`${dict.settingsModal.disconnectAccountBtn}: @${acc.gitUsername}`}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
                             >
-                              <Clock className="w-3 h-3" aria-hidden="true" />
-                              <span>{formatExpiration(acc.expiresAt, locale).label}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 justify-end">
-                        {!acc.isActive && !isConfirming && (
-                          <button
-                            type="button"
-                            onClick={() => void handleSwitch(acc.id)}
-                            disabled={isBusy}
-                            className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {isBusy ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                            ) : (
-                              <span>{dict.settingsModal.switchToBtn}</span>
-                            )}
-                          </button>
-                        )}
-
-                        {!isConfirming ? (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingId(acc.id)}
-                            disabled={isBusy}
-                            title={dict.settingsModal.disconnectAccountBtn}
-                            aria-label={`${dict.settingsModal.disconnectAccountBtn}: @${acc.gitUsername}`}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </>
                         ) : (
-                          <div className="flex items-center gap-1.5">
+                          <>
                             <button
                               type="button"
                               onClick={() => void handleDisconnect(acc.id)}
                               disabled={isBusy}
-                              className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+                              className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
                             >
                               {isBusy && (
                                 <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
@@ -769,14 +1141,14 @@ export function SettingsModal({
                               type="button"
                               onClick={() => setConfirmingId(null)}
                               disabled={isBusy}
-                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
+                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer whitespace-nowrap"
                             >
                               {dict.common.cancel}
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          </>
+                        )
+                      }
+                    />
                   );
                 })}
               </div>
@@ -790,10 +1162,7 @@ export function SettingsModal({
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenAddAi();
-                }}
+                onClick={onOpenAddAi}
                 className="inline-flex items-center gap-1.5 min-h-[30px] px-2.5 py-1 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-400/25 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -807,108 +1176,89 @@ export function SettingsModal({
                 <p className="text-xs text-slate-400">{dict.settingsModal.noAiConnections}</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {aiConnections.map((conn) => {
                   const isBusy = busyAiId === conn.id;
                   const isConfirming = confirmingAiId === conn.id;
+                  const exp = getExpirationTone(conn.expiresAt);
+                  const providerTitle = `${
+                    conn.provider === 'GROQ'
+                      ? dict.aiConsole.groqProviderLabel
+                      : dict.aiConsole.geminiProviderLabel
+                  } (${conn.label})`;
 
                   return (
-                    <div
+                    <AccountRow
                       key={conn.id}
-                      className="p-3.5 rounded-xl border bg-[#253349]/55 border-slate-600/75 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
+                      avatar={
                         <div
                           className="w-9 h-9 rounded-lg bg-sky-500/15 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0"
                           aria-hidden="true"
                         >
                           <Sparkles className="w-4 h-4" />
                         </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center flex-wrap gap-2">
-                            <span className="text-sm font-semibold text-slate-100 truncate">
-                              {conn.provider === 'GROQ'
-                                ? dict.aiConsole.groqProviderLabel
-                                : dict.aiConsole.geminiProviderLabel}{' '}
-                              ({conn.label})
-                            </span>
-                            {conn.status === 'REVOKED' ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0">
-                                {dict.aiConsole.revokedBadge}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
-                                <Check className="w-3 h-3" aria-hidden="true" />
-                                {t('settingsModal.aiModelsCount', {
-                                  count: conn.availableModels.length,
-                                })}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center flex-wrap gap-2 mt-1">
-                            <span
-                              className={`inline-flex items-center gap-1 font-mono px-2 py-0.5 rounded-md border text-xs ${
-                                formatExpiration(conn.expiresAt, locale).badgeClass
-                              }`}
-                            >
-                              <Clock className="w-3 h-3" aria-hidden="true" />
-                              <span>{formatExpiration(conn.expiresAt, locale).label}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 justify-end">
-                        {!isConfirming && (
-                          <button
-                            type="button"
-                            onClick={() => void handleRefreshAi(conn.id)}
-                            disabled={isBusy}
-                            title={dict.aiConsole.refreshModelsBtn}
-                            aria-label={`${dict.aiConsole.refreshModelsBtn}: ${conn.label}`}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-sky-300 hover:bg-sky-500/15 border border-white/[0.12] hover:border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <RefreshCw
-                              className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`}
-                              aria-hidden="true"
-                            />
-                          </button>
-                        )}
-
-                        {!isConfirming && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onClose();
-                              onOpenUpdateAi(conn);
-                            }}
-                            disabled={isBusy}
-                            className="inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
-                            <span>{dict.settingsModal.updateAiKeyBtn}</span>
-                          </button>
-                        )}
-
-                        {!isConfirming ? (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingAiId(conn.id)}
-                            disabled={isBusy}
-                            title={dict.settingsModal.deleteAiBtn}
-                            aria-label={`${dict.settingsModal.deleteAiBtn}: ${conn.label}`}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-                          </button>
+                      }
+                      title={providerTitle}
+                      badge={
+                        conn.status === 'REVOKED' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30 shrink-0 whitespace-nowrap">
+                            {dict.aiConsole.revokedBadge}
+                          </span>
                         ) : (
-                          <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0 whitespace-nowrap">
+                            <Check className="w-3 h-3" aria-hidden="true" />
+                            {t('settingsModal.aiModelsCount', {
+                              count: conn.availableModels.length,
+                            })}
+                          </span>
+                        )
+                      }
+                      subtitle={`${exp.label} • ${conn.maskedKey}`}
+                      subtitleToneClass={exp.toneClass}
+                      actions={
+                        !isConfirming ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleRefreshAi(conn.id)}
+                              disabled={isBusy}
+                              title={dict.aiConsole.refreshModelsBtn}
+                              aria-label={`${dict.aiConsole.refreshModelsBtn}: ${conn.label}`}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-sky-300 hover:bg-sky-500/15 border border-white/[0.12] hover:border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <RefreshCw
+                                className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`}
+                                aria-hidden="true"
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onOpenUpdateAi(conn)}
+                              disabled={isBusy}
+                              title={dict.settingsModal.updateAiKeyBtn}
+                              aria-label={`${dict.settingsModal.updateAiKeyBtn}: ${conn.label}`}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingAiId(conn.id)}
+                              disabled={isBusy}
+                              title={dict.settingsModal.deleteAiBtn}
+                              aria-label={`${dict.settingsModal.deleteAiBtn}: ${conn.label}`}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-rose-300 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
                             <button
                               type="button"
                               onClick={() => void handleDeleteAi(conn.id)}
                               disabled={isBusy}
-                              className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50"
+                              className="inline-flex items-center gap-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
                             >
                               {isBusy && (
                                 <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
@@ -919,14 +1269,14 @@ export function SettingsModal({
                               type="button"
                               onClick={() => setConfirmingAiId(null)}
                               disabled={isBusy}
-                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer"
+                              className="inline-flex items-center min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-medium text-slate-100 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer whitespace-nowrap"
                             >
                               {dict.common.cancel}
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          </>
+                        )
+                      }
+                    />
                   );
                 })}
               </div>
@@ -935,8 +1285,8 @@ export function SettingsModal({
         </div>
       </div>
 
-      {/* Footer Save Bar for Fetch / Display settings */}
-      {activeTab !== 'general' && (
+      {/* Footer Bar */}
+      {(activeTab === 'fetch' || activeTab === 'display') && (
         <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-slate-700/80 bg-[#0F172A]/65">
           <button
             type="button"

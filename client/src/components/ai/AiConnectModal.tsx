@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AiConnectionSummary, AiModelOption, AiProviderType } from '../../types';
 import { api } from '../../lib/api';
+import { formatExpiration } from '../../lib/activity-utils';
 import { useTranslation } from '../../i18n';
 import { ModalDialog } from '../ui/ModalDialog';
 import { Input } from '../ui/Input';
@@ -10,13 +11,13 @@ import { Select, SelectOption } from '../ui/Select';
 import {
   AlertCircle,
   CheckCircle2,
+  Clock,
   ExternalLink,
   Eye,
   EyeOff,
   Key,
   Loader2,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   X,
 } from 'lucide-react';
@@ -29,28 +30,18 @@ interface AiConnectModalProps {
   onSaved: (connection: AiConnectionSummary, isUpdate: boolean, preferredModel?: string) => void;
 }
 
-function maskApiKey(rawKey: string): string {
-  const key = rawKey.trim();
-  if (key.length <= 8) {
-    return '••••';
-  }
-  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
-}
-
-type ExpirationPreset = 'never' | '30' | '60' | '90' | 'custom';
-
 export function AiConnectModal({
   isOpen,
   onClose,
   editingConnection = null,
   onSaved,
 }: AiConnectModalProps) {
-  const { dict, t } = useTranslation();
+  const { dict, t, locale } = useTranslation();
   const [provider, setProvider] = useState<AiProviderType>('GROQ');
   const [labelInput, setLabelInput] = useState('');
   const [isLabelCustomized, setIsLabelCustomized] = useState(false);
-  const [expirationPreset, setExpirationPreset] = useState<ExpirationPreset>('never');
-  const [customExpirationDate, setCustomExpirationDate] = useState('');
+  const [hasVerifiedKey, setHasVerifiedKey] = useState(false);
+  const [verifiedExpiresAt, setVerifiedExpiresAt] = useState<string | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [hasTouchedKey, setHasTouchedKey] = useState(false);
@@ -62,20 +53,33 @@ export function AiConnectModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const apiKeyRef = useRef<HTMLInputElement>(null);
+  const lastVerifiedKeyRef = useRef('');
+  const verifySeqRef = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLabelCustomizedRef = useRef(isLabelCustomized);
+  isLabelCustomizedRef.current = isLabelCustomized;
+
   const isUpdateMode = Boolean(editingConnection);
 
+  const clearDebounce = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      clearDebounce();
+      return;
+    }
     setProvider(editingConnection?.provider ?? 'GROQ');
     setLabelInput(editingConnection?.label ?? '');
-    setIsLabelCustomized(Boolean(editingConnection?.label));
-    if (editingConnection?.expiresAt) {
-      setExpirationPreset('custom');
-      setCustomExpirationDate(editingConnection.expiresAt.slice(0, 10));
-    } else {
-      setExpirationPreset('never');
-      setCustomExpirationDate('');
-    }
+    setIsLabelCustomized(
+      Boolean(editingConnection?.label && editingConnection.label !== editingConnection.maskedKey),
+    );
+    setHasVerifiedKey(Boolean(editingConnection));
+    setVerifiedExpiresAt(editingConnection?.expiresAt ?? null);
     setApiKeyInput('');
     setShowKey(false);
     setHasTouchedKey(false);
@@ -84,7 +88,11 @@ export function AiConnectModal({
     setIsPreviewing(false);
     setPreviewModels([]);
     setPreviewSelectedModel('');
-  }, [isOpen, editingConnection]);
+    lastVerifiedKeyRef.current = '';
+    verifySeqRef.current += 1;
+  }, [isOpen, editingConnection, clearDebounce]);
+
+  useEffect(() => clearDebounce, [clearDebounce]);
 
   const providerOptions: readonly SelectOption<AiProviderType>[] = [
     {
@@ -114,35 +122,51 @@ export function AiConnectModal({
     description: m.description,
   }));
 
-  const handlePreviewModels = async () => {
-    const cleanKey = apiKeyInput.trim();
-    if (!cleanKey) {
-      setApiKeyError(dict.aiModal.apiKeyRequired);
-      apiKeyRef.current?.focus();
-      return;
-    }
+  const runVerifyKey = useCallback(
+    async (rawKey: string, targetProvider: AiProviderType) => {
+      const cleanKey = rawKey.trim();
+      if (!cleanKey) {
+        setApiKeyError(dict.aiModal.apiKeyRequired);
+        apiKeyRef.current?.focus();
+        return;
+      }
 
-    setIsPreviewing(true);
-    setApiKeyError(null);
-    setServerError(null);
-    if (!isLabelCustomized && !labelInput.trim()) {
-      setLabelInput(maskApiKey(cleanKey));
-    }
-    try {
-      const res = await api.ai.previewModels({ provider, apiKey: cleanKey });
-      setPreviewModels(res.models);
-      setPreviewSelectedModel(res.models[0]?.id ?? '');
-    } catch (err) {
-      setPreviewModels([]);
-      setPreviewSelectedModel('');
-      setServerError((err as Error).message || dict.aiModal.saveError);
-    } finally {
-      setIsPreviewing(false);
-    }
-  };
+      const seq = ++verifySeqRef.current;
+      lastVerifiedKeyRef.current = `${targetProvider}:${cleanKey}`;
+      setIsPreviewing(true);
+      setApiKeyError(null);
+      setServerError(null);
+
+      try {
+        const res = await api.ai.previewModels({ provider: targetProvider, apiKey: cleanKey });
+        if (seq !== verifySeqRef.current) return;
+
+        setPreviewModels(res.models);
+        setPreviewSelectedModel(res.models[0]?.id ?? '');
+        setHasVerifiedKey(true);
+        setVerifiedExpiresAt(res.expiresAt ?? null);
+        if (!isLabelCustomizedRef.current) {
+          setLabelInput(res.suggestedLabel);
+        }
+      } catch (err) {
+        if (seq !== verifySeqRef.current) return;
+        setPreviewModels([]);
+        setPreviewSelectedModel('');
+        setHasVerifiedKey(false);
+        setVerifiedExpiresAt(null);
+        setServerError((err as Error).message || dict.aiModal.saveError);
+      } finally {
+        if (seq === verifySeqRef.current) {
+          setIsPreviewing(false);
+        }
+      }
+    },
+    [dict.aiModal.apiKeyRequired, dict.aiModal.saveError],
+  );
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    clearDebounce();
     const cleanKey = apiKeyInput.trim();
     if (!cleanKey) {
       setApiKeyError(dict.aiModal.apiKeyRequired);
@@ -154,26 +178,11 @@ export function AiConnectModal({
     setApiKeyError(null);
     setServerError(null);
     try {
-      let expiresAtPayload: string | null | undefined = undefined;
-      if (expirationPreset === 'never') {
-        expiresAtPayload = null;
-      } else if (expirationPreset === 'custom') {
-        expiresAtPayload = customExpirationDate
-          ? new Date(`${customExpirationDate}T23:59:59.999Z`).toISOString()
-          : null;
-      } else {
-        const days = Number.parseInt(expirationPreset, 10);
-        if (!Number.isNaN(days)) {
-          expiresAtPayload = new Date(Date.now() + days * 86400 * 1000).toISOString();
-        }
-      }
-
-      const cleanLabel = labelInput.trim() || maskApiKey(cleanKey);
       const payload = {
         provider,
         apiKey: cleanKey,
-        label: cleanLabel,
-        expiresAt: expiresAtPayload,
+        ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
+        ...(hasVerifiedKey ? { expiresAt: verifiedExpiresAt } : {}),
       };
       const saved = editingConnection
         ? await api.ai.updateConnection(editingConnection.id, payload)
@@ -190,6 +199,9 @@ export function AiConnectModal({
   };
 
   const isBusy = isSubmitting || isPreviewing;
+  const expirationDisplay = hasVerifiedKey
+    ? formatExpiration(verifiedExpiresAt, locale).label
+    : dict.aiModal.expiresPending;
 
   return (
     <ModalDialog
@@ -252,9 +264,17 @@ export function AiConnectModal({
             value={provider}
             options={providerOptions}
             onChange={(next) => {
+              clearDebounce();
               setProvider(next);
               setPreviewModels([]);
               setPreviewSelectedModel('');
+              setHasVerifiedKey(false);
+              setVerifiedExpiresAt(null);
+              lastVerifiedKeyRef.current = '';
+              verifySeqRef.current += 1;
+              if (!isLabelCustomizedRef.current) {
+                setLabelInput('');
+              }
             }}
             disabled={isBusy || isUpdateMode}
           />
@@ -268,43 +288,27 @@ export function AiConnectModal({
           label={dict.aiModal.labelField}
           value={labelInput}
           onChange={(e) => {
-            setLabelInput(e.target.value);
-            setIsLabelCustomized(true);
+            const val = e.target.value;
+            setLabelInput(val);
+            setIsLabelCustomized(val.trim().length > 0);
           }}
           placeholder={dict.aiModal.labelPlaceholder}
           hint={dict.aiModal.labelHint}
           maxLength={80}
           autoComplete="off"
-          disabled={isBusy}
+          disabled={isSubmitting}
         />
 
-        <div className="space-y-2">
-          <Select
-            id="ai-modal-expiration"
-            label={dict.aiModal.expiresAtLabel}
-            value={expirationPreset}
-            options={[
-              { value: 'never', label: dict.aiModal.expiresNever },
-              { value: '30', label: dict.aiModal.expires30d },
-              { value: '60', label: dict.aiModal.expires60d },
-              { value: '90', label: dict.aiModal.expires90d },
-              { value: 'custom', label: dict.aiModal.expiresCustom },
-            ]}
-            onChange={(next) => setExpirationPreset(next as ExpirationPreset)}
-            disabled={isBusy}
-          />
-          {expirationPreset === 'custom' && (
-            <Input
-              id="ai-modal-custom-expires"
-              type="date"
-              min={new Date().toISOString().slice(0, 10)}
-              value={customExpirationDate}
-              onChange={(e) => setCustomExpirationDate(e.target.value)}
-              placeholder={dict.aiModal.customDatePlaceholder}
-              disabled={isBusy}
-            />
-          )}
-        </div>
+        <Input
+          id="ai-modal-expiration"
+          name="expiresAtDisplay"
+          type="text"
+          label={dict.aiModal.expiresAtLabel}
+          value={expirationDisplay}
+          leftIcon={<Clock className="w-4 h-4" />}
+          disabled
+          readOnly
+        />
 
         <div className="space-y-3">
           <Input
@@ -343,22 +347,39 @@ export function AiConnectModal({
               </button>
             }
             value={apiKeyInput}
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData('text').trim();
+              if (pasted.length >= 12) {
+                clearDebounce();
+                void runVerifyKey(pasted, provider);
+              }
+            }}
             onChange={(e) => {
               const nextVal = e.target.value;
               setApiKeyInput(nextVal);
-              if (nextVal.trim()) {
+              const cleanVal = nextVal.trim();
+              if (cleanVal) {
                 setHasTouchedKey(true);
-                if (!isLabelCustomized) {
-                  setLabelInput(maskApiKey(nextVal));
-                }
-              } else if (!isLabelCustomized) {
-                setLabelInput('');
               }
               if (apiKeyError) setApiKeyError(null);
               if (serverError) setServerError(null);
-              if (previewModels.length > 0) {
+
+              const cacheKey = `${provider}:${cleanVal}`;
+              if (cacheKey !== lastVerifiedKeyRef.current) {
                 setPreviewModels([]);
                 setPreviewSelectedModel('');
+                setHasVerifiedKey(false);
+                setVerifiedExpiresAt(null);
+                if (!isLabelCustomizedRef.current && !isUpdateMode) {
+                  setLabelInput('');
+                }
+              }
+
+              clearDebounce();
+              if (cleanVal.length >= 16 && cacheKey !== lastVerifiedKeyRef.current) {
+                debounceTimerRef.current = setTimeout(() => {
+                  void runVerifyKey(cleanVal, provider);
+                }, 500);
               }
             }}
             onBlur={() => {
@@ -374,24 +395,8 @@ export function AiConnectModal({
             autoCapitalize="none"
             spellCheck={false}
             className="font-mono"
-            disabled={isBusy}
+            disabled={isSubmitting}
           />
-
-          <button
-            type="button"
-            onClick={() => void handlePreviewModels()}
-            disabled={isBusy}
-            className="inline-flex items-center gap-2 min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/15 border border-sky-400/25 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {isPreviewing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-            ) : (
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-            )}
-            <span>
-              {isPreviewing ? dict.aiModal.previewingModelsBtn : dict.aiModal.previewModelsBtn}
-            </span>
-          </button>
 
           {previewModels.length > 0 && (
             <div className="p-3.5 rounded-xl bg-emerald-500/[0.07] border border-emerald-500/25 space-y-3">
@@ -416,36 +421,47 @@ export function AiConnectModal({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-700/80">
-          <p className="text-xs text-slate-400 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
-            <span>{dict.githubModal.securityNote}</span>
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2.5 pt-3 border-t border-slate-700/80">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {dict.common.cancel}
+          </button>
 
-          <div className="flex items-center justify-end gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.15] transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {dict.common.cancel}
-            </button>
-            <button
-              type="submit"
-              disabled={isBusy}
-              className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-            >
-              {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
-              <span>
-                {isSubmitting
-                  ? dict.aiModal.savingBtn
-                  : isUpdateMode
-                    ? dict.aiModal.updateBtn
-                    : dict.aiModal.saveBtn}
-              </span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              clearDebounce();
+              void runVerifyKey(apiKeyInput, provider);
+            }}
+            disabled={isBusy}
+            className="inline-flex items-center justify-center gap-1.5 min-h-[38px] px-4 py-2 rounded-lg text-xs font-medium text-sky-300 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/15 border border-sky-400/30 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {isPreviewing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+            <span>{isPreviewing ? dict.aiModal.verifyingBtn : dict.aiModal.verifyBtn}</span>
+          </button>
+
+          <button
+            type="submit"
+            disabled={isBusy}
+            className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[38px] px-5 py-2 rounded-lg text-xs font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+          >
+            {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+            <span>
+              {isSubmitting
+                ? dict.aiModal.savingBtn
+                : isUpdateMode
+                  ? dict.aiModal.updateBtn
+                  : dict.aiModal.saveBtn}
+            </span>
+          </button>
         </div>
       </form>
     </ModalDialog>

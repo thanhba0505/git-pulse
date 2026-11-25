@@ -11,11 +11,12 @@ import {
   GitHubWorkspacesResponse,
   GitStatus,
   GroupingMode,
+  ParabolConnectionSummary,
   PrActivity,
   TaskColor,
   TrackingTask,
 } from '../types';
-import { DEFAULT_AI_PROMPT, DEFAULT_QUICK_ACCESS_URL } from '../lib/ai-prompt.constants';
+import { DEFAULT_AI_PROMPT } from '../lib/ai-prompt.constants';
 import { api } from '../lib/api';
 import { toTaskItemInput } from '../lib/activity-utils';
 import { useAuth } from '../lib/auth-context';
@@ -28,7 +29,7 @@ import { ActivityScanner, getPrKey } from '../components/dashboard/ActivityScann
 import { BUILTIN_GITHUB_TOOL_KEY, CockpitAiConsole } from '../components/ai/CockpitAiConsole';
 import { StandupOutputDock } from '../components/standup/StandupOutputDock';
 import { AuthModal } from '../components/auth/AuthModal';
-import type { SettingsTabKey } from '../components/settings/SettingsModal';
+import type { SettingsSectionAnchor, SettingsTabKey } from '../components/settings/SettingsModal';
 import { WorkspaceSkeleton } from '../components/ui/Skeleton';
 import { ShowcaseCard } from '../components/ui/ShowcaseCard';
 import { useToast } from '../components/ui/Toast';
@@ -67,13 +68,21 @@ const SettingsModal = dynamic(
   { ssr: false },
 );
 
-const AiSettingsModal = dynamic(
-  () => import('../components/ai/AiSettingsModal').then((m) => m.AiSettingsModal),
+const CommitSelectionModal = dynamic(
+  () => import('../components/ai/CommitSelectionModal').then((m) => m.CommitSelectionModal),
   { ssr: false },
 );
 
-const CommitSelectionModal = dynamic(
-  () => import('../components/ai/CommitSelectionModal').then((m) => m.CommitSelectionModal),
+const ParabolSubmitModal = dynamic(
+  () => import('../components/parabol/ParabolSubmitModal').then((m) => m.ParabolSubmitModal),
+  { ssr: false },
+);
+
+const ReportPlatformConnectModal = dynamic(
+  () =>
+    import('../components/standup/ReportPlatformConnectModal').then(
+      (m) => m.ReportPlatformConnectModal,
+    ),
   { ssr: false },
 );
 import type { SelectableCommit } from '../components/ai/CommitSelectionModal';
@@ -191,6 +200,9 @@ export default function HomePage() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsModalTab, setSettingsModalTab] = useState<SettingsTabKey>('general');
+  const [settingsModalSection, setSettingsModalSection] = useState<SettingsSectionAnchor | null>(
+    null,
+  );
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const [fetchPrefs, setFetchPrefs] = useState<FetchPreferences>(DEFAULT_FETCH_PREFERENCES);
@@ -211,8 +223,6 @@ export default function HomePage() {
   const [selectedToolKey, setSelectedToolKey] = useState<string>(BUILTIN_GITHUB_TOOL_KEY);
   const [selectedModel, setSelectedModel] = useState<string>('openai/gpt-4o-mini');
   const [customPrompt, setCustomPrompt] = useState('');
-  const [quickAccessUrl, setQuickAccessUrl] = useState<string>(DEFAULT_QUICK_ACCESS_URL);
-  const [isAiSettingsModalOpen, setIsAiSettingsModalOpen] = useState(false);
   const [availability, setAvailability] = useState<AiAvailabilityState>({
     status: 'idle',
     available: false,
@@ -226,7 +236,18 @@ export default function HomePage() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [bullets, setBullets] = useState<string[]>([]);
-  const [modelUsed, setModelUsed] = useState<string>('');
+  const [parabolConnections, setParabolConnections] = useState<ParabolConnectionSummary[]>([]);
+  const [isParabolModalOpen, setIsParabolModalOpen] = useState(false);
+  const [isReportConnectModalOpen, setIsReportConnectModalOpen] = useState(false);
+  const [parabolEnabled, setParabolEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = window.localStorage.getItem('gitpulse:report_platform:parabol:enabled');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
   const availabilityCheckIdRef = useRef(0);
 
   // Persistent Commit Filter state (Personal / Organization)
@@ -609,11 +630,13 @@ export default function HomePage() {
       setWorkspaces(null);
       setTasks([]);
       setAiConnections([]);
+      setParabolConnections([]);
       setGithubModels([]);
       setAvailability({ status: 'idle', available: false });
       setCustomPrompt('');
-      setQuickAccessUrl(DEFAULT_QUICK_ACCESS_URL);
-      setIsAiSettingsModalOpen(false);
+      setIsSettingsModalOpen(false);
+      setIsParabolModalOpen(false);
+      setIsReportConnectModalOpen(false);
       return;
     }
 
@@ -622,7 +645,8 @@ export default function HomePage() {
       api.settings.get().catch(() => null),
       api.tasks.list().catch(() => [] as TrackingTask[]),
       api.ai.listConnections().catch(() => [] as AiConnectionSummary[]),
-    ]).then(([status, settingsRes, loadedTasks, loadedConns]) => {
+      api.parabol.listConnections().catch(() => [] as ParabolConnectionSummary[]),
+    ]).then(([status, settingsRes, loadedTasks, loadedConns, loadedParabolConns]) => {
       let targetRange: 'today' | '24h' | '7d' = 'today';
       if (settingsRes?.fetchPreferences) {
         setFetchPrefs(settingsRes.fetchPreferences);
@@ -632,14 +656,10 @@ export default function HomePage() {
       }
       if (settingsRes) {
         setCustomPrompt(settingsRes.customPrompt ?? '');
-        setQuickAccessUrl(
-          settingsRes.quickAccessUrl ||
-            settingsRes.fetchPreferences?.quickAccessUrl ||
-            DEFAULT_QUICK_ACCESS_URL,
-        );
       }
       setTasks(loadedTasks);
       setAiConnections(loadedConns);
+      setParabolConnections(loadedParabolConns);
 
       let initialToolKey = BUILTIN_GITHUB_TOOL_KEY;
       let initialModel = 'openai/gpt-4o-mini';
@@ -729,7 +749,6 @@ export default function HomePage() {
     clearAllActivityCache();
     const nextStatus = await loadGitStatus();
     setBullets([]);
-    setModelUsed('');
     setScanError(null);
     setAiError(null);
     void loadWorkspaces();
@@ -745,7 +764,6 @@ export default function HomePage() {
     setGitStatus(nextStatus);
     applyScannedActivities([]);
     setBullets([]);
-    setModelUsed('');
     setScanError(null);
     setAiError(null);
     if (nextStatus.gitUsername) {
@@ -768,7 +786,6 @@ export default function HomePage() {
     clearAllActivityCache();
     applyScannedActivities([]);
     setBullets([]);
-    setModelUsed('');
     setWorkspaces(null);
     setGitStatus(nextStatus);
     showToast({ title: dict.toasts.gitDisconnected, variant: 'info' });
@@ -778,8 +795,9 @@ export default function HomePage() {
     }
   };
 
-  const openSettingsTab = (tab: SettingsTabKey) => {
+  const openSettingsTab = (tab: SettingsTabKey, section: SettingsSectionAnchor | null = null) => {
     setSettingsModalTab(tab);
+    setSettingsModalSection(section);
     setIsSettingsModalOpen(true);
   };
 
@@ -795,17 +813,11 @@ export default function HomePage() {
     }
   };
 
-  const handleSaveAiSettings = async (next: { customPrompt: string; quickAccessUrl: string }) => {
+  const handleSaveAiPrompt = async (nextCustomPrompt: string) => {
     const saved = await api.settings.update({
-      customPrompt: next.customPrompt,
-      quickAccessUrl: next.quickAccessUrl,
-      fetchPreferences: {
-        ...fetchPrefs,
-        quickAccessUrl: next.quickAccessUrl,
-      },
+      customPrompt: nextCustomPrompt,
     });
     setCustomPrompt(saved.customPrompt ?? '');
-    setQuickAccessUrl(saved.quickAccessUrl || next.quickAccessUrl);
     showToast({ title: dict.toasts.aiSettingsSaved, variant: 'success' });
   };
 
@@ -860,6 +872,38 @@ export default function HomePage() {
     await api.tasks.delete(taskId);
     setTasks((prev) => prev.filter((tk) => tk.id !== taskId));
     showToast({ title: dict.toasts.taskDeleted, variant: 'info' });
+  };
+
+  const handleSaveParabolConnection = async (token: string, label?: string) => {
+    const saved = await api.parabol.saveConnection({ token, label });
+    const nextList = await api.parabol.listConnections().catch(() => [saved]);
+    setParabolConnections(nextList);
+    showToast({
+      title: t('toasts.parabolConnected', { label: saved.label }),
+      variant: 'success',
+    });
+  };
+
+  const handleSwitchParabolConnection = async (connectionId: string) => {
+    const nextList = await api.parabol.switchActiveConnection(connectionId);
+    setParabolConnections(nextList);
+    showToast({ title: dict.toasts.parabolSwitched, variant: 'info' });
+  };
+
+  const handleDeleteParabolConnection = async (connectionId: string) => {
+    await api.parabol.deleteConnection(connectionId);
+    const nextList = await api.parabol.listConnections().catch(() => []);
+    setParabolConnections(nextList);
+    showToast({ title: dict.toasts.parabolDisconnected, variant: 'info' });
+  };
+
+  const handleToggleParabolEnabled = (enabled: boolean) => {
+    setParabolEnabled(enabled);
+    try {
+      window.localStorage.setItem('gitpulse:report_platform:parabol:enabled', String(enabled));
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const handleToggleTaskAssignment = async (
@@ -1131,18 +1175,6 @@ export default function HomePage() {
       });
 
       setBullets(res.bullets);
-      const providerLabel =
-        engine === 'GROQ'
-          ? dict.aiConsole.groqProviderLabel
-          : engine === 'GOOGLE_GEMINI'
-            ? dict.aiConsole.geminiProviderLabel
-            : dict.aiConsole.githubModelsLabel;
-
-      setModelUsed(
-        activeConn
-          ? `${providerLabel} (${activeConn.label}) • ${res.modelUsed}`
-          : `${providerLabel} • ${res.modelUsed}`,
-      );
       showToast({ title: dict.toasts.standupReady, variant: 'success' });
     } catch (err) {
       setAiError((err as Error).message || dict.aiConsole.generateFailed);
@@ -1338,7 +1370,7 @@ export default function HomePage() {
                     hasCustomPrompt={Boolean(
                       customPrompt.trim() && customPrompt.trim() !== DEFAULT_AI_PROMPT.trim(),
                     )}
-                    onOpenAiSettings={() => setIsAiSettingsModalOpen(true)}
+                    onOpenAiSettings={() => openSettingsTab('reports', 'ai-prompt')}
                     availability={availability}
                     onRecheckAvailability={() =>
                       void checkModelAvailability(selectedToolKey, selectedModel)
@@ -1365,9 +1397,12 @@ export default function HomePage() {
                   <StandupOutputDock
                     bullets={bullets}
                     isGenerating={isGenerating}
-                    modelUsed={modelUsed}
                     onUpdateBullets={setBullets}
-                    quickAccessUrl={quickAccessUrl}
+                    onOpenReportSettings={() => openSettingsTab('reports', 'report-delivery')}
+                    onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
+                    showParabolAction={
+                      parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
+                    }
                   />
                 </div>
               </div>
@@ -1405,12 +1440,17 @@ export default function HomePage() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         initialTab={settingsModalTab}
+        initialSection={settingsModalSection}
         onClose={() => setIsSettingsModalOpen(false)}
         accounts={gitStatus.accounts ?? []}
         aiConnections={aiConnections}
         workspaces={workspaces}
         preferences={fetchPrefs}
+        customPrompt={customPrompt}
+        parabolConnections={parabolConnections}
+        parabolEnabled={parabolEnabled}
         onSavePreferences={handleSaveFetchPreferences}
+        onSaveAiPrompt={handleSaveAiPrompt}
         onSwitchAccount={handleSelectGitAccount}
         onDisconnectAccount={handleDisconnectGit}
         onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
@@ -1424,14 +1464,24 @@ export default function HomePage() {
         }}
         onRefreshAiModels={handleRefreshAiConnection}
         onDeleteAiConnection={handleDeleteAiConnection}
+        onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
+        onToggleParabolEnabled={handleToggleParabolEnabled}
+        onSwitchParabolConnection={handleSwitchParabolConnection}
+        onDeleteParabolConnection={handleDeleteParabolConnection}
       />
 
-      <AiSettingsModal
-        isOpen={isAiSettingsModalOpen}
-        onClose={() => setIsAiSettingsModalOpen(false)}
-        customPrompt={customPrompt}
-        quickAccessUrl={quickAccessUrl}
-        onSave={handleSaveAiSettings}
+      <ReportPlatformConnectModal
+        isOpen={isReportConnectModalOpen}
+        onClose={() => setIsReportConnectModalOpen(false)}
+        onSaveParabolConnection={handleSaveParabolConnection}
+      />
+
+      <ParabolSubmitModal
+        isOpen={isParabolModalOpen}
+        onClose={() => setIsParabolModalOpen(false)}
+        bullets={bullets}
+        connections={parabolConnections}
+        onConnectionsChanged={setParabolConnections}
       />
 
       <CommitSelectionModal
@@ -1458,15 +1508,29 @@ export default function HomePage() {
             availability.status !== 'checking' &&
             availability.status !== 'unavailable'
           }
+          hasSelectableCommits={allSelectableCommits.length > 0}
+          showParabolAction={
+            parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
+          }
+          canSendToParabol={
+            parabolEnabled &&
+            parabolConnections.some((c) => c.status === 'ACTIVE') &&
+            bullets.length > 0
+          }
           aiConnections={aiConnections}
           onSyncRange={(range) => void handleScanActivity(range, true, undefined, false)}
+          onOpenCommitSelector={() => setIsCommitModalOpen(true)}
           onGenerate={() => void handleGenerateSummary()}
           onSelectAiTool={handleSelectAiTool}
           onOpenAddAiModal={() => {
             setEditingAiConnection(null);
             setIsAiModalOpen(true);
           }}
+          onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
+          onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
           onOpenHistory={() => setIsHistoryModalOpen(true)}
+          onOpenSettings={() => openSettingsTab('fetch')}
+          onOpenReportSettings={() => openSettingsTab('reports')}
           onOpenGitModal={() => openGitConnectModal('manage')}
           onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
         />
