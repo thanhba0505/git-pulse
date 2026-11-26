@@ -21,7 +21,9 @@ import {
   GraphQlViewerWorkspacesData,
   matchesWorkspacePreferences,
   normalizePrNode,
+  parsePullRequestRef,
   PrActivity,
+  PrState,
   RepoOwnerType,
   resolveOwnerType,
   resolvePrState,
@@ -1191,5 +1193,231 @@ export class GitHubService {
     }
 
     return directActivities;
+  }
+
+  async resolvePullRequest(userId: string, rawRef: string): Promise<PrActivity> {
+    const parsed = parsePullRequestRef(rawRef);
+    if (!parsed) {
+      throw new BadRequestException(
+        'Định dạng PR không hợp lệ. Vui lòng nhập URL GitHub PR (https://github.com/owner/repo/pull/123) hoặc owner/repo#123.',
+      );
+    }
+
+    const { token, username } = await this.getDecryptedToken(userId, 'ACTIVITY_FETCH');
+    const headers = buildGitHubHeaders(token);
+    const repoPath = `${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.repo)}`;
+    const prRes = await fetch(`https://api.github.com/repos/${repoPath}/pulls/${parsed.number}`, {
+      headers,
+    });
+
+    if (prRes.status === 404) {
+      throw new NotFoundException(
+        'Không tìm thấy Pull Request này hoặc token GitHub hiện tại không có quyền truy cập.',
+      );
+    }
+
+    if (!prRes.ok) {
+      const err = (await prRes.json().catch(() => ({}))) as { message?: string };
+      throw new BadRequestException(
+        `Không thể tải thông tin PR từ GitHub: ${err.message || prRes.statusText}`,
+      );
+    }
+
+    const prData = (await prRes.json()) as {
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+      draft?: boolean;
+      merged?: boolean;
+      merged_at?: string | null;
+      updated_at?: string;
+      created_at?: string;
+      head?: { ref?: string };
+      base?: {
+        ref?: string;
+        repo?: {
+          full_name?: string;
+          private?: boolean;
+          owner?: { login?: string; type?: string; avatar_url?: string };
+        };
+      };
+      labels?: Array<{ name?: string; color?: string }>;
+    };
+
+    const repoFullName = prData.base?.repo?.full_name || `${parsed.owner}/${parsed.repo}`;
+    const ownerLogin =
+      prData.base?.repo?.owner?.login || repoFullName.split('/')[0] || parsed.owner;
+    const ownerType = resolveOwnerType(
+      ownerLogin,
+      username,
+      prData.base?.repo?.owner?.type === 'Organization' ? 'Organization' : 'User',
+    );
+    const state = resolvePrState({
+      state: prData.state || 'OPEN',
+      isDraft: prData.draft,
+      merged: prData.merged,
+      mergedAt: prData.merged_at,
+    });
+
+    const commitDetails: CommitItem[] = [];
+    try {
+      const commitsRes = await fetch(
+        `https://api.github.com/repos/${repoPath}/pulls/${parsed.number}/commits?per_page=100`,
+        { headers },
+      );
+      if (commitsRes.ok) {
+        const commitsJson = (await commitsRes.json()) as Array<{
+          sha: string;
+          commit?: { message?: string; committer?: { date?: string }; author?: { date?: string } };
+        }>;
+        for (const c of commitsJson) {
+          const message = (c.commit?.message || '').split('\n')[0]?.trim() || '';
+          if (!c.sha || !message) continue;
+          commitDetails.push({
+            sha: c.sha.slice(0, 7),
+            message,
+            date: c.commit?.committer?.date || c.commit?.author?.date || prData.updated_at || '',
+          });
+        }
+      }
+    } catch {
+      // Non-fatal: metadata alone is enough for tracking task assignment
+    }
+
+    return {
+      repo: repoFullName,
+      owner: ownerLogin,
+      ownerType,
+      ownerAvatar: prData.base?.repo?.owner?.avatar_url,
+      repoPrivate: Boolean(prData.base?.repo?.private),
+      number: prData.number ?? parsed.number,
+      title: prData.title || `${repoFullName}#${parsed.number}`,
+      prUrl: prData.html_url || `https://github.com/${repoFullName}/pull/${parsed.number}`,
+      state,
+      activityType: 'pr',
+      headBranch: prData.head?.ref,
+      baseBranch: prData.base?.ref,
+      labels: (prData.labels ?? [])
+        .filter((l): l is { name: string; color?: string } => Boolean(l?.name))
+        .map((l) => ({ name: l.name, color: l.color })),
+      updatedAt: prData.updated_at || prData.created_at,
+      commits: commitDetails.map((c) => c.message),
+      commitDetails,
+    };
+  }
+
+  /** Batch-resolve current PR state and title for stored tracking items (even outside active scan window). */
+  async syncPullRequestStates(
+    userId: string,
+    refs: Array<{ repo: string; prNumber: number }>,
+  ): Promise<Map<string, { state: PrState; title: string }>> {
+    const resolved = new Map<string, { state: PrState; title: string }>();
+    const uniqueRefs = new Map<
+      string,
+      { owner: string; name: string; repo: string; number: number }
+    >();
+
+    for (const ref of refs) {
+      if (!Number.isInteger(ref.prNumber) || ref.prNumber <= 0) continue;
+      const parts = ref.repo.trim().split('/');
+      if (parts.length !== 2) continue;
+      const [owner, name] = parts;
+      if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name)) continue;
+      const repo = `${owner}/${name}`;
+      uniqueRefs.set(`${repo.toLowerCase()}#${ref.prNumber}`, {
+        owner,
+        name,
+        repo,
+        number: ref.prNumber,
+      });
+    }
+
+    if (uniqueRefs.size === 0) {
+      return resolved;
+    }
+
+    let token: string;
+    try {
+      const creds = await this.getDecryptedToken(userId, 'ACTIVITY_FETCH');
+      token = creds.token;
+    } catch {
+      return resolved;
+    }
+
+    const entries = Array.from(uniqueRefs.entries());
+    const BATCH_SIZE = 30;
+
+    for (let offset = 0; offset < entries.length; offset += BATCH_SIZE) {
+      const chunk = entries.slice(offset, offset + BATCH_SIZE);
+      const varDecls: string[] = [];
+      const fields: string[] = [];
+      const variables: Record<string, string | number> = {};
+
+      chunk.forEach(([lookupKey, info], idx) => {
+        const oVar = `o${idx}`;
+        const nVar = `n${idx}`;
+        const pVar = `p${idx}`;
+        varDecls.push(`$${oVar}: String!`, `$${nVar}: String!`, `$${pVar}: Int!`);
+        variables[oVar] = info.owner;
+        variables[nVar] = info.name;
+        variables[pVar] = info.number;
+        fields.push(
+          `pr${idx}: repository(owner: $${oVar}, name: $${nVar}) { pullRequest(number: $${pVar}) { title state isDraft merged mergedAt } }`,
+        );
+        void lookupKey;
+      });
+
+      const query = `query(${varDecls.join(', ')}) { ${fields.join(' ')} }`;
+
+      try {
+        const res = await fetch(GITHUB_GRAPHQL_URL, {
+          method: 'POST',
+          headers: {
+            ...buildGitHubHeaders(token),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query, variables }),
+        });
+
+        if (!res.ok) continue;
+
+        const payload = (await res.json()) as {
+          data?: Record<
+            string,
+            {
+              pullRequest?: {
+                title?: string;
+                state?: string;
+                isDraft?: boolean;
+                merged?: boolean;
+                mergedAt?: string | null;
+              } | null;
+            } | null
+          >;
+        };
+
+        if (!payload.data) continue;
+
+        chunk.forEach(([lookupKey], idx) => {
+          const pr = payload.data?.[`pr${idx}`]?.pullRequest;
+          if (!pr?.state) return;
+          const state = resolvePrState({
+            state: pr.state,
+            isDraft: pr.isDraft,
+            merged: pr.merged,
+            mergedAt: pr.mergedAt,
+          });
+          resolved.set(lookupKey, {
+            state,
+            title: (pr.title || '').trim(),
+          });
+        });
+      } catch {
+        // Ignore transient network errors during background state sync
+      }
+    }
+
+    return resolved;
   }
 }

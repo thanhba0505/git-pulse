@@ -3,15 +3,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PrActivity, PrState, TaskColor, TrackingTask, TrackingTaskItem } from '../../types';
 import { useTranslation } from '../../i18n';
-import { getPrKey, getPrStateStyle } from '../../lib/activity-utils';
+import { getPrKey, getPrStateStyle, parsePullRequestRef } from '../../lib/activity-utils';
+import { api } from '../../lib/api';
 import { ShowcaseCard } from '../ui/ShowcaseCard';
 import { PrActivityCard } from './PrActivityCard';
 import {
+  AlertCircle,
   Check,
   CheckCircle2,
   Eye,
   EyeOff,
   FolderKanban,
+  Link2,
   Loader2,
   Pencil,
   Plus,
@@ -80,6 +83,144 @@ function buildFallbackActivity(item: TrackingTaskItem, title: string, state: str
   };
 }
 
+function ManualPrLookupInput({
+  inputId,
+  fetchedPrs,
+  existingKeys,
+  onResolveSuccess,
+}: {
+  inputId: string;
+  fetchedPrs: PrActivity[];
+  existingKeys: Set<string>;
+  onResolveSuccess: (pr: PrActivity) => Promise<void> | void;
+}) {
+  const { dict } = useTranslation();
+  const [value, setValue] = useState('');
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+
+  const errorId = `${inputId}-error`;
+
+  const handleLookup = async () => {
+    const trimmed = value.trim();
+    const parsed = parsePullRequestRef(trimmed);
+    if (!parsed) {
+      setHasInteracted(true);
+      setErrorMsg(dict.tasks.customPrInvalidError);
+      return;
+    }
+
+    const targetLookup = `${parsed.owner}/${parsed.repo}#${parsed.number}`.toLowerCase();
+    for (const key of existingKeys) {
+      if (key.toLowerCase() === targetLookup) {
+        setErrorMsg(dict.tasks.customPrAlreadyAdded);
+        return;
+      }
+    }
+
+    const existingFetched = fetchedPrs.find(
+      (pr) => `${pr.repo}#${pr.number}`.toLowerCase() === targetLookup,
+    );
+    if (existingFetched) {
+      setIsLookingUp(true);
+      setErrorMsg(null);
+      try {
+        await onResolveSuccess(existingFetched);
+        setValue('');
+        setHasInteracted(false);
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : dict.tasks.customPrInvalidError);
+      } finally {
+        setIsLookingUp(false);
+      }
+      return;
+    }
+
+    setIsLookingUp(true);
+    setErrorMsg(null);
+    try {
+      const resolved = await api.github.resolvePullRequest(trimmed);
+      await onResolveSuccess(resolved);
+      setValue('');
+      setHasInteracted(false);
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : dict.tasks.customPrInvalidError);
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={inputId} className="block text-xs font-medium text-slate-300">
+        {dict.tasks.customPrLabel}
+      </label>
+      <div className="flex items-stretch gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Link2
+            className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            aria-hidden="true"
+          />
+          <input
+            id={inputId}
+            type="text"
+            value={value}
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-invalid={errorMsg ? 'true' : 'false'}
+            aria-describedby={errorMsg ? errorId : undefined}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setHasInteracted(true);
+              if (errorMsg) setErrorMsg(null);
+            }}
+            onBlur={() => {
+              if (!hasInteracted) return;
+              const trimmed = value.trim();
+              if (trimmed && !parsePullRequestRef(trimmed)) {
+                setErrorMsg(dict.tasks.customPrInvalidError);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                void handleLookup();
+              }
+            }}
+            placeholder={dict.tasks.customPrPlaceholder}
+            className={`w-full min-h-[36px] pl-8 pr-3 py-1.5 rounded-lg bg-[#152033] border text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none ${
+              errorMsg
+                ? 'border-rose-400/80 focus:border-rose-400'
+                : 'border-slate-600 focus:border-sky-400'
+            }`}
+          />
+        </div>
+        <button
+          type="button"
+          disabled={isLookingUp}
+          onClick={() => void handleLookup()}
+          className="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium text-sky-200 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/35 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+        >
+          {isLookingUp ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
+          ) : (
+            <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          )}
+          <span>{isLookingUp ? dict.tasks.customPrAddingBtn : dict.tasks.customPrAddBtn}</span>
+        </button>
+      </div>
+      {errorMsg && (
+        <p id={errorId} role="alert" className="flex items-start gap-1.5 text-xs text-rose-300">
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{errorMsg}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function TaskTrackerView({
   tasks,
   activities,
@@ -97,6 +238,7 @@ export function TaskTrackerView({
   const [newTitle, setNewTitle] = useState('');
   const [newColor, setNewColor] = useState<TaskColor>('sky');
   const [pickedKeysForNew, setPickedKeysForNew] = useState<Set<string>>(() => new Set());
+  const [customPrsForNew, setCustomPrsForNew] = useState<PrActivity[]>([]);
   const [isSavingNew, setIsSavingNew] = useState(false);
 
   const [showCompleted, setShowCompleted] = useState(false);
@@ -140,15 +282,23 @@ export function TaskTrackerView({
     return map;
   }, [prOnlyActivities]);
 
-  const unassignedActivities = useMemo(() => {
-    const assignedSet = new Set<string>();
-    for (const task of tasks) {
-      for (const item of task.items) {
-        assignedSet.add(`${item.repo}#${item.prNumber}`);
-      }
+  const selectablePrsForNew = useMemo(() => {
+    const merged: Array<{ pr: PrActivity; isCustom: boolean }> = [];
+    const seen = new Set<string>();
+    for (const pr of customPrsForNew) {
+      const k = getPrKey(pr).toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      merged.push({ pr, isCustom: true });
     }
-    return prOnlyActivities.filter((act) => !assignedSet.has(`${act.repo}#${act.number}`));
-  }, [tasks, prOnlyActivities]);
+    for (const pr of prOnlyActivities) {
+      const k = getPrKey(pr).toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      merged.push({ pr, isCustom: false });
+    }
+    return merged;
+  }, [customPrsForNew, prOnlyActivities]);
 
   const activeTasks = useMemo(() => tasks.filter((tk) => !tk.isCompleted), [tasks]);
   const completedTasks = useMemo(() => tasks.filter((tk) => tk.isCompleted), [tasks]);
@@ -298,19 +448,26 @@ export function TaskTrackerView({
     }
   };
 
+  const resetCreateForm = () => {
+    setNewTitle('');
+    setNewColor('sky');
+    setPickedKeysForNew(new Set());
+    setCustomPrsForNew([]);
+    setIsCreating(false);
+  };
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newTitle.trim();
     if (!clean) return;
 
-    const chosenPrs = prOnlyActivities.filter((act) => pickedKeysForNew.has(getPrKey(act)));
+    const chosenPrs = selectablePrsForNew
+      .map((entry) => entry.pr)
+      .filter((act) => pickedKeysForNew.has(getPrKey(act)));
     setIsSavingNew(true);
     try {
       await onCreateTask(clean, newColor, chosenPrs);
-      setNewTitle('');
-      setNewColor('sky');
-      setPickedKeysForNew(new Set());
-      setIsCreating(false);
+      resetCreateForm();
     } finally {
       setIsSavingNew(false);
     }
@@ -398,7 +555,7 @@ export function TaskTrackerView({
                 <h3 className="text-sm font-semibold text-slate-100">{dict.tasks.createTitle}</h3>
                 <button
                   type="button"
-                  onClick={() => setIsCreating(false)}
+                  onClick={resetCreateForm}
                   aria-label={dict.common.cancel}
                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] cursor-pointer"
                 >
@@ -451,7 +608,7 @@ export function TaskTrackerView({
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-slate-300">
                     {dict.tasks.selectPrsLabel}
@@ -461,11 +618,31 @@ export function TaskTrackerView({
                   </span>
                 </div>
 
-                {prOnlyActivities.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-2">{dict.tasks.noAvailablePrs}</p>
+                <ManualPrLookupInput
+                  inputId="new-task-custom-pr"
+                  fetchedPrs={prOnlyActivities}
+                  existingKeys={pickedKeysForNew}
+                  onResolveSuccess={(pr) => {
+                    const key = getPrKey(pr);
+                    const alreadyFetched = prOnlyActivities.some(
+                      (fetched) => getPrKey(fetched).toLowerCase() === key.toLowerCase(),
+                    );
+                    if (!alreadyFetched) {
+                      setCustomPrsForNew((prev) =>
+                        prev.some((p) => getPrKey(p).toLowerCase() === key.toLowerCase())
+                          ? prev
+                          : [pr, ...prev],
+                      );
+                    }
+                    setPickedKeysForNew((prev) => new Set(prev).add(key));
+                  }}
+                />
+
+                {selectablePrsForNew.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-1">{dict.tasks.noAvailablePrs}</p>
                 ) : (
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#152033] border border-slate-700/80 p-2.5">
-                    {prOnlyActivities.map((pr) => {
+                  <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1.5 rounded-xl bg-[#152033] border border-slate-700/80 p-2.5">
+                    {selectablePrsForNew.map(({ pr, isCustom }) => {
                       const key = getPrKey(pr);
                       const checked = pickedKeysForNew.has(key);
                       const chip = getStateChip(pr.state);
@@ -503,6 +680,11 @@ export function TaskTrackerView({
                               <span className={`px-1.5 py-0.5 rounded border text-xs ${chip.cls}`}>
                                 {chip.label}
                               </span>
+                              {isCustom && (
+                                <span className="px-1.5 py-0.5 rounded border border-sky-400/30 bg-sky-500/10 text-sky-300 text-xs">
+                                  {dict.tasks.customPrAddedTag}
+                                </span>
+                              )}
                             </div>
                             <p className="text-slate-200 mt-0.5 break-words">{pr.title}</p>
                           </div>
@@ -516,7 +698,7 @@ export function TaskTrackerView({
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setIsCreating(false)}
+                  onClick={resetCreateForm}
                   className="min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-white/[0.07] hover:bg-white/[0.12] border border-white/[0.14] cursor-pointer"
                 >
                   {dict.common.cancel}
@@ -821,9 +1003,18 @@ export function TaskTrackerView({
                       </div>
                     </div>
 
-                    {/* Picker to Assign / Unassign Fetched PRs to This Task */}
+                    {/* Picker to Assign / Unassign PRs to This Task */}
                     {isAssigning && (
-                      <div className="rounded-xl bg-[#152033] border border-slate-700/80 p-3 space-y-2">
+                      <div className="rounded-xl bg-[#152033] border border-slate-700/80 p-3 space-y-3">
+                        <ManualPrLookupInput
+                          inputId={`assign-custom-pr-${task.id}`}
+                          fetchedPrs={prOnlyActivities}
+                          existingKeys={
+                            new Set(task.items.map((it) => `${it.repo}#${it.prNumber}`))
+                          }
+                          onResolveSuccess={(pr) => onToggleTaskAssignment(task.id, pr, false)}
+                        />
+
                         <p className="text-xs font-medium text-slate-300">
                           {dict.tasks.selectPrsLabel}
                         </p>
@@ -913,32 +1104,6 @@ export function TaskTrackerView({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Unassigned Fetched PRs Below */}
-      {unassignedActivities.length > 0 && (
-        <div className="space-y-3 pt-1">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-mono uppercase tracking-wider text-slate-400">
-              {dict.tasks.unassignedTitle} ({unassignedActivities.length})
-            </h3>
-          </div>
-          <ul role="list" className="space-y-3">
-            {unassignedActivities.map((pr, index) => (
-              <PrActivityCard
-                key={getPrKey(pr)}
-                pr={pr}
-                index={index}
-                compactCommits={compactCommits}
-                tasks={tasks}
-                onToggleTaskAssignment={onToggleTaskAssignment}
-                onCreateTaskWithPr={async (title, targetPr) => {
-                  await onCreateTask(title, 'sky', [targetPr]);
-                }}
-              />
-            ))}
-          </ul>
         </div>
       )}
     </div>

@@ -1,10 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { GitHubService } from '../github/github.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto, TaskItemInputDto, UpdateTaskDto } from './dto/task.dto';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly gitHubService?: GitHubService,
+  ) {}
 
   async listTasks(userId: string) {
     return this.prisma.trackingTask.findMany({
@@ -194,5 +198,57 @@ export class TasksService {
       map.set(key, item);
     }
     return Array.from(map.values());
+  }
+
+  /** Sync stored task PR item states/titles against live GitHub PR statuses. */
+  async syncTaskItemStates(userId: string) {
+    if (!this.gitHubService) {
+      return this.listTasks(userId);
+    }
+
+    const items = await this.prisma.trackingTaskItem.findMany({
+      where: {
+        prNumber: { gt: 0 },
+        task: { userId },
+      },
+      select: {
+        id: true,
+        repo: true,
+        prNumber: true,
+        title: true,
+        state: true,
+      },
+    });
+
+    if (items.length === 0) {
+      return this.listTasks(userId);
+    }
+
+    const latestByLookup = await this.gitHubService.syncPullRequestStates(
+      userId,
+      items.map((item) => ({ repo: item.repo, prNumber: item.prNumber })),
+    );
+
+    const updates: Array<{ id: string; state: string; title: string }> = [];
+    for (const item of items) {
+      const latest = latestByLookup.get(`${item.repo.toLowerCase()}#${item.prNumber}`);
+      if (!latest) continue;
+      const nextTitle = latest.title.trim().slice(0, 300) || item.title;
+      if (latest.state === item.state && nextTitle === item.title) continue;
+      updates.push({ id: item.id, state: latest.state, title: nextTitle });
+    }
+
+    if (updates.length > 0) {
+      await this.prisma.$transaction(
+        updates.map((upd) =>
+          this.prisma.trackingTaskItem.update({
+            where: { id: upd.id },
+            data: { state: upd.state, title: upd.title },
+          }),
+        ),
+      );
+    }
+
+    return this.listTasks(userId);
   }
 }

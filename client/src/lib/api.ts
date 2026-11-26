@@ -193,6 +193,8 @@ export const api = {
       const q = since ? `?since=${encodeURIComponent(since)}` : '';
       return fetchJson<PrActivity[]>(`/github/activity${q}`);
     },
+    resolvePullRequest: (ref: string) =>
+      fetchJson<PrActivity>(`/github/pull-request?ref=${encodeURIComponent(ref)}`),
   },
   settings: {
     get: () => fetchJson<UserSettingsResponse>('/settings'),
@@ -209,6 +211,10 @@ export const api = {
   },
   tasks: {
     list: () => fetchJson<TrackingTask[]>('/tasks'),
+    syncStates: () =>
+      fetchJson<TrackingTask[]>('/tasks/sync-states', {
+        method: 'POST',
+      }),
     create: (dto: {
       title: string;
       color?: TaskColor;

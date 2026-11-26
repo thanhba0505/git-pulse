@@ -14,6 +14,8 @@ describe('TasksService', () => {
       deleteMany: jest.Mock;
     };
     trackingTaskItem: {
+      findMany: jest.Mock;
+      update: jest.Mock;
       upsert: jest.Mock;
       deleteMany: jest.Mock;
     };
@@ -31,6 +33,8 @@ describe('TasksService', () => {
         deleteMany: jest.fn(),
       },
       trackingTaskItem: {
+        findMany: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
         upsert: jest.fn().mockResolvedValue({}),
         deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
@@ -161,5 +165,52 @@ describe('TasksService', () => {
     await expect(service.updateTask('user-1', 'task-other', { isCompleted: true })).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('syncs stale draft states against live GitHub PR statuses', async () => {
+    prismaMock.trackingTaskItem.findMany.mockResolvedValue([
+      {
+        id: 'item-1',
+        repo: 'nanocohub/autopilot-infra',
+        prNumber: 320,
+        title: 'old title',
+        state: 'draft',
+      },
+      {
+        id: 'item-2',
+        repo: 'nanocohub/supply_chain_system',
+        prNumber: 2698,
+        title: 'same title',
+        state: 'open',
+      },
+    ]);
+    prismaMock.trackingTask.findMany.mockResolvedValue([{ id: 'task-1', items: [] }]);
+    prismaMock.$transaction.mockImplementation(async (arg: unknown) =>
+      Array.isArray(arg)
+        ? Promise.all(arg)
+        : (arg as (tx: unknown) => Promise<unknown>)(prismaMock),
+    );
+
+    const gitHubMock = {
+      syncPullRequestStates: jest.fn().mockResolvedValue(
+        new Map([
+          ['nanocohub/autopilot-infra#320', { state: 'merged', title: 'updated title' }],
+          ['nanocohub/supply_chain_system#2698', { state: 'open', title: 'same title' }],
+        ]),
+      ),
+    };
+
+    const syncedService = new TasksService(
+      prismaMock as unknown as PrismaService,
+      gitHubMock as unknown as import('../github/github.service').GitHubService,
+    );
+
+    await syncedService.syncTaskItemStates('user-1');
+
+    expect(prismaMock.trackingTaskItem.update).toHaveBeenCalledTimes(1);
+    expect(prismaMock.trackingTaskItem.update).toHaveBeenCalledWith({
+      where: { id: 'item-1' },
+      data: { state: 'merged', title: 'updated title' },
+    });
   });
 });

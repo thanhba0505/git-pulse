@@ -197,7 +197,7 @@ export function StandupOutputDock({
           <div
             aria-busy="true"
             aria-label={dict.standupDock.generatingTitle}
-            className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-3"
+            className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-3 gp-fade-in"
           >
             <div className="flex items-center gap-2 text-xs text-sky-300 font-medium">
               <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" aria-hidden="true" />
@@ -232,7 +232,7 @@ export function StandupOutputDock({
             className="w-full p-4 rounded-lg bg-[#152033] border border-sky-400/70 focus:ring-2 focus:ring-sky-500/25 text-xs text-slate-100 placeholder:text-slate-400 leading-relaxed outline-none resize-y"
           />
         ) : hasContent ? (
-          <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 text-xs text-slate-200 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100">
+          <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 text-xs text-slate-200 leading-relaxed selection:bg-sky-500/30 selection:text-sky-100 gp-fade-in">
             <div className="text-slate-200 font-semibold mb-2 select-none">Today:</div>
             <ul role="list" className="space-y-2">
               {activeBullets.map((bullet, idx) => (

@@ -132,6 +132,13 @@ export interface TasksDictionary {
   selectPrsLabel: string;
   selectedPrsHint: string;
   noAvailablePrs: string;
+  customPrLabel: string;
+  customPrPlaceholder: string;
+  customPrAddBtn: string;
+  customPrAddingBtn: string;
+  customPrInvalidError: string;
+  customPrAddedTag: string;
+  customPrAlreadyAdded: string;
   saveTaskBtn: string;
   savingBtn: string;
   emptyTitle: string;
@@ -139,7 +146,6 @@ export interface TasksDictionary {
   noTasksCount: string;
   allCompletedTitle: string;
   allCompletedDesc: string;
-  unassignedTitle: string;
   addPrsBtn: string;
   doneAddPrsBtn: string;
   markCompleteBtn: string;

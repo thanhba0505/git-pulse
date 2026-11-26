@@ -29,6 +29,12 @@ export class TasksController {
     return this.tasksService.listTasks(req.user.id);
   }
 
+  @Post('sync-states')
+  @ApiOperation({ summary: 'Refresh live GitHub states for all stored task PR items' })
+  async syncStates(@Req() req: Request & { user: AuthenticatedUser }) {
+    return this.tasksService.syncTaskItemStates(req.user.id);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a manual tracking task' })
   async createTask(@Req() req: Request & { user: AuthenticatedUser }, @Body() dto: CreateTaskDto) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { startTransition, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AiAvailabilityState,
@@ -194,6 +194,7 @@ export default function HomePage() {
   } = useAuth();
 
   const [isIntroComplete, setIsIntroComplete] = useState(false);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [gitStatus, setGitStatus] = useState<GitStatus>({ connected: false, accounts: [] });
   const [gitModalMode, setGitModalMode] = useState<'connect' | 'add' | 'manage'>('connect');
   const [isGitModalOpen, setIsGitModalOpen] = useState(false);
@@ -209,6 +210,8 @@ export default function HomePage() {
   const [groupBy, setGroupBy] = useState<GroupingMode>('owner');
   const [workspaces, setWorkspaces] = useState<GitHubWorkspacesResponse | null>(null);
   const [tasks, setTasks] = useState<TrackingTask[]>([]);
+  const tasksRef = useRef<TrackingTask[]>(tasks);
+  tasksRef.current = tasks;
 
   const [activities, setActivities] = useState<PrActivity[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -451,6 +454,7 @@ export default function HomePage() {
       notifyToast = true,
       statusOverride?: GitStatus,
       forceRefresh = false,
+      clearPreviousBeforeFetch = false,
     ) => {
       if (isScanningRef.current) return;
 
@@ -464,9 +468,8 @@ export default function HomePage() {
       if (!forceRefresh && user) {
         const cached = readCachedActivities(user.id, accountKey, targetRange);
         if (cached) {
-          startTransition(() => {
-            applyScannedActivities(cached);
-          });
+          applyScannedActivities(cached);
+          setIsScanning(false);
           return;
         }
       }
@@ -476,6 +479,9 @@ export default function HomePage() {
       }
 
       isScanningRef.current = true;
+      if (clearPreviousBeforeFetch) {
+        applyScannedActivities([]);
+      }
       setIsScanning(true);
       setScanError(null);
       try {
@@ -494,9 +500,14 @@ export default function HomePage() {
         }
 
         const data = await api.github.getActivity(sinceDate);
-        startTransition(() => {
-          applyScannedActivities(data);
-        });
+        applyScannedActivities(data);
+
+        if (forceRefresh && tasksRef.current.some((tk) => tk.items.some((it) => it.prNumber > 0))) {
+          void api.tasks
+            .syncStates()
+            .then((syncedTasks) => setTasks(syncedTasks))
+            .catch(() => {});
+        }
 
         if (user) {
           writeCachedActivities(user.id, accountKey, targetRange, data);
@@ -626,12 +637,15 @@ export default function HomePage() {
   const userId = user?.id;
   useEffect(() => {
     if (!userId) {
+      setLoadedUserId(null);
       setGitStatus({ connected: false, accounts: [] });
       setWorkspaces(null);
       setTasks([]);
       setAiConnections([]);
       setParabolConnections([]);
       setGithubModels([]);
+      setActivities([]);
+      setIsScanning(false);
       setAvailability({ status: 'idle', available: false });
       setCustomPrompt('');
       setIsSettingsModalOpen(false);
@@ -640,13 +654,17 @@ export default function HomePage() {
       return;
     }
 
+    let cancelled = false;
+
     Promise.all([
-      loadGitStatus(),
+      api.github.getStatus().catch(() => ({ connected: false, accounts: [] }) as GitStatus),
       api.settings.get().catch(() => null),
       api.tasks.list().catch(() => [] as TrackingTask[]),
       api.ai.listConnections().catch(() => [] as AiConnectionSummary[]),
       api.parabol.listConnections().catch(() => [] as ParabolConnectionSummary[]),
     ]).then(([status, settingsRes, loadedTasks, loadedConns, loadedParabolConns]) => {
+      if (cancelled) return;
+
       let targetRange: 'today' | '24h' | '7d' = 'today';
       if (settingsRes?.fetchPreferences) {
         setFetchPrefs(settingsRes.fetchPreferences);
@@ -657,6 +675,7 @@ export default function HomePage() {
       if (settingsRes) {
         setCustomPrompt(settingsRes.customPrompt ?? '');
       }
+      setGitStatus(status);
       setTasks(loadedTasks);
       setAiConnections(loadedConns);
       setParabolConnections(loadedParabolConns);
@@ -705,8 +724,26 @@ export default function HomePage() {
       setSelectedModel(initialModel);
 
       if (status.connected) {
+        const accountKey = status.activeAccountId || status.gitUsername || 'default';
+        const cached = readCachedActivities(userId, accountKey, targetRange);
+        if (cached) {
+          applyScannedActivities(cached);
+          setIsScanning(false);
+        } else {
+          setIsScanning(true);
+          void scanRef.current(targetRange, false, status, false);
+        }
+
+        if (loadedTasks.some((tk) => tk.items.some((it) => it.prNumber > 0))) {
+          void api.tasks
+            .syncStates()
+            .then((syncedTasks) => {
+              if (!cancelled) setTasks(syncedTasks);
+            })
+            .catch(() => {});
+        }
+
         void loadWorkspaces();
-        void scanRef.current(targetRange, false, status, false);
         if (initialToolKey.startsWith('conn:')) {
           const targetId = initialToolKey.slice(5);
           const matched = loadedConns.find((c) => c.id === targetId);
@@ -723,8 +760,20 @@ export default function HomePage() {
           void checkModelAvailability(initialToolKey, initialModel);
         }
       }
+
+      setLoadedUserId(userId);
     });
-  }, [userId, loadGitStatus, loadWorkspaces, resolveDefaultModelForTool, checkModelAvailability]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    userId,
+    applyScannedActivities,
+    loadWorkspaces,
+    resolveDefaultModelForTool,
+    checkModelAvailability,
+  ]);
 
   const handleAccountSelect = async (account: {
     username: string;
@@ -762,7 +811,6 @@ export default function HomePage() {
   const handleSelectGitAccount = async (accountId: string) => {
     const nextStatus = await api.github.switchAccount(accountId);
     setGitStatus(nextStatus);
-    applyScannedActivities([]);
     setBullets([]);
     setScanError(null);
     setAiError(null);
@@ -774,10 +822,12 @@ export default function HomePage() {
     }
     if (nextStatus.connected) {
       void loadWorkspaces();
-      await handleScanActivity(undefined, false, nextStatus, false);
+      await handleScanActivity(undefined, false, nextStatus, false, true);
       if (selectedToolKey === BUILTIN_GITHUB_TOOL_KEY) {
         void checkModelAvailability(selectedToolKey, selectedModel);
       }
+    } else {
+      applyScannedActivities([]);
     }
   };
 
@@ -1219,321 +1269,336 @@ export default function HomePage() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [user, gitStatus.connected, selectedCommitCount, isGenerating, availability.status]);
 
-  if (!isIntroComplete) {
-    return <IntroScreen onComplete={() => setIsIntroComplete(true)} />;
-  }
+  const isWorkspaceLoading = Boolean(user && loadedUserId !== user.id);
+  const isAppBootReady = !isAuthLoading && !isWorkspaceLoading;
 
-  if (isAuthLoading) {
-    return <WorkspaceSkeleton />;
-  }
+  const renderMainStage = () => {
+    if (isAuthLoading || isWorkspaceLoading) {
+      return <WorkspaceSkeleton />;
+    }
 
-  if (!user) {
+    if (!user) {
+      return (
+        <AuthLandingWrapper
+          dictBrand={dict.header.brand}
+          dictTagline={dict.auth.brandTagline}
+          dictPauseLabel={dict.header.toggleMotionPause}
+          dictPlayLabel={dict.header.toggleMotionPlay}
+          authError={authError}
+          isGoogleChooserOpen={isGoogleChooserOpen}
+          onOpenGoogleChooser={openGoogleChooser}
+          onCloseGoogleChooser={closeGoogleChooser}
+          onSelectAccount={handleAccountSelect}
+        />
+      );
+    }
+
     return (
-      <AuthLandingWrapper
-        dictBrand={dict.header.brand}
-        dictTagline={dict.auth.brandTagline}
-        dictPauseLabel={dict.header.toggleMotionPause}
-        dictPlayLabel={dict.header.toggleMotionPlay}
-        authError={authError}
-        isGoogleChooserOpen={isGoogleChooserOpen}
-        onOpenGoogleChooser={openGoogleChooser}
-        onCloseGoogleChooser={closeGoogleChooser}
-        onSelectAccount={handleAccountSelect}
-      />
+      <>
+        <Header
+          user={user}
+          gitStatus={gitStatus}
+          onSelectGitAccount={(accountId) => void handleSelectGitAccount(accountId)}
+          onOpenAddGitAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
+          onOpenCommandPalette={() => setIsPaletteOpen(true)}
+          onOpenHistory={() => setIsHistoryModalOpen(true)}
+          onOpenSettings={() => openSettingsTab('general')}
+          onLogout={handleLogout}
+        />
+
+        {/* Unified Scrollable Container: Main content and Footer scroll together */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
+          <main className="flex-1 flex flex-col max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+            {!gitStatus.connected ? (
+              /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
+              <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
+                <ShowcaseCard tiltStrength={0.75} className="w-full max-w-xl p-6 sm:p-8 gp-fade-in">
+                  <div className="flex flex-col items-center text-center space-y-5">
+                    <div
+                      className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.2)]"
+                      aria-hidden="true"
+                    >
+                      <GitBranch className="w-6 h-6" />
+                    </div>
+
+                    <div className="space-y-2 max-w-md">
+                      <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                        {dict.onboarding.title}
+                      </h1>
+                      <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                        {dict.onboarding.description}
+                      </p>
+                    </div>
+
+                    <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
+                      <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
+                        <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
+                        <p className="text-xs text-slate-200 leading-snug">
+                          {dict.onboarding.featureSync}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
+                        <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                        <p className="text-xs text-slate-200 leading-snug">
+                          {dict.onboarding.featureAi}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                        <p className="text-xs text-slate-200 leading-snug">
+                          {dict.onboarding.featureExport}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openGitConnectModal('connect')}
+                      className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer shadow-[0_8px_24px_-6px_rgba(14,165,233,0.45)]"
+                    >
+                      <GitBranch className="w-4 h-4" aria-hidden="true" />
+                      <span>{dict.onboarding.connectNow}</span>
+                    </button>
+                  </div>
+                </ShowcaseCard>
+              </div>
+            ) : (
+              /* Active Workspace (Rendered Only When At Least One GitHub Account Is Connected) */
+              <div className="space-y-6 gp-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                    {dict.workspace.title}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-400 font-mono">
+                    {gitStatus.gitUsername
+                      ? t('workspace.activeAccountContext', { username: gitStatus.gitUsername })
+                      : dict.workspace.subtitle}
+                  </p>
+                </div>
+
+                <ActivitySummaryStrip activities={activities} />
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  <div className="lg:col-span-7 xl:col-span-8 min-w-0">
+                    <ActivityScanner
+                      activities={activities}
+                      isLoading={isScanning}
+                      error={scanError}
+                      onScan={() => handleScanActivity(undefined, true, undefined, true)}
+                      sinceOption={sinceOption}
+                      onSinceOptionChange={(opt) => {
+                        setScanError(null);
+                        void handleScanActivity(opt, true, undefined, false);
+                      }}
+                      repoFilter={repoFilter}
+                      onRepoFilterChange={setRepoFilter}
+                      groupBy={groupBy}
+                      onGroupByChange={setGroupBy}
+                      compactCommits={fetchPrefs.compactCommits}
+                      workspaces={workspaces}
+                      includePersonalEnabled={fetchPrefs.includePersonal}
+                      onOpenFetchSettings={() => openSettingsTab('fetch')}
+                      tasks={tasks}
+                      onCreateTask={handleCreateTask}
+                      onRenameTask={handleRenameTask}
+                      onToggleTaskComplete={handleToggleTaskComplete}
+                      onDeleteTask={handleDeleteTask}
+                      onToggleTaskAssignment={handleToggleTaskAssignment}
+                      onRemoveTaskItem={handleRemoveTaskItem}
+                    />
+                  </div>
+
+                  <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-6 min-w-0">
+                    <CockpitAiConsole
+                      selectedToolKey={selectedToolKey}
+                      onSelectToolKey={handleSelectAiTool}
+                      connections={aiConnections}
+                      githubModels={githubModels}
+                      gitTokenExpiresAt={gitStatus.expiresAt}
+                      selectedModel={selectedModel}
+                      onModelChange={handleSelectAiModel}
+                      hasCustomPrompt={Boolean(
+                        customPrompt.trim() && customPrompt.trim() !== DEFAULT_AI_PROMPT.trim(),
+                      )}
+                      onOpenAiSettings={() => openSettingsTab('reports', 'ai-prompt')}
+                      availability={availability}
+                      onRecheckAvailability={() =>
+                        void checkModelAvailability(selectedToolKey, selectedModel)
+                      }
+                      onRefreshModels={() => void handleRefreshActiveModels()}
+                      isRefreshingModels={isRefreshingModels}
+                      onOpenAddAiModal={() => {
+                        setEditingAiConnection(null);
+                        setIsAiModalOpen(true);
+                      }}
+                      onOpenUpdateAiModal={(conn) => {
+                        setEditingAiConnection(conn);
+                        setIsAiModalOpen(true);
+                      }}
+                      onGenerate={handleGenerateSummary}
+                      isGenerating={isGenerating}
+                      error={aiError}
+                      selectedPrCount={selectedPrCount}
+                      selectedCommitCount={selectedCommitCount}
+                      totalCommitCount={allSelectableCommits.length}
+                      onOpenCommitSelector={() => setIsCommitModalOpen(true)}
+                    />
+
+                    <StandupOutputDock
+                      bullets={bullets}
+                      isGenerating={isGenerating}
+                      onUpdateBullets={setBullets}
+                      onOpenReportSettings={() => openSettingsTab('reports', 'report-delivery')}
+                      onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
+                      showParabolAction={
+                        parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+          <Footer />
+        </div>
+      </>
     );
-  }
+  };
 
   return (
     <>
-      <Header
-        user={user}
-        gitStatus={gitStatus}
-        onSelectGitAccount={(accountId) => void handleSelectGitAccount(accountId)}
-        onOpenAddGitAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
-        onOpenCommandPalette={() => setIsPaletteOpen(true)}
-        onOpenHistory={() => setIsHistoryModalOpen(true)}
-        onOpenSettings={() => openSettingsTab('general')}
-        onLogout={handleLogout}
-      />
+      {(isAppBootReady || isIntroComplete) && renderMainStage()}
 
-      {/* Unified Scrollable Container: Main content and Footer scroll together */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <main className="flex-1 flex flex-col max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-          {!gitStatus.connected ? (
-            /* Clean Focused Onboarding When GitHub Is Not Linked Yet (No empty panels or dead buttons) */
-            <div className="flex-1 flex flex-col items-center justify-center py-10 sm:py-16">
-              <ShowcaseCard tiltStrength={0.75} className="w-full max-w-xl p-6 sm:p-8 gp-fade-in">
-                <div className="flex flex-col items-center text-center space-y-5">
-                  <div
-                    className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-400/35 flex items-center justify-center text-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.2)]"
-                    aria-hidden="true"
-                  >
-                    <GitBranch className="w-6 h-6" />
-                  </div>
+      {!isIntroComplete && (
+        <IntroScreen isReady={isAppBootReady} onComplete={() => setIsIntroComplete(true)} />
+      )}
 
-                  <div className="space-y-2 max-w-md">
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
-                      {dict.onboarding.title}
-                    </h1>
-                    <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                      {dict.onboarding.description}
-                    </p>
-                  </div>
+      {user && (
+        <>
+          <GitHubConnectModal
+            isOpen={isGitModalOpen}
+            onClose={() => setIsGitModalOpen(false)}
+            status={gitStatus}
+            mode={gitModalMode}
+            onSavePat={handleSavePat}
+            onDisconnect={handleDisconnectGit}
+          />
 
-                  <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-left">
-                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
-                      <RefreshCw className="w-4 h-4 text-sky-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-200 leading-snug">
-                        {dict.onboarding.featureSync}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
-                      <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-200 leading-snug">
-                        {dict.onboarding.featureAi}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[#253349]/65 border border-slate-600/75 space-y-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                      <p className="text-xs text-slate-200 leading-snug">
-                        {dict.onboarding.featureExport}
-                      </p>
-                    </div>
-                  </div>
+          <AiConnectModal
+            isOpen={isAiModalOpen}
+            onClose={() => {
+              setIsAiModalOpen(false);
+              setEditingAiConnection(null);
+            }}
+            defaultUsername={user.username}
+            editingConnection={editingAiConnection}
+            onSaved={handleAiConnectionSaved}
+          />
 
-                  <button
-                    type="button"
-                    onClick={() => openGitConnectModal('connect')}
-                    className="gp-cta-shimmer inline-flex items-center justify-center gap-2 min-h-[42px] px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-950 bg-sky-500 hover:bg-sky-400 active:scale-[0.98] transition-all cursor-pointer shadow-[0_8px_24px_-6px_rgba(14,165,233,0.45)]"
-                  >
-                    <GitBranch className="w-4 h-4" aria-hidden="true" />
-                    <span>{dict.onboarding.connectNow}</span>
-                  </button>
-                </div>
-              </ShowcaseCard>
-            </div>
-          ) : (
-            /* Active Workspace (Rendered Only When At Least One GitHub Account Is Connected) */
-            <>
-              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
-                  {dict.workspace.title}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-400 font-mono">
-                  {gitStatus.gitUsername
-                    ? t('workspace.activeAccountContext', { username: gitStatus.gitUsername })
-                    : dict.workspace.subtitle}
-                </p>
-              </div>
+          <ReportHistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+          />
 
-              <ActivitySummaryStrip activities={activities} />
+          <SettingsModal
+            isOpen={isSettingsModalOpen}
+            initialTab={settingsModalTab}
+            initialSection={settingsModalSection}
+            onClose={() => setIsSettingsModalOpen(false)}
+            accounts={gitStatus.accounts ?? []}
+            aiConnections={aiConnections}
+            workspaces={workspaces}
+            preferences={fetchPrefs}
+            customPrompt={customPrompt}
+            parabolConnections={parabolConnections}
+            parabolEnabled={parabolEnabled}
+            onSavePreferences={handleSaveFetchPreferences}
+            onSaveAiPrompt={handleSaveAiPrompt}
+            onSwitchAccount={handleSelectGitAccount}
+            onDisconnectAccount={handleDisconnectGit}
+            onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
+            onOpenAddAi={() => {
+              setEditingAiConnection(null);
+              setIsAiModalOpen(true);
+            }}
+            onOpenUpdateAi={(conn) => {
+              setEditingAiConnection(conn);
+              setIsAiModalOpen(true);
+            }}
+            onRefreshAiModels={handleRefreshAiConnection}
+            onDeleteAiConnection={handleDeleteAiConnection}
+            onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
+            onToggleParabolEnabled={handleToggleParabolEnabled}
+            onSwitchParabolConnection={handleSwitchParabolConnection}
+            onDeleteParabolConnection={handleDeleteParabolConnection}
+          />
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-7 xl:col-span-8 min-w-0">
-                  <ActivityScanner
-                    activities={activities}
-                    isLoading={isScanning}
-                    error={scanError}
-                    onScan={() => handleScanActivity(undefined, true, undefined, true)}
-                    sinceOption={sinceOption}
-                    onSinceOptionChange={(opt) => {
-                      setScanError(null);
-                      void handleScanActivity(opt, true, undefined, false);
-                    }}
-                    repoFilter={repoFilter}
-                    onRepoFilterChange={setRepoFilter}
-                    groupBy={groupBy}
-                    onGroupByChange={setGroupBy}
-                    compactCommits={fetchPrefs.compactCommits}
-                    workspaces={workspaces}
-                    includePersonalEnabled={fetchPrefs.includePersonal}
-                    onOpenFetchSettings={() => openSettingsTab('fetch')}
-                    tasks={tasks}
-                    onCreateTask={handleCreateTask}
-                    onRenameTask={handleRenameTask}
-                    onToggleTaskComplete={handleToggleTaskComplete}
-                    onDeleteTask={handleDeleteTask}
-                    onToggleTaskAssignment={handleToggleTaskAssignment}
-                    onRemoveTaskItem={handleRemoveTaskItem}
-                  />
-                </div>
+          <ReportPlatformConnectModal
+            isOpen={isReportConnectModalOpen}
+            onClose={() => setIsReportConnectModalOpen(false)}
+            onSaveParabolConnection={handleSaveParabolConnection}
+          />
 
-                <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-6 min-w-0">
-                  <CockpitAiConsole
-                    selectedToolKey={selectedToolKey}
-                    onSelectToolKey={handleSelectAiTool}
-                    connections={aiConnections}
-                    githubModels={githubModels}
-                    gitTokenExpiresAt={gitStatus.expiresAt}
-                    selectedModel={selectedModel}
-                    onModelChange={handleSelectAiModel}
-                    hasCustomPrompt={Boolean(
-                      customPrompt.trim() && customPrompt.trim() !== DEFAULT_AI_PROMPT.trim(),
-                    )}
-                    onOpenAiSettings={() => openSettingsTab('reports', 'ai-prompt')}
-                    availability={availability}
-                    onRecheckAvailability={() =>
-                      void checkModelAvailability(selectedToolKey, selectedModel)
-                    }
-                    onRefreshModels={() => void handleRefreshActiveModels()}
-                    isRefreshingModels={isRefreshingModels}
-                    onOpenAddAiModal={() => {
-                      setEditingAiConnection(null);
-                      setIsAiModalOpen(true);
-                    }}
-                    onOpenUpdateAiModal={(conn) => {
-                      setEditingAiConnection(conn);
-                      setIsAiModalOpen(true);
-                    }}
-                    onGenerate={handleGenerateSummary}
-                    isGenerating={isGenerating}
-                    error={aiError}
-                    selectedPrCount={selectedPrCount}
-                    selectedCommitCount={selectedCommitCount}
-                    totalCommitCount={allSelectableCommits.length}
-                    onOpenCommitSelector={() => setIsCommitModalOpen(true)}
-                  />
+          <ParabolSubmitModal
+            isOpen={isParabolModalOpen}
+            onClose={() => setIsParabolModalOpen(false)}
+            bullets={bullets}
+            connections={parabolConnections}
+            onConnectionsChanged={setParabolConnections}
+          />
 
-                  <StandupOutputDock
-                    bullets={bullets}
-                    isGenerating={isGenerating}
-                    onUpdateBullets={setBullets}
-                    onOpenReportSettings={() => openSettingsTab('reports', 'report-delivery')}
-                    onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
-                    showParabolAction={
-                      parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
-                    }
-                  />
-                </div>
-              </div>
-            </>
+          <CommitSelectionModal
+            isOpen={isCommitModalOpen}
+            onClose={() => setIsCommitModalOpen(false)}
+            commits={allSelectableCommits}
+            selectedCommitIds={selectedCommitIds}
+            onToggleCommit={handleToggleCommit}
+            onSelectAll={handleSelectAllCommits}
+            onDeselectAll={handleDeselectAllCommits}
+            includePersonal={includePersonalCommits}
+            onTogglePersonal={handleTogglePersonalCommits}
+            includeOrg={includeOrgCommits}
+            onToggleOrg={handleToggleOrgCommits}
+          />
+
+          {gitStatus.connected && (
+            <CommandPalette
+              isOpen={isPaletteOpen}
+              onClose={() => setIsPaletteOpen(false)}
+              canGenerate={
+                selectedCommitCount > 0 &&
+                !isGenerating &&
+                availability.status !== 'checking' &&
+                availability.status !== 'unavailable'
+              }
+              hasSelectableCommits={allSelectableCommits.length > 0}
+              showParabolAction={
+                parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
+              }
+              canSendToParabol={
+                parabolEnabled &&
+                parabolConnections.some((c) => c.status === 'ACTIVE') &&
+                bullets.length > 0
+              }
+              aiConnections={aiConnections}
+              onSyncRange={(range) => void handleScanActivity(range, true, undefined, false)}
+              onOpenCommitSelector={() => setIsCommitModalOpen(true)}
+              onGenerate={() => void handleGenerateSummary()}
+              onSelectAiTool={handleSelectAiTool}
+              onOpenAddAiModal={() => {
+                setEditingAiConnection(null);
+                setIsAiModalOpen(true);
+              }}
+              onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
+              onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
+              onOpenHistory={() => setIsHistoryModalOpen(true)}
+              onOpenSettings={() => openSettingsTab('fetch')}
+              onOpenReportSettings={() => openSettingsTab('reports')}
+              onOpenGitModal={() => openGitConnectModal('manage')}
+              onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
+            />
           )}
-        </main>
-        <Footer />
-      </div>
-
-      <GitHubConnectModal
-        isOpen={isGitModalOpen}
-        onClose={() => setIsGitModalOpen(false)}
-        status={gitStatus}
-        mode={gitModalMode}
-        onSavePat={handleSavePat}
-        onDisconnect={handleDisconnectGit}
-      />
-
-      <AiConnectModal
-        isOpen={isAiModalOpen}
-        onClose={() => {
-          setIsAiModalOpen(false);
-          setEditingAiConnection(null);
-        }}
-        defaultUsername={user.username}
-        editingConnection={editingAiConnection}
-        onSaved={handleAiConnectionSaved}
-      />
-
-      <ReportHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        initialTab={settingsModalTab}
-        initialSection={settingsModalSection}
-        onClose={() => setIsSettingsModalOpen(false)}
-        accounts={gitStatus.accounts ?? []}
-        aiConnections={aiConnections}
-        workspaces={workspaces}
-        preferences={fetchPrefs}
-        customPrompt={customPrompt}
-        parabolConnections={parabolConnections}
-        parabolEnabled={parabolEnabled}
-        onSavePreferences={handleSaveFetchPreferences}
-        onSaveAiPrompt={handleSaveAiPrompt}
-        onSwitchAccount={handleSelectGitAccount}
-        onDisconnectAccount={handleDisconnectGit}
-        onOpenAddAccount={() => openGitConnectModal(gitStatus.connected ? 'add' : 'connect')}
-        onOpenAddAi={() => {
-          setEditingAiConnection(null);
-          setIsAiModalOpen(true);
-        }}
-        onOpenUpdateAi={(conn) => {
-          setEditingAiConnection(conn);
-          setIsAiModalOpen(true);
-        }}
-        onRefreshAiModels={handleRefreshAiConnection}
-        onDeleteAiConnection={handleDeleteAiConnection}
-        onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
-        onToggleParabolEnabled={handleToggleParabolEnabled}
-        onSwitchParabolConnection={handleSwitchParabolConnection}
-        onDeleteParabolConnection={handleDeleteParabolConnection}
-      />
-
-      <ReportPlatformConnectModal
-        isOpen={isReportConnectModalOpen}
-        onClose={() => setIsReportConnectModalOpen(false)}
-        onSaveParabolConnection={handleSaveParabolConnection}
-      />
-
-      <ParabolSubmitModal
-        isOpen={isParabolModalOpen}
-        onClose={() => setIsParabolModalOpen(false)}
-        bullets={bullets}
-        connections={parabolConnections}
-        onConnectionsChanged={setParabolConnections}
-      />
-
-      <CommitSelectionModal
-        isOpen={isCommitModalOpen}
-        onClose={() => setIsCommitModalOpen(false)}
-        commits={allSelectableCommits}
-        selectedCommitIds={selectedCommitIds}
-        onToggleCommit={handleToggleCommit}
-        onSelectAll={handleSelectAllCommits}
-        onDeselectAll={handleDeselectAllCommits}
-        includePersonal={includePersonalCommits}
-        onTogglePersonal={handleTogglePersonalCommits}
-        includeOrg={includeOrgCommits}
-        onToggleOrg={handleToggleOrgCommits}
-      />
-
-      {gitStatus.connected && (
-        <CommandPalette
-          isOpen={isPaletteOpen}
-          onClose={() => setIsPaletteOpen(false)}
-          canGenerate={
-            selectedCommitCount > 0 &&
-            !isGenerating &&
-            availability.status !== 'checking' &&
-            availability.status !== 'unavailable'
-          }
-          hasSelectableCommits={allSelectableCommits.length > 0}
-          showParabolAction={
-            parabolEnabled && parabolConnections.some((c) => c.status === 'ACTIVE')
-          }
-          canSendToParabol={
-            parabolEnabled &&
-            parabolConnections.some((c) => c.status === 'ACTIVE') &&
-            bullets.length > 0
-          }
-          aiConnections={aiConnections}
-          onSyncRange={(range) => void handleScanActivity(range, true, undefined, false)}
-          onOpenCommitSelector={() => setIsCommitModalOpen(true)}
-          onGenerate={() => void handleGenerateSummary()}
-          onSelectAiTool={handleSelectAiTool}
-          onOpenAddAiModal={() => {
-            setEditingAiConnection(null);
-            setIsAiModalOpen(true);
-          }}
-          onOpenParabolSubmit={() => setIsParabolModalOpen(true)}
-          onOpenAddReportPlatform={() => setIsReportConnectModalOpen(true)}
-          onOpenHistory={() => setIsHistoryModalOpen(true)}
-          onOpenSettings={() => openSettingsTab('fetch')}
-          onOpenReportSettings={() => openSettingsTab('reports')}
-          onOpenGitModal={() => openGitConnectModal('manage')}
-          onToggleLanguage={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
-        />
+        </>
       )}
     </>
   );

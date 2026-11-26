@@ -15,7 +15,7 @@ export function WorkspaceSkeleton() {
     <div
       aria-busy="true"
       aria-label={dict.auth.workspaceLoading}
-      className="flex-1 min-h-0 flex flex-col overflow-hidden"
+      className="flex-1 min-h-0 flex flex-col overflow-hidden gp-fade-in"
     >
       {/* Skeleton Header (Pinned Top) */}
       <div className="shrink-0 w-full border-b border-white/[0.12] bg-[#0F172A]/82 backdrop-blur-xl">
