@@ -3,6 +3,7 @@ import {
   buildPrSearchQueryString,
   matchesWorkspacePreferences,
   normalizePrNode,
+  parsePullRequestRef,
   resolveOwnerType,
   resolvePrState,
 } from './github-activity.helpers';
@@ -166,6 +167,38 @@ describe('github-activity.helpers', () => {
       expect(normalized.includedOrgs).toEqual(['nanocohub']);
       expect(normalized.prStates).toEqual(['draft']);
       expect(normalized.quickAccessUrl).toBe('https://action.parabol.co/meetings');
+    });
+  });
+
+  describe('parsePullRequestRef', () => {
+    it('parses full GitHub PR URLs and strips subpaths or hashes', () => {
+      expect(parsePullRequestRef('https://github.com/nanocohub/gateway/pull/42')).toEqual({
+        owner: 'nanocohub',
+        repo: 'gateway',
+        number: 42,
+      });
+      expect(
+        parsePullRequestRef('  https://www.github.com/thanh.ba/git-pulse/pull/108/files#diff-1  '),
+      ).toEqual({
+        owner: 'thanh.ba',
+        repo: 'git-pulse',
+        number: 108,
+      });
+    });
+
+    it('parses owner/repo#number shorthand', () => {
+      expect(parsePullRequestRef('thanhba0505/prism-hub#77')).toEqual({
+        owner: 'thanhba0505',
+        repo: 'prism-hub',
+        number: 77,
+      });
+    });
+
+    it('returns null for invalid references or zero PR numbers', () => {
+      expect(parsePullRequestRef('')).toBeNull();
+      expect(parsePullRequestRef('https://github.com/owner/repo/issues/12')).toBeNull();
+      expect(parsePullRequestRef('owner/repo#0')).toBeNull();
+      expect(parsePullRequestRef('just-a-branch')).toBeNull();
     });
   });
 });

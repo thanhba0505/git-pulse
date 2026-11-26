@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import { Footer } from '../layout/Footer';
 
@@ -16,7 +15,7 @@ export function WorkspaceSkeleton() {
     <div
       aria-busy="true"
       aria-label={dict.auth.workspaceLoading}
-      className="flex-1 min-h-0 flex flex-col overflow-hidden"
+      className="flex-1 min-h-0 flex flex-col overflow-hidden gp-fade-in"
     >
       {/* Skeleton Header (Pinned Top) */}
       <div className="shrink-0 w-full border-b border-white/[0.12] bg-[#0F172A]/82 backdrop-blur-xl">
@@ -94,52 +93,6 @@ export function ActivityListSkeleton({ count = 3 }: { count?: number }) {
         </div>
       ))}
     </div>
-  );
-}
-
-export function StandupOutputSkeleton() {
-  const { dict } = useTranslation();
-
-  return (
-    <section
-      aria-busy="true"
-      aria-label={dict.standupDock.generatingTitle}
-      className="gp-card rounded-xl p-5 sm:p-6 space-y-4 gp-fade-in"
-    >
-      <div className="flex items-center gap-3 border-b border-slate-700/80 pb-4">
-        <div
-          className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-400 shrink-0"
-          aria-hidden="true"
-        >
-          <Loader2 className="w-4 h-4 animate-spin" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-slate-100">
-            {dict.standupDock.generatingTitle}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">{dict.standupDock.generatingSubtitle}</p>
-        </div>
-      </div>
-
-      <div className="p-4 sm:p-5 rounded-lg bg-[#152033] border border-slate-700/80 space-y-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-2 h-2 rounded-full shrink-0" />
-          <Skeleton className="w-11/12 h-3.5" />
-        </div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-2 h-2 rounded-full shrink-0" />
-          <Skeleton className="w-4/5 h-3.5" />
-        </div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-2 h-2 rounded-full shrink-0" />
-          <Skeleton className="w-5/6 h-3.5" />
-        </div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="w-2 h-2 rounded-full shrink-0" />
-          <Skeleton className="w-2/3 h-3.5" />
-        </div>
-      </div>
-    </section>
   );
 }
 

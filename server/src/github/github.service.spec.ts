@@ -278,4 +278,157 @@ describe('GitHubService', () => {
       );
     });
   });
+
+  describe('resolvePullRequest', () => {
+    it('rejects malformed PR reference before calling GitHub API', async () => {
+      await expect(service.resolvePullRequest('user-1', 'not-a-pr-ref')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('fetches PR metadata and resolves merged state and org ownerType', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
+        gitUsername: 'thanhba',
+        encryptedToken: 'enc',
+        tokenIv: 'iv',
+        tokenTag: 'tag',
+        tokenStatus: 'ACTIVE',
+      });
+
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      fetchSpy.mockClear();
+      fetchSpy
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            number: 99,
+            title: 'feat: cross-repo PR lookup',
+            html_url: 'https://github.com/nanocohub/api/pull/99',
+            state: 'closed',
+            draft: false,
+            merged_at: '2026-11-20T09:00:00Z',
+            updated_at: '2026-11-20T09:00:00Z',
+            head: { ref: 'feat/lookup' },
+            base: {
+              ref: 'develop',
+              repo: {
+                full_name: 'nanocohub/api',
+                private: true,
+                owner: { login: 'nanocohub', type: 'Organization' },
+              },
+            },
+          }),
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => [
+            {
+              sha: 'abc1234567',
+              commit: {
+                message: 'feat: add lookup endpoint\n\ndetails',
+                committer: { date: '2026-11-20T08:50:00Z' },
+              },
+            },
+          ],
+        } as unknown as Response);
+
+      const pr = await service.resolvePullRequest(
+        'user-1',
+        'https://github.com/nanocohub/api/pull/99',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(pr).toEqual(
+        expect.objectContaining({
+          repo: 'nanocohub/api',
+          owner: 'nanocohub',
+          ownerType: 'organization',
+          number: 99,
+          state: 'merged',
+          commits: ['feat: add lookup endpoint'],
+        }),
+      );
+    });
+
+    it('throws NotFoundException when GitHub responds 404', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
+        gitUsername: 'thanhba',
+        encryptedToken: 'enc',
+        tokenIv: 'iv',
+        tokenTag: 'tag',
+        tokenStatus: 'ACTIVE',
+      });
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as unknown as Response);
+
+      await expect(service.resolvePullRequest('user-1', 'nanocohub/api#404')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('syncPullRequestStates', () => {
+    it('batches PR lookups via GraphQL and maps merged/open/draft states', async () => {
+      prismaMock.gitAccount.findFirst.mockResolvedValue({
+        id: 'acc-1',
+        gitUsername: 'thanhba',
+        encryptedToken: 'enc',
+        tokenIv: 'iv',
+        tokenTag: 'tag',
+        tokenStatus: 'ACTIVE',
+      });
+
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      fetchSpy.mockClear();
+      fetchSpy.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            pr0: {
+              pullRequest: {
+                title: 'docs(handling): workflow update',
+                state: 'CLOSED',
+                isDraft: false,
+                merged: true,
+                mergedAt: '2026-11-25T10:00:00Z',
+              },
+            },
+            pr1: {
+              pullRequest: {
+                title: 'feat(handling): inline POSTO',
+                state: 'OPEN',
+                isDraft: false,
+                merged: false,
+                mergedAt: null,
+              },
+            },
+          },
+        }),
+      } as unknown as Response);
+
+      const states = await service.syncPullRequestStates('user-1', [
+        { repo: 'nanocohub/autopilot-infra', prNumber: 320 },
+        { repo: 'nanocohub/supply_chain_system', prNumber: 2698 },
+      ]);
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(states.get('nanocohub/autopilot-infra#320')).toEqual({
+        state: 'merged',
+        title: 'docs(handling): workflow update',
+      });
+      expect(states.get('nanocohub/supply_chain_system#2698')).toEqual({
+        state: 'open',
+        title: 'feat(handling): inline POSTO',
+      });
+    });
+  });
 });

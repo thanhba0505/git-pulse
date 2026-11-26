@@ -113,4 +113,13 @@ export class GitHubController {
     };
     return this.gitHubService.fetchActivity(req.user.id, since, meta);
   }
+
+  @Get('pull-request')
+  @ApiOperation({ summary: 'Resolve a GitHub Pull Request by URL or owner/repo#number' })
+  async resolvePullRequest(
+    @Req() req: Request & { user: AuthenticatedUser },
+    @Query('ref') ref = '',
+  ) {
+    return this.gitHubService.resolvePullRequest(req.user.id, ref);
+  }
 }

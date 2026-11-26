@@ -2,6 +2,7 @@ import {
   DEFAULT_AI_PROMPT,
   buildStandupPrompts,
   classifyGeminiHttpError,
+  extractApiKeyExpiration,
   filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
   isJsonContentType,
@@ -14,6 +15,17 @@ describe('ai-provider.helpers', () => {
   it('masks API keys preserving only first 4 and last 4 characters', () => {
     expect(maskApiKey('AIzaSyB1234567890abcdefXYZ9')).toBe('AIza••••XYZ9');
     expect(maskApiKey('short')).toBe('••••');
+  });
+
+  it('extracts API key expiration from response headers or JWT exp claims when available', () => {
+    const headers = new Headers({ 'x-api-key-expires-at': '2027-01-15T00:00:00.000Z' });
+    expect(extractApiKeyExpiration('gsk_1234567890', headers)?.toISOString()).toBe(
+      '2027-01-15T00:00:00.000Z',
+    );
+
+    const payloadB64 = Buffer.from(JSON.stringify({ exp: 1800000000 })).toString('base64url');
+    expect(extractApiKeyExpiration(`hdr.${payloadB64}.sig`)?.getTime()).toBe(1800000000 * 1000);
+    expect(extractApiKeyExpiration('gsk_1234567890')).toBeNull();
   });
 
   it('normalizes legacy GitHub Models IDs to publisher/model format', () => {

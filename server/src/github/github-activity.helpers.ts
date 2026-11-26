@@ -277,3 +277,31 @@ export function normalizePrNode(
     commitDetails: effectiveCommits,
   };
 }
+
+export interface ParsedPullRequestRef {
+  owner: string;
+  repo: string;
+  number: number;
+}
+
+const GITHUB_PR_URL_RE =
+  /^https?:\/\/(?:www\.)?github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/pull\/(\d+)(?:[/?#].*)?$/i;
+const GITHUB_PR_SHORT_RE = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)#(\d+)$/;
+
+/** Parse either a GitHub PR URL (`https://github.com/owner/repo/pull/123`) or shorthand (`owner/repo#123`). */
+export function parsePullRequestRef(raw: string): ParsedPullRequestRef | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const match = GITHUB_PR_URL_RE.exec(trimmed) ?? GITHUB_PR_SHORT_RE.exec(trimmed);
+  if (!match) return null;
+
+  const owner = match[1];
+  const repo = match[2];
+  const prNumber = Number.parseInt(match[3], 10);
+  if (!owner || !repo || !Number.isSafeInteger(prNumber) || prNumber <= 0) {
+    return null;
+  }
+
+  return { owner, repo, number: prNumber };
+}

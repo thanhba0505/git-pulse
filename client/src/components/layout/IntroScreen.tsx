@@ -5,47 +5,86 @@ import { Activity } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 
 interface IntroScreenProps {
+  isReady?: boolean;
   onComplete: () => void;
 }
 
-export function IntroScreen({ onComplete }: IntroScreenProps) {
+export function IntroScreen({ isReady = true, onComplete }: IntroScreenProps) {
   const { dict } = useTranslation();
-  const [progress, setProgress] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const isReadyRef = useRef(isReady);
   const onCompleteRef = useRef(onComplete);
+  const readySinceRef = useRef<number | null>(isReady ? performance.now() : null);
+
+  useEffect(() => {
+    isReadyRef.current = isReady;
+    if (isReady && readySinceRef.current === null) {
+      readySinceRef.current = performance.now();
+    }
+  }, [isReady]);
 
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (reducedMotion.matches) {
-      setProgress(100);
-      const quickTimer = window.setTimeout(() => {
-        setIsFadingOut(true);
-        window.setTimeout(() => onCompleteRef.current(), 120);
-      }, 180);
-      return () => window.clearTimeout(quickTimer);
-    }
-
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const minDuration = reducedMotion ? 160 : 950;
     const startTime = performance.now();
-    const duration = 1150;
     let frameId = 0;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let finishTimer: ReturnType<typeof setTimeout> | null = null;
+    let finishing = false;
+
+    const setScale = (ratio: number) => {
+      if (barRef.current) {
+        barRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+      }
+    };
+
+    if (reducedMotion) {
+      setScale(1);
+    }
 
     const tick = (now: number) => {
       const elapsed = now - startTime;
-      const pct = Math.min(100, (elapsed / duration) * 100);
-      setProgress(pct);
 
-      if (pct < 100) {
+      if (!reducedMotion) {
+        if (!isReadyRef.current || elapsed < minDuration) {
+          // Advance smoothly to 0.88 over minDuration, then asymptotically hold toward 0.96 until ready
+          const ratio =
+            elapsed < minDuration
+              ? (elapsed / minDuration) * 0.88
+              : 0.88 + 0.08 * (1 - Math.exp(-(elapsed - minDuration) / 1400));
+          setScale(ratio);
+          frameId = window.requestAnimationFrame(tick);
+          return;
+        }
+
+        const readyAt = Math.max(readySinceRef.current ?? now, startTime + minDuration);
+        const settleElapsed = now - readyAt;
+        const settleProgress = Math.min(1, settleElapsed / 140);
+        setScale(0.88 + 0.12 * settleProgress);
+
+        if (settleProgress < 1) {
+          frameId = window.requestAnimationFrame(tick);
+          return;
+        }
+      } else if (!isReadyRef.current || elapsed < minDuration) {
         frameId = window.requestAnimationFrame(tick);
-      } else {
+        return;
+      }
+
+      if (!finishing) {
+        finishing = true;
+        setScale(1);
         setIsFadingOut(true);
-        timeoutId = setTimeout(() => {
-          onCompleteRef.current();
-        }, 280);
+        finishTimer = setTimeout(
+          () => {
+            onCompleteRef.current();
+          },
+          reducedMotion ? 100 : 260,
+        );
       }
     };
 
@@ -53,7 +92,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
 
     return () => {
       if (frameId) window.cancelAnimationFrame(frameId);
-      if (timeoutId) clearTimeout(timeoutId);
+      if (finishTimer) clearTimeout(finishTimer);
     };
   }, []);
 
@@ -61,7 +100,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
     <div
       role="status"
       aria-label={dict.auth.workspaceLoading}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0F172A]/95 backdrop-blur-2xl transition-opacity duration-300 ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0F172A] transition-opacity duration-250 ease-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
@@ -75,7 +114,7 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
         className="absolute h-72 w-72 translate-x-20 translate-y-10 rounded-full bg-indigo-500/15 blur-[120px] pointer-events-none"
       />
 
-      {/* Center Wordmark & Sleek Progress Indicator */}
+      {/* Center Wordmark & Compositor Progress Indicator */}
       <div className="relative z-10 flex flex-col items-center text-center px-4">
         <div className="flex items-center gap-3 select-none">
           <div
@@ -98,11 +137,12 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
           {dict.intro.tagline}
         </p>
 
-        {/* Sleek Glowing Progress Bar */}
+        {/* GPU-Composited Glowing Progress Bar */}
         <div className="mt-8 h-1.5 w-64 sm:w-80 overflow-hidden rounded-full border border-white/15 bg-white/[0.06] p-[1px] shadow-[0_0_25px_rgba(56,189,248,0.18)] backdrop-blur-md">
           <div
-            className="h-full rounded-full bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.85)] transition-[width] duration-75 ease-out"
-            style={{ width: `${progress}%` }}
+            ref={barRef}
+            className="h-full w-full origin-left rounded-full bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.85)] will-change-transform"
+            style={{ transform: 'scaleX(0)' }}
           />
         </div>
       </div>

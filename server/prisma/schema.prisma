@@ -46,9 +46,10 @@ model User {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
 
-  gitAccounts   GitAccount[]
-  aiConnections AiConnection[]
-  settings      UserSettings?
+  gitAccounts        GitAccount[]
+  aiConnections      AiConnection[]
+  parabolConnections ParabolConnection[]
+  settings           UserSettings?
   reports       ReportHistory[]
   bookmarks     GitRepoBookmark[]
   trackingTasks TrackingTask[]
@@ -213,4 +214,31 @@ model ServiceConnection {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@map("service_connections")
+}
+
+model ParabolConnection {
+  id             String      @id @default(uuid())
+  userId         String      @map("user_id")
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label          String      @db.VarChar(80)
+  parabolUserId  String      @map("parabol_user_id")
+  parabolName    String?     @map("parabol_name")
+  parabolEmail   String?     @map("parabol_email")
+  encryptedToken String      @map("encrypted_token")
+  tokenIv        String      @map("token_iv")
+  tokenTag       String      @map("token_tag")
+  keyVersion     Int         @default(1) @map("key_version")
+  maskedPrefix   String      @map("masked_prefix") @db.VarChar(32)
+  baseUrl        String      @default("https://action.parabol.co") @map("base_url")
+  status         TokenStatus @default(ACTIVE)
+  isActive       Boolean     @default(true) @map("is_active")
+  expiresAt      DateTime?   @map("expires_at")
+  lastVerifiedAt DateTime?   @map("last_verified_at")
+  lastUsedAt     DateTime?   @map("last_used_at")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, parabolUserId])
+  @@index([userId, isActive])
+  @@map("parabol_connections")
 }

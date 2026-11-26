@@ -19,6 +19,7 @@ import {
   classifyGroqHttpError,
   DEFAULT_GEMINI_MODELS,
   DEFAULT_GROQ_MODELS,
+  extractApiKeyExpiration,
   filterAndNormalizeGitHubCatalogModels,
   filterAndSortGeminiModels,
   filterAndSortGroqModels,
@@ -63,7 +64,14 @@ export interface AiAvailabilityResult {
 export interface AiPreviewModelsResult {
   valid: boolean;
   maskedKey: string;
+  suggestedLabel: string;
+  expiresAt: string | null;
   models: AiModelOption[];
+}
+
+interface VerifiedAiKeyResult {
+  models: AiModelOption[];
+  expiresAt: Date | null;
 }
 
 interface GeminiListModelsResponse {
@@ -152,7 +160,8 @@ export class AiService {
     }
 
     const label = dto.label?.trim() || maskApiKey(cleanKey);
-    const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
+    const verification = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
+    const resolvedExpiresAt = verification.expiresAt ?? parsedExpiresAt;
 
     const encrypted = this.crypto.encrypt(cleanKey, userId);
     const created = await this.prisma.aiConnection.create({
@@ -165,10 +174,10 @@ export class AiService {
         keyTag: encrypted.tag,
         keyVersion: encrypted.keyVersion,
         maskedKey: maskApiKey(cleanKey),
-        availableModels: models as unknown as Prisma.InputJsonValue,
+        availableModels: verification.models as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
         isActive: true,
-        expiresAt: parsedExpiresAt,
+        expiresAt: resolvedExpiresAt,
         lastVerifiedAt: new Date(),
       },
     });
@@ -217,8 +226,9 @@ export class AiService {
     }
 
     const label = dto.label?.trim() || existing.label || maskApiKey(cleanKey);
-    const models = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
+    const verification = await this.verifyAndFetchModels(userId, dto.provider, cleanKey, meta);
     const encrypted = this.crypto.encrypt(cleanKey, userId);
+    const resolvedExpiresAt = verification.expiresAt ?? expiresAtToUpdate;
 
     const updated = await this.prisma.aiConnection.update({
       where: { id: existing.id },
@@ -230,10 +240,10 @@ export class AiService {
         keyTag: encrypted.tag,
         keyVersion: encrypted.keyVersion,
         maskedKey: maskApiKey(cleanKey),
-        availableModels: models as unknown as Prisma.InputJsonValue,
+        availableModels: verification.models as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
         isActive: true,
-        ...(expiresAtToUpdate !== undefined ? { expiresAt: expiresAtToUpdate } : {}),
+        ...(resolvedExpiresAt !== undefined ? { expiresAt: resolvedExpiresAt } : {}),
         lastVerifiedAt: new Date(),
       },
     });
@@ -282,17 +292,20 @@ export class AiService {
       throw new BadRequestException('API Key không được để trống.');
     }
 
-    const models = await this.verifyAndFetchModels(
+    const verification = await this.verifyAndFetchModels(
       userId,
       dto.provider,
       cleanKey,
       meta,
       'AI_KEY_PREVIEW',
     );
+    const maskedKey = maskApiKey(cleanKey);
     return {
       valid: true,
-      maskedKey: maskApiKey(cleanKey),
-      models,
+      maskedKey,
+      suggestedLabel: maskedKey,
+      expiresAt: verification.expiresAt ? verification.expiresAt.toISOString() : null,
+      models: verification.models,
     };
   }
 
@@ -315,9 +328,9 @@ export class AiService {
       throw new BadRequestException('Không thể giải mã API Key. Vui lòng cập nhật lại key.');
     }
 
-    let models: AiModelOption[];
+    let verification: VerifiedAiKeyResult;
     try {
-      models = await this.verifyAndFetchModels(
+      verification = await this.verifyAndFetchModels(
         userId,
         existing.provider,
         apiKey,
@@ -335,8 +348,9 @@ export class AiService {
     const updated = await this.prisma.aiConnection.update({
       where: { id: existing.id },
       data: {
-        availableModels: models as unknown as Prisma.InputJsonValue,
+        availableModels: verification.models as unknown as Prisma.InputJsonValue,
         status: 'ACTIVE',
+        ...(verification.expiresAt ? { expiresAt: verification.expiresAt } : {}),
         lastVerifiedAt: new Date(),
       },
     });
@@ -345,7 +359,7 @@ export class AiService {
       userId,
       'AI_MODELS_REFRESH',
       'SUCCESS',
-      `Refreshed ${models.length} models for ${existing.provider} (${existing.label})`,
+      `Refreshed ${verification.models.length} models for ${existing.provider} (${existing.label})`,
       meta,
     );
 
@@ -358,7 +372,7 @@ export class AiService {
     apiKey: string,
     meta?: RequestMetadata,
     auditAction = 'AI_KEY_SAVE',
-  ): Promise<AiModelOption[]> {
+  ): Promise<VerifiedAiKeyResult> {
     if (provider === 'GROQ') {
       return this.verifyAndFetchGroqModels(userId, apiKey, meta, auditAction);
     }
@@ -394,7 +408,7 @@ export class AiService {
     apiKey: string,
     meta?: RequestMetadata,
     auditAction = 'AI_KEY_SAVE',
-  ): Promise<AiModelOption[]> {
+  ): Promise<VerifiedAiKeyResult> {
     let response: Response;
     try {
       response = await this.fetchWithTimeout(
@@ -451,7 +465,10 @@ export class AiService {
       )
       .map((r) => r.value.candidate);
 
-    return verified.length > 0 ? verified : targetCandidates.slice(0, 2);
+    return {
+      models: verified.length > 0 ? verified : targetCandidates.slice(0, 2),
+      expiresAt: extractApiKeyExpiration(apiKey, response.headers),
+    };
   }
 
   private async probeGeminiModel(apiKey: string, modelId: string): Promise<boolean> {
@@ -483,7 +500,7 @@ export class AiService {
     apiKey: string,
     meta?: RequestMetadata,
     auditAction = 'AI_KEY_SAVE',
-  ): Promise<AiModelOption[]> {
+  ): Promise<VerifiedAiKeyResult> {
     let response: Response;
     try {
       response = await this.fetchWithTimeout(
@@ -538,7 +555,10 @@ export class AiService {
       )
       .map((r) => r.value.candidate);
 
-    return verified.length > 0 ? verified : targetCandidates.slice(0, 2);
+    return {
+      models: verified.length > 0 ? verified : targetCandidates.slice(0, 2),
+      expiresAt: extractApiKeyExpiration(apiKey, response.headers),
+    };
   }
 
   async checkAvailability(

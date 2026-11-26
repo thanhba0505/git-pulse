@@ -16,6 +16,7 @@ export interface CommonDictionary {
   backHome: string;
   edit: string;
   done: string;
+  notificationsRegion: string;
 }
 
 export interface HeaderDictionary {
@@ -131,6 +132,13 @@ export interface TasksDictionary {
   selectPrsLabel: string;
   selectedPrsHint: string;
   noAvailablePrs: string;
+  customPrLabel: string;
+  customPrPlaceholder: string;
+  customPrAddBtn: string;
+  customPrAddingBtn: string;
+  customPrInvalidError: string;
+  customPrAddedTag: string;
+  customPrAlreadyAdded: string;
   saveTaskBtn: string;
   savingBtn: string;
   emptyTitle: string;
@@ -138,7 +146,6 @@ export interface TasksDictionary {
   noTasksCount: string;
   allCompletedTitle: string;
   allCompletedDesc: string;
-  unassignedTitle: string;
   addPrsBtn: string;
   doneAddPrsBtn: string;
   markCompleteBtn: string;
@@ -169,6 +176,8 @@ export interface AiConsoleDictionary {
   providerLabel: string;
   githubModelsLabel: string;
   githubModelsDesc: string;
+  daysRemainingShort: string;
+  expiredShort: string;
   geminiProviderLabel: string;
   groqProviderLabel: string;
   addProviderOptionLabel: string;
@@ -197,20 +206,6 @@ export interface AiConsoleDictionary {
   models: AiModelsDictionary;
 }
 
-export interface AiSettingsModalDictionary {
-  title: string;
-  subtitle: string;
-  customPromptLabel: string;
-  customPromptPlaceholder: string;
-  quickAccessUrlLabel: string;
-  resetUrlBtn: string;
-  resetPromptBtn: string;
-  charCount: string;
-  saveError: string;
-  saveBtn: string;
-  savingBtn: string;
-}
-
 export interface AiModalDictionary {
   titleAdd: string;
   titleUpdate: string;
@@ -231,17 +226,13 @@ export interface AiModalDictionary {
   apiKeyPlaceholderGroq: string;
   apiKeyHint: string;
   apiKeyRequired: string;
-  previewModelsBtn: string;
-  previewingModelsBtn: string;
+  verifyBtn: string;
+  verifyingBtn: string;
   previewSuccess: string;
   defaultModelLabel: string;
   expiresAtLabel: string;
   expiresNever: string;
-  expires30d: string;
-  expires60d: string;
-  expires90d: string;
-  expiresCustom: string;
-  customDatePlaceholder: string;
+  expiresPending: string;
   saveError: string;
   saveBtn: string;
   savingBtn: string;
@@ -253,9 +244,49 @@ export interface StandupDockDictionary {
   generatingTitle: string;
   generatingSubtitle: string;
   subtitle: string;
+  emptyHint: string;
   copiedToast: string;
   editPlaceholder: string;
-  quickAccessLink: string;
+  reportSettingsBtn: string;
+  sendToParabolBtn: string;
+}
+
+export interface ParabolModalDictionary {
+  title: string;
+  subtitle: string;
+  connectTitle: string;
+  connectDesc: string;
+  patLabel: string;
+  patPlaceholder: string;
+  patHint: string;
+  labelInput: string;
+  labelPlaceholder: string;
+  expiresAtLabel: string;
+  expiresPending: string;
+  openSettingsLink: string;
+  verifyBtn: string;
+  verifyingBtn: string;
+  verifySuccess: string;
+  invalidTokenFormat: string;
+  connectBtn: string;
+  connectingBtn: string;
+  meetingLabel: string;
+  meetingPlaceholder: string;
+  noActiveMeetings: string;
+  refreshMeetingsBtn: string;
+  promptLabel: string;
+  promptPlaceholder: string;
+  existingDraftBadge: string;
+  existingSharedBadge: string;
+  existingOverwriteHint: string;
+  previewLabel: string;
+  shareImmediatelyLabel: string;
+  shareImmediatelyDesc: string;
+  submitDraftBtn: string;
+  submitShareBtn: string;
+  submittingBtn: string;
+  manageConnectionBtn: string;
+  connectedAs: string;
 }
 
 export interface CommandPaletteDictionary {
@@ -266,16 +297,22 @@ export interface CommandPaletteDictionary {
   groups: {
     git: string;
     ai: string;
+    reports: string;
     navigation: string;
   };
   actions: {
     syncToday: string;
     sync24h: string;
     sync7d: string;
+    selectCommits: string;
     generateStandup: string;
     switchCloudAi: string;
     addGeminiAi: string;
+    sendToParabol: string;
+    connectReportPlatform: string;
     openHistory: string;
+    openSettings: string;
+    openReportSettings: string;
     openGitModal: string;
     toggleLanguage: string;
     toggleMotionPause: string;
@@ -294,6 +331,11 @@ export interface ToastsDictionary {
   aiDeleted: string;
   aiModelsRefreshed: string;
   aiModelsRefreshError: string;
+  parabolConnected: string;
+  parabolSwitched: string;
+  parabolDisconnected: string;
+  parabolDraftSaved: string;
+  parabolShared: string;
   reportDeleted: string;
   settingsSaved: string;
   aiSettingsSaved: string;
@@ -318,7 +360,6 @@ export interface GithubModalDictionary {
   excessiveScopesDesc: string;
   tokenRevokedTitle: string;
   tokenRevokedDesc: string;
-  securityNote: string;
   disconnectBtn: string;
   disconnectConfirmBtn: string;
   disconnectingBtn: string;
@@ -433,6 +474,7 @@ export interface SettingsModalDictionary {
   tablistAria: string;
   tabFetch: string;
   tabDisplay: string;
+  tabReports: string;
   tabGeneral: string;
   workspaceSection: string;
   includePersonalLabel: string;
@@ -452,6 +494,7 @@ export interface SettingsModalDictionary {
   includePrWithoutCommitsLabel: string;
   includePrWithoutCommitsDesc: string;
   defaultRangeLabel: string;
+  displaySection: string;
   defaultGroupByLabel: string;
   compactCommitsLabel: string;
   compactCommitsDesc: string;
@@ -462,6 +505,34 @@ export interface SettingsModalDictionary {
   motionLabel: string;
   motionOn: string;
   motionOff: string;
+  aiSynthesisSection: string;
+  customPromptLabel: string;
+  customPromptPlaceholder: string;
+  resetPromptBtn: string;
+  promptCharCount: string;
+  savePromptBtn: string;
+  savingPromptBtn: string;
+  savePromptError: string;
+  reportDeliverySection: string;
+  platformLabel: string;
+  platformParabolLabel: string;
+  platformParabolDesc: string;
+  connectedBadge: string;
+  disconnectedBadge: string;
+  showParabolActionLabel: string;
+  showParabolActionDesc: string;
+  parabolAccountsSection: string;
+  addParabolBtn: string;
+  noParabolConnections: string;
+  parabolPatLabel: string;
+  parabolPatPlaceholder: string;
+  parabolPatHint: string;
+  parabolPatRequired: string;
+  parabolSaveBtn: string;
+  parabolSavingBtn: string;
+  deleteParabolBtn: string;
+  defaultLabel: string;
+  setDefaultBtn: string;
   gitAccountsSection: string;
   addAccountBtn: string;
   noAccounts: string;
@@ -479,6 +550,11 @@ export interface SettingsModalDictionary {
   aiModelsCount: string;
 }
 
+export interface ReportConnectModalDictionary {
+  title: string;
+  subtitle: string;
+}
+
 export interface TranslationDictionary {
   common: CommonDictionary;
   intro: IntroDictionary;
@@ -491,8 +567,9 @@ export interface TranslationDictionary {
   tasks: TasksDictionary;
   aiConsole: AiConsoleDictionary;
   aiModal: AiModalDictionary;
-  aiSettingsModal: AiSettingsModalDictionary;
+  reportConnectModal: ReportConnectModalDictionary;
   standupDock: StandupDockDictionary;
+  parabolModal: ParabolModalDictionary;
   commandPalette: CommandPaletteDictionary;
   toasts: ToastsDictionary;
   githubModal: GithubModalDictionary;

@@ -9,7 +9,6 @@ import { Input } from '../ui/Input';
 import {
   GitBranch,
   Key,
-  ShieldCheck,
   ExternalLink,
   X,
   CheckCircle2,
@@ -214,12 +213,7 @@ export function GitHubConnectModal({
             )}
 
             {/* Footer & Inline 2-Step Disconnect Confirmation */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-700/80">
-              <p className="text-xs text-slate-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />
-                <span>{dict.githubModal.securityNote}</span>
-              </p>
-
+            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pt-2 border-t border-slate-700/80">
               {!confirmingDisconnect ? (
                 <button
                   type="button"

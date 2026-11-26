@@ -109,6 +109,7 @@ export function GoogleAccountChooserModal({
       onClose={onClose}
       labelledBy="google-chooser-title"
       maxWidthClass="max-w-md"
+      dismissible={!selectingUsername}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-slate-700/80">

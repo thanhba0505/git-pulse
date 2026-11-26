@@ -97,14 +97,12 @@ export interface FetchPreferences {
   includeDirectCommits: boolean;
   includePrWithoutCommitsInRange: boolean;
   compactCommits: boolean;
-  quickAccessUrl?: string;
 }
 
 export interface UserSettingsResponse {
   language: string;
   autoCopyToClipboard: boolean;
   customPrompt?: string;
-  quickAccessUrl?: string;
   fetchPreferences: FetchPreferences;
 }
 
@@ -175,4 +173,60 @@ export interface AiAvailabilityState {
   latencyMs?: number;
   reasonCode?: string;
   reason?: string;
+}
+
+export interface ParabolConnectionSummary {
+  id: string;
+  label: string;
+  parabolUserId: string;
+  parabolName: string | null;
+  parabolEmail: string | null;
+  maskedPrefix: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'NEEDS_REAUTH';
+  isActive: boolean;
+  expiresAt?: string | null;
+  lastVerifiedAt?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParabolPromptOption {
+  id: string;
+  question: string;
+  description: string;
+  sortOrder: string;
+}
+
+export interface ParabolExistingResponseSummary {
+  id: string;
+  promptId: string;
+  sharedAt: string | null;
+}
+
+export interface ParabolStandupMeeting {
+  id: string;
+  name: string;
+  teamId: string;
+  teamName: string;
+  createdAt: string;
+  prompts: ParabolPromptOption[];
+  viewerResponses: ParabolExistingResponseSummary[];
+}
+
+export interface ParabolStandupsResponse {
+  connected: boolean;
+  connection: ParabolConnectionSummary | null;
+  meetings: ParabolStandupMeeting[];
+}
+
+export interface SubmitParabolStandupResponse {
+  success: boolean;
+  responseId: string;
+  meetingId: string;
+  meetingName: string;
+  meetingUrl: string;
+  promptId: string;
+  shared: boolean;
+  sharedAt: string | null;
 }

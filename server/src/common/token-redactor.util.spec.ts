@@ -42,4 +42,10 @@ describe('token-redactor.util', () => {
     expect(aqRedacted).toBe('Failed authenticating [REDACTED_AI_KEY].');
     expect(aqRedacted).not.toContain(syntheticAqKey);
   });
+
+  it('should redact Parabol and generic Bearer tokens without breaking GitHub Bearer redaction', () => {
+    const rawParabol = 'Authorization: Bearer parabol_secret_token_1234567890abcdef';
+    expect(redactTokens(rawParabol)).toBe('Authorization: Bearer [REDACTED_TOKEN]');
+    expect(redactTokens('token pbl_1234567890abcdef1234')).toBe('token [REDACTED_PARABOL_TOKEN]');
+  });
 });
