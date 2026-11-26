@@ -12,6 +12,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ParabolModule } from './parabol/parabol.module';
+import { McpModule } from './mcp/mcp.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -36,6 +37,7 @@ import { HealthController } from './health/health.controller';
     SettingsModule,
     TasksModule,
     ParabolModule,
+    McpModule,
   ],
   controllers: [HealthController],
   providers: [

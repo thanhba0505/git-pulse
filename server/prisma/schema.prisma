@@ -22,6 +22,7 @@ enum AiEngineType {
   GOOGLE_GEMINI
   GROQ
   WEB_LLM
+  MCP_AGENT
 }
 
 enum AiProviderType {
@@ -49,6 +50,7 @@ model User {
   gitAccounts        GitAccount[]
   aiConnections      AiConnection[]
   parabolConnections ParabolConnection[]
+  mcpApiKeys         McpApiKey[]
   settings           UserSettings?
   reports       ReportHistory[]
   bookmarks     GitRepoBookmark[]
@@ -241,4 +243,22 @@ model ParabolConnection {
   @@unique([userId, parabolUserId])
   @@index([userId, isActive])
   @@map("parabol_connections")
+}
+
+model McpApiKey {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String    @db.VarChar(80)
+  tokenHash    String    @unique @map("token_hash") @db.VarChar(64)
+  maskedPrefix String    @map("masked_prefix") @db.VarChar(32)
+  scopes       String[]  @default(["read:activity", "write:activity", "read:tasks", "write:tasks", "ai:summarize", "read:reports", "write:reports", "read:settings", "write:settings", "write:parabol"])
+  expiresAt    DateTime? @map("expires_at")
+  lastUsedAt   DateTime? @map("last_used_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, revokedAt])
+  @@map("mcp_api_keys")
 }

@@ -3,9 +3,12 @@ import {
   AiEngine,
   AiModelOption,
   AiProviderType,
+  CreateMcpKeyResponse,
   FetchPreferences,
   GitHubWorkspacesResponse,
   GitStatus,
+  McpKeySummary,
+  McpScope,
   ParabolConnectionSummary,
   ParabolStandupsResponse,
   PrActivity,
@@ -18,6 +21,8 @@ import {
 } from '../types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6101/api/v1';
+
+export const MCP_ENDPOINT_URL = `${API_BASE.replace(/\/+$/, '')}/mcp`;
 
 const TOKEN_STORAGE_KEY = 'git_pulse_token';
 
@@ -393,6 +398,18 @@ export const api = {
       fetchJson<SubmitParabolStandupResponse>('/parabol/standups/submit', {
         method: 'POST',
         body: JSON.stringify(dto),
+      }),
+  },
+  mcp: {
+    listKeys: () => fetchJson<McpKeySummary[]>('/mcp/keys'),
+    createKey: (dto: { label: string; scopes?: McpScope[]; expiresInDays?: number }) =>
+      fetchJson<CreateMcpKeyResponse>('/mcp/keys', {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      }),
+    revokeKey: (id: string) =>
+      fetchJson<{ success: boolean }>(`/mcp/keys/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
       }),
   },
 };

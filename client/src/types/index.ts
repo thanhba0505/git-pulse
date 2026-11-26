@@ -136,11 +136,39 @@ export interface ReportItem {
   summaryText: string;
   prCount: number;
   commitCount: number;
-  aiEngineUsed: 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'GROQ' | 'WEB_LLM';
+  aiEngineUsed: 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'GROQ' | 'WEB_LLM' | 'MCP_AGENT';
   modelName: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   createdAt: string;
+}
+
+export type McpScope =
+  | 'read:activity'
+  | 'write:activity'
+  | 'read:tasks'
+  | 'write:tasks'
+  | 'ai:summarize'
+  | 'read:reports'
+  | 'write:reports'
+  | 'read:settings'
+  | 'write:settings'
+  | 'write:parabol';
+
+export interface McpKeySummary {
+  id: string;
+  label: string;
+  maskedPrefix: string;
+  scopes: McpScope[];
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateMcpKeyResponse {
+  key: McpKeySummary;
+  token: string;
 }
 
 export type AiEngine = 'GITHUB_MODELS' | 'GOOGLE_GEMINI' | 'GROQ';

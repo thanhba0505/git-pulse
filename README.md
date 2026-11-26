@@ -28,6 +28,8 @@
   - **Groq Cloud (LPU) & Google Gemini (BYOK Vault)**: Connect personal Groq (`gsk_...`) or Google AI Studio (`AIza...` / `AQ...`) API keys encrypted per-user with **AES-256-GCM + HKDF-SHA256**, auto-discovering available models, key expiration metadata, and live runtime probes before summarization.
 - **Direct Parabol Standup Delivery**:
   - Connect one or more Parabol Personal Access Tokens (`pat_...` from `action.parabol.co/me/profile`), auto-verify profile metadata and expiration, select an active `TeamPromptMeeting` & prompt, and push formatted TipTap standup bullets as a Private Draft or immediate team share.
+- **Stateless MCP Server (`POST /api/v1/mcp`)**:
+  - Connect AI agents/IDEs (Antigravity, Cursor, Claude Code, VS Code) using scoped personal `gp_mcp_...` API keys (SHA-256 hashed in `mcp_api_keys`) to scan GitHub activity, create/manage PR `TrackingTask` groups, run dual-mode standup synthesis (account BYOK AI or external agent summary saved as `MCP_AGENT`), update preferences, and push drafts to Parabol.
 - **Git Activity Scanner**: Fetches pull requests, commit timelines, and repository contributions across configurable time windows (`Today`, `24h`, `7d`).
 - **Bilingual Workspace (`vi` / `en`)**: Full interface internationalization decoupled cleanly from AI report generation language.
 - **Multi-Format Export Dock**: 1-click clipboard formatting for Parabol standups, Slack bullet lists, and plain bullets.
@@ -55,6 +57,7 @@ Git Pulse is a developer intelligence layer within the **Prism Hub** engineering
 ```mermaid
 graph TD
     Developer["Developer Browser"] -->|HTTPS| VercelEdge["Vercel Edge Network"]
+    AiAgent["AI IDE / Agent (MCP Streamable HTTP)"] -->|"POST /api/v1/mcp (Bearer gp_mcp_...)"| VercelEdge
     VercelEdge --> ClientApp["git-pulse-client (Next.js 15 App Router)"]
     VercelEdge --> ServerAPI["git-pulse-server (NestJS 10 Serverless)"]
     ServerAPI -->|Pooled Connection| NeonDB["Neon Lakebase PostgreSQL 16 (AWS Oregon)"]

@@ -15,6 +15,7 @@ import { getPrStateStyle, formatExpiration } from '../../lib/activity-utils';
 import { useAmbientMotionPreference } from '../../lib/motion-preference';
 import { ModalDialog } from '../ui/ModalDialog';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { McpKeysSection } from './McpKeysSection';
 import {
   AlertCircle,
   Building2,
@@ -1282,6 +1283,8 @@ export function SettingsModal({
               </div>
             )}
           </section>
+
+          <McpKeysSection isOpen={isOpen} onError={setError} />
         </div>
       </div>
 

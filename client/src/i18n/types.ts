@@ -548,6 +548,32 @@ export interface SettingsModalDictionary {
   deleteAiBtn: string;
   confirmDeleteAiBtn: string;
   aiModelsCount: string;
+  mcpSection: string;
+  mcpAddKeyBtn: string;
+  mcpNoKeys: string;
+  mcpKeyLabelInput: string;
+  mcpKeyLabelPlaceholder: string;
+  mcpExpiryLabel: string;
+  mcpExpiryNever: string;
+  mcpExpiryDays: string;
+  mcpScopesLabel: string;
+  mcpCreateBtn: string;
+  mcpCreatingBtn: string;
+  mcpTokenOnceTitle: string;
+  mcpTokenOnceDesc: string;
+  mcpCopyTokenBtn: string;
+  mcpCopyConfigBtn: string;
+  mcpCopiedToast: string;
+  mcpKeyCreatedToast: string;
+  mcpKeyRevokedToast: string;
+  mcpRevokeBtn: string;
+  mcpConfirmRevokeBtn: string;
+  mcpRevokedBadge: string;
+  mcpExpiredBadge: string;
+  mcpActiveBadge: string;
+  mcpConfigSnippetTitle: string;
+  mcpLastUsedLabel: string;
+  mcpNeverUsed: string;
 }
 
 export interface ReportConnectModalDictionary {
