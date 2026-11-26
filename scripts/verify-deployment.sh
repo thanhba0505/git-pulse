@@ -89,7 +89,7 @@ echo "🚀 Git Pulse Production Deployment Verification"
 echo "Target Service       : $SERVICE"
 echo "Target Version       : ${TARGET_VERSION:-latest}"
 echo "Target Commit        : ${TARGET_COMMIT:-any}"
-echo "Server Endpoint      : $SERVER_URL/api/v1/health"
+echo "Server Endpoint      : $SERVER_URL/api/v1/health-full"
 echo "Client Endpoint      : $CLIENT_URL/health"
 echo "Timeout              : ${TIMEOUT_SECONDS}s (poll every ${POLL_INTERVAL}s)"
 echo "Initial Delay        : ${INITIAL_DELAY}s"
@@ -97,7 +97,7 @@ echo "Min Rollout Wait     : ${MIN_ROLLOUT_WAIT}s"
 echo "GitHub Live Sync     : $([ -n "$GH_REPO" ] && echo "Active" || echo "Inactive")"
 echo "=================================================================="
 
-INITIAL_SERVER_VER=$(curl -s --max-time 5 "$SERVER_URL/api/v1/health" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).version || 'unreachable'" 2>/dev/null || echo "unreachable")
+INITIAL_SERVER_VER=$(curl -s --max-time 5 "$SERVER_URL/api/v1/health-full" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).version || 'unreachable'" 2>/dev/null || echo "unreachable")
 INITIAL_CLIENT_VER=$(curl -s --max-time 5 "$CLIENT_URL/health" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).version || 'unreachable'" 2>/dev/null || echo "unreachable")
 
 echo "Baseline Live Status:"
@@ -162,14 +162,14 @@ EOF
 
   # Check Server Health
   if [ "$SERVER_OK" = false ]; then
-    SERVER_RESP=$(curl -s --max-time 10 "$SERVER_URL/api/v1/health" 2>/dev/null || echo "")
+    SERVER_RESP=$(curl -s --max-time 10 "$SERVER_URL/api/v1/health-full" 2>/dev/null || echo "")
     LAST_SERVER_STATUS="$SERVER_RESP"
     if [ -n "$SERVER_RESP" ]; then
       STATUS=$(echo "$SERVER_RESP" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).status || ''" 2>/dev/null || echo "")
       VERSION=$(echo "$SERVER_RESP" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).version || ''" 2>/dev/null || echo "")
       DB_STATUS=$(echo "$SERVER_RESP" | node -p "JSON.parse(require('fs').readFileSync(0,'utf-8')).database || ''" 2>/dev/null || echo "")
 
-      if [ "$STATUS" = "ok" ]; then
+      if ([ "$STATUS" = "ok" ] || [ "$STATUS" = "degraded" ]) && [ "$DB_STATUS" = "connected" ]; then
         VERSION_MATCH=false
         if [ -z "$TARGET_VERSION" ]; then
           VERSION_MATCH=true
@@ -188,7 +188,7 @@ EOF
           
           if [ -n "$GH_SERVER_DEPLOY_ID" ] && [ -n "$GH_REPO" ]; then
             gh api -X POST "/repos/$GH_REPO/deployments/$GH_SERVER_DEPLOY_ID/statuses" \
-              --input - <<< '{"state":"success","environment_url":"'$SERVER_URL'/api/v1/health","log_url":"https://vercel.com/thanhbas-projects","description":"Server v'$VERSION' deployed successfully (DB: '$DB_STATUS')"}' || true
+              --input - <<< '{"state":"success","environment_url":"'$SERVER_URL'/api/v1/health-full","log_url":"https://vercel.com/thanhbas-projects","description":"Server v'$VERSION' deployed successfully (DB: '$DB_STATUS')"}' || true
           fi
         else
           echo "  [${ELAPSED}s] Server live version: '$VERSION' (waiting for '$TARGET_VERSION')..."
