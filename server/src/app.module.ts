@@ -13,7 +13,7 @@ import { SettingsModule } from './settings/settings.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ParabolModule } from './parabol/parabol.module';
 import { McpModule } from './mcp/mcp.module';
-import { HealthController } from './health/health.controller';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -38,8 +38,8 @@ import { HealthController } from './health/health.controller';
     TasksModule,
     ParabolModule,
     McpModule,
+    HealthModule,
   ],
-  controllers: [HealthController],
   providers: [
     {
       provide: APP_GUARD,
