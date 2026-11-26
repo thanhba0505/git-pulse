@@ -48,4 +48,14 @@ describe('token-redactor.util', () => {
     expect(redactTokens(rawParabol)).toBe('Authorization: Bearer [REDACTED_TOKEN]');
     expect(redactTokens('token pbl_1234567890abcdef1234')).toBe('token [REDACTED_PARABOL_TOKEN]');
   });
+
+  it('should redact gp_mcp_ API keys standalone and inside Bearer headers', () => {
+    const syntheticMcpKey = 'gp_mcp_' + 'AbCdEf1234567890_xyzXYZ123456';
+    expect(redactTokens(`MCP key leaked: ${syntheticMcpKey}`)).toBe(
+      'MCP key leaked: [REDACTED_MCP_TOKEN]',
+    );
+    expect(redactTokens(`Authorization: Bearer ${syntheticMcpKey}`)).toBe(
+      'Authorization: Bearer [REDACTED_MCP_TOKEN]',
+    );
+  });
 });

@@ -1003,7 +1003,71 @@ export class AiService {
     return buildStandupPrompts(dto.prs, dto.language, persistedPrompt);
   }
 
-  async summarize(userId: string, dto: SummarizeDto, meta?: RequestMetadata) {
+  /**
+   * Resolves the best active BYOK AI engine & connection for a user (Gemini or Groq),
+   * avoiding retired GitHub Models when no explicit engine is specified.
+   */
+  async resolveActiveAiEngine(
+    userId: string,
+    preferredEngine?: ValidAiEngine,
+    connectionId?: string,
+  ): Promise<{ engine: 'GOOGLE_GEMINI' | 'GROQ'; connectionId: string; model: string }> {
+    if (connectionId) {
+      const specific = await this.prisma.aiConnection.findFirst({
+        where: { id: connectionId, userId, status: 'ACTIVE', isActive: true },
+      });
+      if (!specific) {
+        throw new BadRequestException(
+          'Không tìm thấy kết nối AI khả dụng với connectionId đã chọn.',
+        );
+      }
+      const stored = normalizeStoredModels(specific.availableModels);
+      const fallbackModel =
+        specific.provider === 'GROQ' ? DEFAULT_GROQ_MODELS[0].id : DEFAULT_GEMINI_MODELS[0].id;
+      return {
+        engine: specific.provider,
+        connectionId: specific.id,
+        model: stored[0]?.id ?? fallbackModel,
+      };
+    }
+
+    const targetProvider =
+      preferredEngine === 'GROQ' || preferredEngine === 'GOOGLE_GEMINI'
+        ? preferredEngine
+        : undefined;
+
+    const activeConn = await this.prisma.aiConnection.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        isActive: true,
+        ...(targetProvider ? { provider: targetProvider } : {}),
+      },
+      orderBy: [{ updatedAt: 'desc' }],
+    });
+
+    if (!activeConn) {
+      throw new BadRequestException(
+        'Chưa có kết nối AI (Google Gemini hoặc Groq) đang hoạt động trong tài khoản Git Pulse. Vui lòng thêm API Key trong Cài đặt web.',
+      );
+    }
+
+    const stored = normalizeStoredModels(activeConn.availableModels);
+    const fallbackModel =
+      activeConn.provider === 'GROQ' ? DEFAULT_GROQ_MODELS[0].id : DEFAULT_GEMINI_MODELS[0].id;
+    return {
+      engine: activeConn.provider,
+      connectionId: activeConn.id,
+      model: stored[0]?.id ?? fallbackModel,
+    };
+  }
+
+  async summarize(
+    userId: string,
+    dto: SummarizeDto,
+    meta?: RequestMetadata,
+    options?: { saveToHistory?: boolean },
+  ) {
     if (!dto.prs || dto.prs.length === 0) {
       throw new BadRequestException('Chưa chọn hoạt động hoặc Commit nào để tạo báo cáo.');
     }
@@ -1018,15 +1082,20 @@ export class AiService {
 
     const engine: ValidAiEngine = dto.engine || 'GITHUB_MODELS';
     if (engine === 'GOOGLE_GEMINI') {
-      return this.summarizeWithGemini(userId, dto, meta);
+      return this.summarizeWithGemini(userId, dto, meta, options);
     }
     if (engine === 'GROQ') {
-      return this.summarizeWithGroq(userId, dto, meta);
+      return this.summarizeWithGroq(userId, dto, meta, options);
     }
-    return this.summarizeWithGitHubModels(userId, dto, meta);
+    return this.summarizeWithGitHubModels(userId, dto, meta, options);
   }
 
-  private async summarizeWithGemini(userId: string, dto: SummarizeDto, meta?: RequestMetadata) {
+  private async summarizeWithGemini(
+    userId: string,
+    dto: SummarizeDto,
+    meta?: RequestMetadata,
+    options?: { saveToHistory?: boolean },
+  ) {
     const conn = await this.findGeminiConnection(userId, dto.connectionId);
     if (!conn) {
       throw new BadRequestException(
@@ -1134,10 +1203,19 @@ export class AiService {
     }
 
     const bullets = parseStandupBullets(rawContent);
-    await this.saveReportAndAudit(userId, dto, 'GOOGLE_GEMINI', model, bullets, meta);
+    const reportId = await this.saveReportAndAudit(
+      userId,
+      dto,
+      'GOOGLE_GEMINI',
+      model,
+      bullets,
+      meta,
+      options,
+    );
 
     return {
       success: true,
+      reportId,
       bullets,
       rawText: rawContent,
       modelUsed: model,
@@ -1145,7 +1223,12 @@ export class AiService {
     };
   }
 
-  private async summarizeWithGroq(userId: string, dto: SummarizeDto, meta?: RequestMetadata) {
+  private async summarizeWithGroq(
+    userId: string,
+    dto: SummarizeDto,
+    meta?: RequestMetadata,
+    options?: { saveToHistory?: boolean },
+  ) {
     const conn = await this.findAiConnection(userId, 'GROQ', dto.connectionId);
     if (!conn) {
       throw new BadRequestException('Chưa cấu hình Groq API Key. Vui lòng thêm key trước.');
@@ -1205,11 +1288,19 @@ export class AiService {
     const data = (await response.json()) as ChatCompletionsResponse;
     const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
     const bullets = parseStandupBullets(rawContent);
-
-    await this.saveReportAndAudit(userId, dto, 'GROQ', model, bullets, meta);
+    const reportId = await this.saveReportAndAudit(
+      userId,
+      dto,
+      'GROQ',
+      model,
+      bullets,
+      meta,
+      options,
+    );
 
     return {
       success: true,
+      reportId,
       bullets,
       rawText: rawContent,
       modelUsed: model,
@@ -1221,6 +1312,7 @@ export class AiService {
     userId: string,
     dto: SummarizeDto,
     meta?: RequestMetadata,
+    options?: { saveToHistory?: boolean },
   ) {
     const { token, accountId } = await this.githubService.getDecryptedToken(
       userId,
@@ -1287,11 +1379,19 @@ export class AiService {
     const data = (await response.json()) as ChatCompletionsResponse;
     const rawContent = data.choices?.[0]?.message?.content?.trim() || '';
     const bullets = parseStandupBullets(rawContent);
-
-    await this.saveReportAndAudit(userId, dto, 'GITHUB_MODELS', model, bullets, meta);
+    const reportId = await this.saveReportAndAudit(
+      userId,
+      dto,
+      'GITHUB_MODELS',
+      model,
+      bullets,
+      meta,
+      options,
+    );
 
     return {
       success: true,
+      reportId,
       bullets,
       rawText: rawContent,
       modelUsed: model,
@@ -1306,25 +1406,30 @@ export class AiService {
     model: string,
     bullets: string[],
     meta?: RequestMetadata,
-  ) {
+    options?: { saveToHistory?: boolean },
+  ): Promise<string | null> {
     const totalCommits = dto.prs.reduce((acc, p) => acc + p.commits.length, 0);
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
 
-    await this.prisma.reportHistory.create({
-      data: {
-        userId,
-        summaryText: bullets.map((b) => `• ${b}`).join('\n'),
-        prCount: dto.prs.length,
-        commitCount: totalCommits,
-        aiEngineUsed: engine,
-        modelName: model,
-        metadata: JSON.parse(JSON.stringify({ prs: dto.prs })) as Prisma.InputJsonValue,
-        dateRangeStart: startOfDay,
-        dateRangeEnd: now,
-      },
-    });
+    let reportId: string | null = null;
+    if (options?.saveToHistory !== false) {
+      const created = await this.prisma.reportHistory.create({
+        data: {
+          userId,
+          summaryText: bullets.map((b) => `• ${b}`).join('\n'),
+          prCount: dto.prs.length,
+          commitCount: totalCommits,
+          aiEngineUsed: engine,
+          modelName: model,
+          metadata: JSON.parse(JSON.stringify({ prs: dto.prs })) as Prisma.InputJsonValue,
+          dateRangeStart: startOfDay,
+          dateRangeEnd: now,
+        },
+      });
+      reportId = created.id;
+    }
 
     await this.githubService.recordAuditLog(
       userId,
@@ -1333,5 +1438,6 @@ export class AiService {
       `Synthesized standup via ${engine} (${model})`,
       meta,
     );
+    return reportId;
   }
 }

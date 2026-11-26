@@ -1420,4 +1420,34 @@ export class GitHubService {
 
     return resolved;
   }
+
+  /** Fetches commit headline messages for a specific PR by owner/repo and number. */
+  async fetchPullRequestCommits(userId: string, repo: string, prNumber: number): Promise<string[]> {
+    const parts = repo.trim().split('/');
+    if (parts.length !== 2 || !Number.isInteger(prNumber) || prNumber <= 0) {
+      return [];
+    }
+    const [owner, name] = parts;
+    const { token } = await this.getDecryptedToken(userId, 'ACTIVITY_FETCH');
+    const headers = buildGitHubHeaders(token);
+    const repoPath = `${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+
+    try {
+      const commitsRes = await fetch(
+        `https://api.github.com/repos/${repoPath}/pulls/${prNumber}/commits?per_page=100`,
+        { headers },
+      );
+      if (!commitsRes.ok) {
+        return [];
+      }
+      const commitsJson = (await commitsRes.json()) as Array<{
+        commit?: { message?: string };
+      }>;
+      return commitsJson
+        .map((c) => (c.commit?.message || '').split('\n')[0]?.trim() || '')
+        .filter((msg) => msg.length > 0);
+    } catch {
+      return [];
+    }
+  }
 }

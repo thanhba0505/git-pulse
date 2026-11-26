@@ -18,10 +18,11 @@ const AI_KEY_PATTERNS = [
 
 const BEARER_TOKEN_PATTERN = /\bBearer\s+(?!\[REDACTED_)[A-Za-z0-9._~+/=-]{16,}/gi;
 const PARABOL_PAT_PATTERNS = [/\bpbl_[A-Za-z0-9_-]{16,}/g, /\bpat_[A-Za-z0-9_-]{16,}/g];
+const MCP_TOKEN_PATTERN = /\bgp_mcp_[A-Za-z0-9_-]{24,}\b/g;
 
 /**
  * Sanitizes any string or JSON representation by replacing detected GitHub tokens,
- * AI provider keys, and Parabol / Bearer credentials with safe placeholders.
+ * AI provider keys, MCP API keys, and Parabol / Bearer credentials with safe placeholders.
  */
 export function redactTokens(input: unknown): string {
   if (input === null || input === undefined) {
@@ -49,6 +50,7 @@ export function redactTokens(input: unknown): string {
   for (const pattern of PARABOL_PAT_PATTERNS) {
     sanitized = sanitized.replace(pattern, '[REDACTED_PARABOL_TOKEN]');
   }
+  sanitized = sanitized.replace(MCP_TOKEN_PATTERN, '[REDACTED_MCP_TOKEN]');
   sanitized = sanitized.replace(BEARER_TOKEN_PATTERN, 'Bearer [REDACTED_TOKEN]');
 
   return sanitized;
